@@ -40,6 +40,26 @@ Create a vector graphics format that fulfils the following requirements:
   - linear gradients
 - Can use hinting to allow really small rendering (16²)
 
+## Use Cases
+
+The use cases here are listed to be considered while working on the specification and give the project a shape and boundary:
+
+- Application Icons (large, fine details)
+- Toolbar Icons (small, simple)
+- Graphs (large structure, no details, text, think [graphviz](https://graphviz.org/))
+- Diagrams (colored surfaces, text, lines)
+- Mangas/Comics (complex shapes, different line thickness)
+
 ## Project Status
 
 This project is currently work-in-progress and there's neither a specification or a reference implementation. Consider this a mind-experiment for now
+
+## Considerations
+
+- Which color format does TVG use?
+  - Linear color space?
+  - sRGB?
+- What is the default color depth?
+  - 15/16 bit?
+  - 24 bit?
+  - 30 bit?
