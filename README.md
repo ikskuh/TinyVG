@@ -68,3 +68,4 @@ This project is currently work-in-progress and there's neither a specification o
 ## Resources
 - [CSS Gradients](https://css-tricks.com/css3-gradients/)
   - Radial and conic gradients can be used for nice 3D shading
+- Previous Work: [TurtleFont](https://github.com/MasterQ32/turtlefont) is a pure line-drawing vector format
