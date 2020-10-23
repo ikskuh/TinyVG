@@ -38,6 +38,7 @@ Create a vector graphics format that fulfils the following requirements:
   - flat colors
   - bitmap textures
   - linear gradients
+  - line widths
 - Can use hinting to allow really small rendering (16²)
 
 ## Use Cases
@@ -63,3 +64,7 @@ This project is currently work-in-progress and there's neither a specification o
   - 15/16 bit?
   - 24 bit?
   - 30 bit?
+
+## Resources
+- [CSS Gradients](https://css-tricks.com/css3-gradients/)
+  - Radial and conic gradients can be used for nice 3D shading
