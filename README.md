@@ -64,6 +64,12 @@ This project is currently work-in-progress and there's neither a specification o
   - 15/16 bit?
   - 24 bit?
   - 30 bit?
+- How should font rendering work?
+  - Embed vector fonts in the file?
+    - Sparse font mapping: Only map glyphs actually used
+  - Just render out text as path/line data?
+  - SVG shows that not embedding a font makes the file completly unportable and will look different in every renderer. This needs to be prevented
+  - Use UTF-8 encoding
 
 ## Resources
 - [CSS Gradients](https://css-tricks.com/css3-gradients/)
