@@ -34,6 +34,7 @@ Examples:
 { 0x40 }             => 0x40
 { 0x80, 0x01 }       => 0x80
 { 0x80, 0x80, 0x40 } => 0x100000
+```
 
 ### `sint`
 A variadic sized signed integer. This follows the same encoding scheme as the `uint`, but uses a swizzle encoding which moves the sign bit to the last bit and inverts the bits when the sign bit is set. This means that values are encoded in the following sequence:
