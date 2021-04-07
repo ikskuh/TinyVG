@@ -59,6 +59,23 @@ pub fn decode(u: u32) i32 {
 A graphics-dependent fixed-point decimal number, encoded as a 16 bit signed two's complement integer with the last N bits being the decimal places.
 A `scale` value for the graphic will determine the number of decimal places.
 
+### `Gradient`
+
+A two-point gradient that is either linear or radial.
+
+`grad_point_0_x` and `grad_point_0_y` form the first point, `grad_point_1_x` and `grad_point_1_y` form the second point.
+
+The gradient has the color `grad_point_0_c` at the first point, the color `grad_point_1_c` at the second point and interpolates linearly between the two colors.
+
+```zig
+grad_point_0_x: unit,
+grad_point_0_y: unit,
+grad_point_1_x: unit,
+grad_point_1_y: unit,
+grad_point_0_c: uint,
+grad_point_1_c: uint,
+```
+
 ## Version 1
 
 ### Full Header
@@ -144,3 +161,59 @@ The `color` field defines which color this polygon has. The color is selected fr
 | +0x00      |    2  | `vertex.x`       | `unit`  | x coordinate of the vertex                         |
 | +0x01      |    2  | `vertex.y`       | `unit`  | y coordinate of the vertex                         |
 
+### `command=2` Draw line list
+
+This command draws a list of disjoint lines.
+
+```zig
+struct {
+    line_count: u6,
+    use_gradient: u2,
+    line_width: unit,
+    if(gradient > 0) {
+        gradient: Gradient,
+    } else {
+        color: uint,
+    },
+    lines: [line_count]struct {
+        x0: unit,
+        y0: unit,
+        x1: unit,
+        y1: unit,
+    },
+}
+```
+
+`line_count` defines how many lines there are in the list. `line_count=0` is mapped to 64 as 0 lines would have no information and the command could be removed. `use_gradient > 0` defines that a `gradient` is used. `use_gradient = 1` means a linear gradient is used, `use_gradient = 2` is a radial one.
+When `use_gradient` is 0, a flat `color` is used for shading the lines. `line_width` defines the line width in units. Lines always have rounded ends
+
+`lines` contains pairs of points for each line in the list.
+
+### `command=3` Draw line strip
+
+This command draws a list of connected lines. A line is defined by the first and second point, the next line is defined by the second and third point and so on. This allows very compact drawing of connected lines.
+
+```zig
+struct {
+    line_count: u6,
+    use_gradient: u2,
+    line_width: unit,
+    if(gradient > 0) {
+        gradient: Gradient,
+    } else {
+        color: uint,
+    },
+    vertices: [line_count + 1]struct {
+        x: unit,
+        y: unit,
+    },
+}
+```
+
+The parameters for *Draw line strip* are the same as for *Draw line list*, except for `vertices` which will define all points of the list strip.
+
+
+### `command=4` Draw line loop
+
+This command is the same as *Draw line strip*, but the last and first vertex are connected to each other. This means that only
+closed loops can be drawn with this command.

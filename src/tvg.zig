@@ -94,6 +94,83 @@ const Point = struct {
     y: i16,
 };
 
+const Color = extern struct {
+    const Self = @This();
+
+    r: u8,
+    g: u8,
+    b: u8,
+    a: u8,
+
+    fn lerp(lhs: Self, rhs: Self, factor: f32) Self {
+        const l = struct {
+            fn l(a: u8, b: u8, c: f32) u8 {
+                return @floatToInt(u8, @intToFloat(f32, a) + (@intToFloat(b) - @intToFloat(a)) * std.math.clamp(c, 0, 1));
+            }
+        }.l;
+
+        return Self{
+            .r = l(lhs.r, rhs.r, factor),
+            .g = l(lhs.g, rhs.g, factor),
+            .b = l(lhs.b, rhs.b, factor),
+            .a = l(lhs.a, rhs.a, factor),
+        };
+    }
+};
+
+const GradientType = enum(u2) {
+    flat = 0,
+    linear = 1,
+    radial = 2,
+    _,
+};
+
+const Gradient = struct {
+    const Self = @This();
+
+    x0: Unit,
+    y0: Unit,
+    x1: Unit,
+    y1: Unit,
+    c0: u32,
+    c1: u32,
+
+    fn sampleLinear(self: Self, x: Unit, y: Unit) Color {
+        @panic("todo");
+    }
+
+    fn sampleRadial(self: Self, x: Unit, y: Unit) Color {
+        @panic("todo");
+    }
+
+    fn loadFromStream(stream: anytype) error{InvalidData}!Self {
+        var grad: Gradient = undefined;
+        grad.x0 = try readUnit(reader);
+        grad.y0 = try readUnit(reader);
+        grad.x1 = try readUnit(reader);
+        grad.y1 = try readUnit(reader);
+        grad.c0 = try readUInt(reader);
+        grad.c1 = try readUInt(reader);
+        return grad;
+    }
+};
+
+const Style = union(enum) {
+    const Self = @This();
+
+    flat: u32, // color
+    linear: Gradient,
+    radial: Gradient,
+
+    fn sample(self: Self, color_lut: []const Color, x: Unit, y: Unit) Color {
+        return switch (self) {
+            .flat => |index| color_lut[index],
+            .linear => |grad| grad.sampleLinear(color_lut, x, y),
+            .radial => |grad| grad.sampleRadial(color_lut, x, y),
+        };
+    }
+};
+
 /// 
 /// Draws a TVG icon
 pub fn drawIcon(
@@ -102,8 +179,8 @@ pub fn drawIcon(
     target_y: isize,
     target_width: usize,
     target_height: usize,
-    comptime Color: type,
-    comptime createColor: fn (r: u8, g: u8, b: u8, a: u8) Color,
+    comptime TargetColor: type,
+    comptime createColor: fn (r: u8, g: u8, b: u8, a: u8) TargetColor,
     icon: []const u8,
 ) DrawIconError!void {
     var stream = std.io.fixedBufferStream(icon);
@@ -123,28 +200,6 @@ pub fn drawIcon(
                 _,
             };
 
-            const GradientType = enum(u2) {
-                flat = 0,
-                linear = 1,
-                radial = 2,
-                _,
-            };
-
-            const Gradient = struct {
-                x0: Unit,
-                y0: Unit,
-                x1: Unit,
-                y1: Unit,
-                c0: u32,
-                c1: u32,
-            };
-
-            const Style = union(enum) {
-                flat: u32, // color
-                linear: Gradient,
-                radial: Gradient,
-            };
-
             const scale_raw = reader.readByte() catch return error.InvalidData;
             if (scale_raw > 8)
                 return error.InvalidData;
@@ -158,7 +213,7 @@ pub fn drawIcon(
             const color_count = reader.readIntLittle(u16) catch return error.InvalidData;
 
             // this is a convenient "readNoEof" without allocation
-            const color_table = try readSlice(&stream, u8, 4 * color_count);
+            const color_table = try readSlice(&stream, Color, color_count);
 
             command_loop: while (true) {
                 const command_byte = reader.readByte() catch return error.InvalidData;
@@ -180,13 +235,7 @@ pub fn drawIcon(
                             const color = try readUInt(reader);
                             break :blk Style{ .flat = color };
                         } else blk: {
-                            var grad: Gradient = undefined;
-                            grad.x0 = try readUnit(reader);
-                            grad.y0 = try readUnit(reader);
-                            grad.x1 = try readUnit(reader);
-                            grad.y1 = try readUnit(reader);
-                            grad.c0 = try readUInt(reader);
-                            grad.c1 = try readUInt(reader);
+                            var grad = try Gradient.loadFromStream(reader);
                             break :blk switch (gradient) {
                                 .flat => unreachable,
                                 .linear => Style{ .linear = grad },
@@ -205,12 +254,12 @@ pub fn drawIcon(
 
                         switch (style) {
                             .flat => |color_index| {
-                                canvas.fillPolygon(target_x, target_y, .{
-                                    .r = color_table[4 * color_index + 0],
-                                    .g = color_table[4 * color_index + 1],
-                                    .b = color_table[4 * color_index + 2],
-                                    .a = color_table[4 * color_index + 3],
-                                }, Point, points[0..vertex_count]);
+                                canvas.fillPolygon(target_x, target_y, createColor(
+                                    color_table[color_index].r,
+                                    color_table[color_index].g,
+                                    color_table[color_index].b,
+                                    color_table[color_index].a,
+                                ), Point, points[0..vertex_count]);
                             },
                             else => std.debug.panic("style {s} not implemented yet!", .{std.meta.tagName(style)}),
                         }
