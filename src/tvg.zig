@@ -26,17 +26,28 @@ pub const Unit = enum(i16) {
 
     _,
 
+    pub fn init(scale: u4, value: f32) Self {
+        return @intToEnum(Self, @floatToInt(i16, value * @intToFloat(f32, @as(u16, 1) << scale) + 0.5));
+    }
+
     pub fn raw(self: Self) i16 {
         return @enumToInt(self);
     }
 
     pub fn toFloat(self: Self, scale: u4) f32 {
-        return @intToFloat(f32, @enumToInt(self)) / @intToFloat(@as(u16, 1) << scale);
+        return @intToFloat(f32, @enumToInt(self)) / @intToFloat(f32, @as(u16, 1) << scale);
     }
 
     pub fn toInt(self: Self, scale: u4) i16 {
         const factor = @as(i16, 1) << scale;
         return @divFloor(@enumToInt(self) + (@divExact(factor, 2)), factor);
+    }
+
+    pub fn toUnsignedInt(self: Self, scale: u4) !u15 {
+        const i = toInt(self, scale);
+        if (i < 0)
+            return error.InvalidData;
+        return @intCast(u15, i);
     }
 };
 
@@ -75,6 +86,10 @@ test "readUInt" {
     std.testing.expectError(error.InvalidData, T.run(&[_]u8{ 0x80, 0x80, 0x80, 0x80, 0x80, 0x10 })); // too long
 }
 
+fn readByte(reader: anytype) error{InvalidData}!u8 {
+    return reader.readByte() catch return error.InvalidData;
+}
+
 fn readUnit(reader: anytype) error{InvalidData}!Unit {
     return @intToEnum(Unit, reader.readIntLittle(i16) catch return error.InvalidData);
 }
@@ -94,7 +109,7 @@ const Point = struct {
     y: i16,
 };
 
-const Color = extern struct {
+pub const Color = extern struct {
     const Self = @This();
 
     r: u8,
@@ -114,6 +129,18 @@ const Color = extern struct {
             .g = l(lhs.g, rhs.g, factor),
             .b = l(lhs.b, rhs.b, factor),
             .a = l(lhs.a, rhs.a, factor),
+        };
+    }
+
+    pub fn fromString(str: []const u8) !Self {
+        return switch (str.len) {
+            6 => Self{
+                .r = try std.fmt.parseInt(u8, str[0..2], 16),
+                .g = try std.fmt.parseInt(u8, str[2..4], 16),
+                .b = try std.fmt.parseInt(u8, str[4..6], 16),
+                .a = 0xFF,
+            },
+            else => error.InvalidFormat,
         };
     }
 };
@@ -143,7 +170,7 @@ const Gradient = struct {
         @panic("todo");
     }
 
-    fn loadFromStream(stream: anytype) error{InvalidData}!Self {
+    fn loadFromStream(reader: anytype) error{InvalidData}!Self {
         var grad: Gradient = undefined;
         grad.x0 = try readUnit(reader);
         grad.y0 = try readUnit(reader);
@@ -168,6 +195,128 @@ const Style = union(enum) {
             .linear => |grad| grad.sampleLinear(color_lut, x, y),
             .radial => |grad| grad.sampleRadial(color_lut, x, y),
         };
+    }
+};
+
+const Node = struct {
+    const Self = @This();
+
+    const Type = packed enum(u3) {
+        line = 0, // x,y
+        horiz = 1, // x
+        vert = 2, // y
+        bezier = 3, // c0x,c0y,c1x,c1y,x,y
+        arc_circ = 4, //r,x,y
+        arc_ellipse = 5, // rx,ry,x,y
+        close = 6,
+        reserved = 7,
+    };
+
+    const Tag = packed struct {
+        type: Type,
+        padding0: u1 = 0,
+        has_line_width: bool,
+        padding1: u3 = 0,
+    };
+
+    const Data = union(Type) {
+        line: struct { x: Unit, y: Unit },
+        horiz: Unit,
+        vert: Unit,
+        bezier: struct {
+            c0x: Unit,
+            c0y: Unit,
+            c1x: Unit,
+            c1y: Unit,
+            p1x: Unit,
+            p1y: Unit,
+        },
+        arc_circ: struct {
+            radius: Unit,
+            x: Unit,
+            y: Unit,
+        },
+        arc_ellipse: struct {
+            radius_x: Unit,
+            radius_y: Unit,
+            x: Unit,
+            y: Unit,
+        },
+        close,
+        reserved,
+    };
+
+    line_width: ?Unit = null,
+    data: Data,
+
+    fn read(reader: anytype) !Self {
+        const tag = @bitCast(Node.Tag, try readByte(reader));
+
+        var node = Node{ .data = undefined };
+
+        if (tag.has_line_width) {
+            node.line_width = try readUnit(reader);
+        }
+
+        node.data = switch (tag.type) {
+            .line => Data{ .line = .{
+                .x = try readUnit(reader),
+                .y = try readUnit(reader),
+            } },
+            .horiz => Data{ .horiz = try readUnit(reader) },
+            .vert => Data{ .vert = try readUnit(reader) },
+            .bezier => Data{ .bezier = .{
+                .c0x = try readUnit(reader),
+                .c0y = try readUnit(reader),
+                .c1x = try readUnit(reader),
+                .c1y = try readUnit(reader),
+                .p1x = try readUnit(reader),
+                .p1y = try readUnit(reader),
+            } },
+            .arc_circ => Data{ .arc_circ = .{
+                .radius = try readUnit(reader),
+                .x = try readUnit(reader),
+                .y = try readUnit(reader),
+            } },
+            .arc_ellipse => Data{ .arc_ellipse = .{
+                .radius_x = try readUnit(reader),
+                .radius_y = try readUnit(reader),
+                .x = try readUnit(reader),
+                .y = try readUnit(reader),
+            } },
+            .close => .close,
+            .reserved => return error.InvalidData,
+        };
+
+        return node;
+    }
+};
+
+const Scaler = struct {
+    const Self = @This();
+
+    scale_x: f32,
+    scale_y: f32,
+    unit_scale: u4,
+
+    fn mapX(self: Self, unit: Unit) i16 {
+        return round(self.mapX_f32(unit));
+    }
+
+    fn mapY(self: Self, unit: Unit) i16 {
+        return round(self.mapY_f32(unit));
+    }
+
+    fn mapX_f32(self: Self, unit: Unit) f32 {
+        return self.scale_x * unit.toFloat(self.unit_scale);
+    }
+
+    fn mapY_f32(self: Self, unit: Unit) f32 {
+        return self.scale_y * unit.toFloat(self.unit_scale);
+    }
+
+    fn round(f: f32) i16 {
+        return @floatToInt(i16, std.math.round(f));
     }
 };
 
@@ -197,15 +346,24 @@ pub fn drawIcon(
             const Command = enum(u8) {
                 end_of_document = 0,
                 fill_polygon = 1,
+                fill_rectangle = 2,
+                fill_path = 3,
                 _,
             };
 
             const scale_raw = reader.readByte() catch return error.InvalidData;
             if (scale_raw > 8)
                 return error.InvalidData;
-            const scale = @truncate(u4, scale_raw);
             const width: Unit = try readUnit(reader);
             const height: Unit = try readUnit(reader);
+
+            var scaler = Scaler{
+                .unit_scale = @truncate(u4, scale_raw),
+                .scale_x = undefined,
+                .scale_y = undefined,
+            };
+            scaler.scale_x = @intToFloat(f32, target_width) / width.toFloat(scaler.unit_scale);
+            scaler.scale_y = @intToFloat(f32, target_height) / height.toFloat(scaler.unit_scale);
 
             if (width.raw() <= 0) return error.InvalidData;
             if (height.raw() <= 0) return error.InvalidData;
@@ -248,8 +406,8 @@ pub fn drawIcon(
 
                         var points: [64]Point = undefined;
                         for (points[0..vertex_count]) |*pt, i| {
-                            pt.x = vertices[2 * i + 0].toInt(scale);
-                            pt.y = vertices[2 * i + 1].toInt(scale);
+                            pt.x = scaler.mapX(vertices[2 * i + 0]);
+                            pt.y = scaler.mapY(vertices[2 * i + 1]);
                         }
 
                         switch (style) {
@@ -264,6 +422,162 @@ pub fn drawIcon(
                             else => std.debug.panic("style {s} not implemented yet!", .{std.meta.tagName(style)}),
                         }
                     },
+                    .fill_rectangle => {
+                        const grad_tag = reader.readByte() catch return error.InvalidData;
+
+                        const gradient = @intToEnum(GradientType, @intCast(u2, grad_tag >> 6));
+                        switch (gradient) {
+                            .flat, .linear, .radial => {},
+                            _ => return error.InvalidData,
+                        }
+
+                        var style: Style = if (gradient == .flat) blk: {
+                            const color = try readUInt(reader);
+                            break :blk Style{ .flat = color };
+                        } else blk: {
+                            var grad = try Gradient.loadFromStream(reader);
+                            break :blk switch (gradient) {
+                                .flat => unreachable,
+                                .linear => Style{ .linear = grad },
+                                .radial => Style{ .radial = grad },
+                                _ => unreachable,
+                            };
+                        };
+
+                        const x = try readUnit(reader);
+                        const y = try readUnit(reader);
+                        const w = try readUnit(reader);
+                        const h = try readUnit(reader);
+
+                        if (@enumToInt(w) <= 0) return error.InvalidData;
+                        if (@enumToInt(h) <= 0) return error.InvalidData;
+
+                        switch (style) {
+                            .flat => |color_index| {
+                                canvas.fillRectangle(
+                                    target_x + scaler.mapX(x),
+                                    target_y + scaler.mapY(y),
+                                    @intCast(u15, scaler.mapX(w)),
+                                    @intCast(u15, scaler.mapY(h)),
+                                    createColor(
+                                        color_table[color_index].r,
+                                        color_table[color_index].g,
+                                        color_table[color_index].b,
+                                        color_table[color_index].a,
+                                    ),
+                                );
+                            },
+                            else => std.debug.panic("style {s} not implemented yet!", .{std.meta.tagName(style)}),
+                        }
+                    },
+                    .fill_path => {
+                        const grad_and_len_tag = try readByte(reader);
+
+                        const length_raw = @truncate(u6, grad_and_len_tag);
+                        const path_length = if (length_raw == 0) @as(u8, 64) else length_raw;
+
+                        const gradient = @intToEnum(GradientType, @intCast(u2, grad_and_len_tag >> 6));
+                        switch (gradient) {
+                            .flat, .linear, .radial => {},
+                            _ => return error.InvalidData,
+                        }
+
+                        var style: Style = if (gradient == .flat) blk: {
+                            const color = try readUInt(reader);
+                            break :blk Style{ .flat = color };
+                        } else blk: {
+                            var grad = try Gradient.loadFromStream(reader);
+                            break :blk switch (gradient) {
+                                .flat => unreachable,
+                                .linear => Style{ .linear = grad },
+                                .radial => Style{ .radial = grad },
+                                _ => unreachable,
+                            };
+                        };
+
+                        var node_store: [64]Node = undefined;
+                        var point_store = FixedBufferList(Point, 256){};
+
+                        if (path_length > 64) @panic("Path too long, fix implementation!");
+
+                        const start_x = try readUnit(reader);
+                        const start_y = try readUnit(reader);
+
+                        var nodes: []Node = node_store[0..path_length];
+                        for (nodes) |*node| {
+                            node.* = try Node.read(reader);
+                        }
+
+                        point_store.append(Point{
+                            .x = scaler.mapX(start_x),
+                            .y = scaler.mapY(start_y),
+                        }) catch @panic("point store too small");
+
+                        // render path to polygon
+                        for (nodes) |node, node_index| {
+                            switch (node.data) {
+                                .line => |pt| point_store.append(Point{ .x = scaler.mapX(pt.x), .y = scaler.mapY(pt.y) }) catch @panic(""),
+                                .horiz => |x| point_store.append(Point{ .x = scaler.mapX(x), .y = point_store.back().?.y }) catch @panic(""),
+                                .vert => |y| point_store.append(Point{ .x = point_store.back().?.x, .y = scaler.mapY(y) }) catch @panic(""),
+                                .bezier => |bezier| {
+                                    var previous = point_store.back().?;
+
+                                    const oct0_x = [4]f32{ @intToFloat(f32, previous.x), scaler.mapX_f32(bezier.c0x), scaler.mapX_f32(bezier.c1x), scaler.mapX_f32(bezier.p1x) };
+                                    const oct0_y = [4]f32{ @intToFloat(f32, previous.y), scaler.mapY_f32(bezier.c0y), scaler.mapY_f32(bezier.c1y), scaler.mapY_f32(bezier.p1y) };
+
+                                    // always 16 subdivs
+                                    const divs: usize = 16;
+                                    var i: usize = 1;
+                                    while (i < divs) : (i += 1) {
+                                        const f = @intToFloat(f32, i) / @intToFloat(f32, divs);
+
+                                        const x = lerpAndReduceToOne(4, oct0_x, f);
+                                        const y = lerpAndReduceToOne(4, oct0_y, f);
+
+                                        const current = Point{
+                                            .x = Scaler.round(x),
+                                            .y = Scaler.round(y),
+                                        };
+
+                                        if (std.meta.eql(previous, current))
+                                            continue;
+                                        point_store.append(current) catch @panic("");
+                                    }
+
+                                    point_store.append(Point{
+                                        .x = scaler.mapX(bezier.p1x),
+                                        .y = scaler.mapY(bezier.p1y),
+                                    }) catch @panic("");
+                                },
+                                .arc_circ => @panic("bezier not implemented yet!"),
+                                .arc_ellipse => @panic("bezier not implemented yet!"),
+                                .close => {
+                                    if (node_index != (nodes.len - 1)) {
+                                        // .close must be last!
+                                        return error.InvalidData;
+                                    }
+                                    point_store.append(point_store.front().?) catch @panic("");
+                                },
+                                .reserved => unreachable,
+                            }
+                        }
+
+                        // for (point_store.items()) |pt, i| {
+                        //     std.debug.print("[{}] = {}\n", .{ i, pt });
+                        // }
+
+                        switch (style) {
+                            .flat => |color_index| {
+                                canvas.fillPolygon(target_x, target_y, createColor(
+                                    color_table[color_index].r,
+                                    color_table[color_index].g,
+                                    color_table[color_index].b,
+                                    color_table[color_index].a,
+                                ), Point, point_store.items());
+                            },
+                            else => std.debug.panic("style {s} not implemented yet!", .{std.meta.tagName(style)}),
+                        }
+                    },
                     _ => return error.InvalidData,
                 }
             }
@@ -271,3 +585,91 @@ pub fn drawIcon(
         else => return error.InvalidVersion,
     }
 }
+
+fn lerp(a: f32, b: f32, x: f32) f32 {
+    return a + (b - a) * x;
+}
+
+fn lerpAndReduce(comptime n: comptime_int, vals: [n]f32, f: f32) [n - 1]f32 {
+    var result: [n - 1]f32 = undefined;
+    for (result) |*r, i| {
+        r.* = lerp(vals[i + 0], vals[i + 1], f);
+    }
+    return result;
+}
+
+fn lerpAndReduceToOne(comptime n: comptime_int, vals: [n]f32, f: f32) f32 {
+    if (n == 1) {
+        return vals[0];
+    } else {
+        return lerpAndReduceToOne(n - 1, lerpAndReduce(n, vals, f), f);
+    }
+}
+
+// brainstorming
+
+// path nodes (u3)
+//   line x,y
+//   horiz x
+//   vert y
+//   bezier c0x,c0y,c1x,c1y,x,y
+//   arc_circ r,x,y
+//   arc_ellipse rx,ry,x,y
+//   close
+// flags:
+//   [ ] has line width (prepend)
+
+// primitive types (both fill and outline)
+// - rectangle
+// - circle
+// - circle sector
+// - polygon
+// - path
+// primitive types (other)
+// - line strip
+// - lines
+
+pub fn FixedBufferList(comptime T: type, comptime N: usize) type {
+    return struct {
+        const Self = @This();
+
+        buffer: [N]T = undefined,
+        length: usize = 0,
+
+        pub fn append(self: *Self, value: T) !void {
+            if (self.length == N)
+                return error.OutOfMemory;
+            self.buffer[self.length] = value;
+            self.length += 1;
+        }
+
+        pub fn popBack(self: Self) ?T {
+            if (self.length == 0)
+                return null;
+            self.length -= 1;
+            return self.buffer[self.length];
+        }
+
+        pub fn itemsMut(self: *Self) []T {
+            return self.buffer[0..self.length];
+        }
+
+        pub fn items(self: Self) []const T {
+            return self.buffer[0..self.length];
+        }
+
+        pub fn front(self: Self) ?T {
+            if (self.length == 0)
+                return null;
+            return self.buffer[0];
+        }
+
+        pub fn back(self: Self) ?T {
+            if (self.length == 0)
+                return null;
+            return self.buffer[self.length - 1];
+        }
+    };
+}
+
+pub const builder = @import("builder.zig").create;
