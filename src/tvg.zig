@@ -196,7 +196,7 @@ const Style = union(StyleType) {
         };
     }
 
-    fn read(kind: StyleType, reader: anytype) !Self {
+    fn read(reader: anytype, kind: StyleType) !Self {
         return switch (kind) {
             .flat => Style{ .flat = try readUInt(reader) },
             .linear => Style{ .linear = try Gradient.loadFromStream(reader) },
@@ -385,7 +385,7 @@ pub fn drawIcon(
                 padding: u3,
             };
 
-            const scale_and_flags = @bitCast(ScaleAndFlags, try readByte(reader.readByte()));
+            const scale_and_flags = @bitCast(ScaleAndFlags, try readByte(reader));
             if (scale_and_flags.scale > 8)
                 return error.InvalidData;
 
@@ -395,7 +395,7 @@ pub fn drawIcon(
             const custom_color_space = scale_and_flags.custom_color_space;
 
             var scaler = Scaler{
-                .unit_scale = @truncate(u4, scale_raw),
+                .unit_scale = @truncate(u4, scale_and_flags.scale),
                 .scale_x = undefined,
                 .scale_y = undefined,
             };
@@ -420,7 +420,7 @@ pub fn drawIcon(
                         const vertex_count = count_and_grad.getCount();
                         if (vertex_count < 2) return error.InvalidData;
 
-                        const style = try Style.read(try count_and_grad.getStyleType());
+                        const style = try Style.read(reader, try count_and_grad.getStyleType());
 
                         const vertices = try readSlice(&stream, Unit, 2 * vertex_count);
 
@@ -444,7 +444,7 @@ pub fn drawIcon(
                     },
                     .fill_rectangle => {
                         const count_and_grad = @bitCast(CountAndStyleTag, try readByte(reader));
-                        const style = try Style.read(try count_and_grad.getStyleType());
+                        const style = try Style.read(reader, try count_and_grad.getStyleType());
                         const rectangle_count = count_and_grad.getCount();
 
                         const Rectangle = packed struct {
@@ -453,6 +453,11 @@ pub fn drawIcon(
                             width: Unit,
                             height: Unit,
                         };
+
+                        comptime {
+                            if (@sizeOf(Rectangle) != 8)
+                                @compileError("");
+                        }
 
                         const rectangles = try readSlice(&stream, Rectangle, rectangle_count);
                         for (rectangles) |rect| {
@@ -483,7 +488,7 @@ pub fn drawIcon(
                     },
                     .fill_path => {
                         const count_and_grad = @bitCast(CountAndStyleTag, try readByte(reader));
-                        const style = try Style.read(try count_and_grad.getStyleType());
+                        const style = try Style.read(reader, try count_and_grad.getStyleType());
                         const path_length = count_and_grad.getCount();
 
                         var node_store: [64]Node = undefined;

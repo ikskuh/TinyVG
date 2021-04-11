@@ -99,7 +99,7 @@ pub fn create(comptime scale: Scale) type {
         }
 
         pub fn fillPolygonFlat(num_items: usize, color: u7) [3]u8 {
-            return join(.{ byte(2), countAndStyle(num_items, 0), byte(color) });
+            return join(.{ byte(1), countAndStyle(num_items, 0), byte(color) });
         }
 
         pub fn fillRectanglesFlat(num_items: usize, color: u7) [3]u8 {
