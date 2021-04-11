@@ -145,13 +145,6 @@ pub const Color = extern struct {
     }
 };
 
-const GradientType = enum(u2) {
-    flat = 0,
-    linear = 1,
-    radial = 2,
-    _,
-};
-
 const Gradient = struct {
     const Self = @This();
 
@@ -182,7 +175,13 @@ const Gradient = struct {
     }
 };
 
-const Style = union(enum) {
+const StyleType = enum(u2) {
+    flat = 0,
+    linear = 1,
+    radial = 2,
+};
+
+const Style = union(StyleType) {
     const Self = @This();
 
     flat: u32, // color
@@ -194,6 +193,14 @@ const Style = union(enum) {
             .flat => |index| color_lut[index],
             .linear => |grad| grad.sampleLinear(color_lut, x, y),
             .radial => |grad| grad.sampleRadial(color_lut, x, y),
+        };
+    }
+
+    fn read(kind: StyleType, reader: anytype) !Self {
+        return switch (kind) {
+            .flat => Style{ .flat = try readUInt(reader) },
+            .linear => Style{ .linear = try Gradient.loadFromStream(reader) },
+            .radial => Style{ .radial = try Gradient.loadFromStream(reader) },
         };
     }
 };
@@ -351,11 +358,41 @@ pub fn drawIcon(
                 _,
             };
 
-            const scale_raw = reader.readByte() catch return error.InvalidData;
-            if (scale_raw > 8)
+            const CountAndStyleTag = packed struct {
+                const Self = @This();
+                raw_count: u6,
+                style_kind: u2,
+
+                pub fn getCount(self: Self) usize {
+                    if (self.raw_count == 0)
+                        return self.raw_count -% 1;
+                    return self.raw_count;
+                }
+
+                pub fn getStyleType(self: Self) !StyleType {
+                    return switch (self.style_kind) {
+                        @enumToInt(StyleType.flat) => StyleType.flat,
+                        @enumToInt(StyleType.linear) => StyleType.linear,
+                        @enumToInt(StyleType.radial) => StyleType.radial,
+                        else => error.InvalidData,
+                    };
+                }
+            };
+
+            const ScaleAndFlags = packed struct {
+                scale: u4,
+                custom_color_space: bool,
+                padding: u3,
+            };
+
+            const scale_and_flags = @bitCast(ScaleAndFlags, try readByte(reader.readByte()));
+            if (scale_and_flags.scale > 8)
                 return error.InvalidData;
+
             const width: Unit = try readUnit(reader);
             const height: Unit = try readUnit(reader);
+
+            const custom_color_space = scale_and_flags.custom_color_space;
 
             var scaler = Scaler{
                 .unit_scale = @truncate(u4, scale_raw),
@@ -378,29 +415,12 @@ pub fn drawIcon(
                 switch (@intToEnum(Command, command_byte)) {
                     .end_of_document => break :command_loop,
                     .fill_polygon => {
-                        const count_and_grad = reader.readByte() catch return error.InvalidData;
+                        const count_and_grad = @bitCast(CountAndStyleTag, try readByte(reader));
 
-                        const vertex_count = @intCast(u6, count_and_grad & 0x3F);
+                        const vertex_count = count_and_grad.getCount();
                         if (vertex_count < 2) return error.InvalidData;
 
-                        const gradient = @intToEnum(GradientType, @intCast(u2, count_and_grad >> 6));
-                        switch (gradient) {
-                            .flat, .linear, .radial => {},
-                            _ => return error.InvalidData,
-                        }
-
-                        var style: Style = if (gradient == .flat) blk: {
-                            const color = try readUInt(reader);
-                            break :blk Style{ .flat = color };
-                        } else blk: {
-                            var grad = try Gradient.loadFromStream(reader);
-                            break :blk switch (gradient) {
-                                .flat => unreachable,
-                                .linear => Style{ .linear = grad },
-                                .radial => Style{ .radial = grad },
-                                _ => unreachable,
-                            };
-                        };
+                        const style = try Style.read(try count_and_grad.getStyleType());
 
                         const vertices = try readSlice(&stream, Unit, 2 * vertex_count);
 
@@ -423,82 +443,53 @@ pub fn drawIcon(
                         }
                     },
                     .fill_rectangle => {
-                        const grad_tag = reader.readByte() catch return error.InvalidData;
+                        const count_and_grad = @bitCast(CountAndStyleTag, try readByte(reader));
+                        const style = try Style.read(try count_and_grad.getStyleType());
+                        const rectangle_count = count_and_grad.getCount();
 
-                        const gradient = @intToEnum(GradientType, @intCast(u2, grad_tag >> 6));
-                        switch (gradient) {
-                            .flat, .linear, .radial => {},
-                            _ => return error.InvalidData,
-                        }
-
-                        var style: Style = if (gradient == .flat) blk: {
-                            const color = try readUInt(reader);
-                            break :blk Style{ .flat = color };
-                        } else blk: {
-                            var grad = try Gradient.loadFromStream(reader);
-                            break :blk switch (gradient) {
-                                .flat => unreachable,
-                                .linear => Style{ .linear = grad },
-                                .radial => Style{ .radial = grad },
-                                _ => unreachable,
-                            };
+                        const Rectangle = packed struct {
+                            x: Unit,
+                            y: Unit,
+                            width: Unit,
+                            height: Unit,
                         };
 
-                        const x = try readUnit(reader);
-                        const y = try readUnit(reader);
-                        const w = try readUnit(reader);
-                        const h = try readUnit(reader);
-
-                        if (@enumToInt(w) <= 0) return error.InvalidData;
-                        if (@enumToInt(h) <= 0) return error.InvalidData;
+                        const rectangles = try readSlice(&stream, Rectangle, rectangle_count);
+                        for (rectangles) |rect| {
+                            if (@enumToInt(rect.width) <= 0) return error.InvalidData;
+                            if (@enumToInt(rect.height) <= 0) return error.InvalidData;
+                        }
 
                         switch (style) {
                             .flat => |color_index| {
-                                canvas.fillRectangle(
-                                    target_x + scaler.mapX(x),
-                                    target_y + scaler.mapY(y),
-                                    @intCast(u15, scaler.mapX(w)),
-                                    @intCast(u15, scaler.mapY(h)),
-                                    createColor(
-                                        color_table[color_index].r,
-                                        color_table[color_index].g,
-                                        color_table[color_index].b,
-                                        color_table[color_index].a,
-                                    ),
+                                const color = createColor(
+                                    color_table[color_index].r,
+                                    color_table[color_index].g,
+                                    color_table[color_index].b,
+                                    color_table[color_index].a,
                                 );
+                                for (rectangles) |rect| {
+                                    canvas.fillRectangle(
+                                        target_x + scaler.mapX(rect.x),
+                                        target_y + scaler.mapY(rect.y),
+                                        @intCast(u15, scaler.mapX(rect.width)),
+                                        @intCast(u15, scaler.mapY(rect.height)),
+                                        color,
+                                    );
+                                }
                             },
                             else => std.debug.panic("style {s} not implemented yet!", .{std.meta.tagName(style)}),
                         }
                     },
                     .fill_path => {
-                        const grad_and_len_tag = try readByte(reader);
-
-                        const length_raw = @truncate(u6, grad_and_len_tag);
-                        const path_length = if (length_raw == 0) @as(u8, 64) else length_raw;
-
-                        const gradient = @intToEnum(GradientType, @intCast(u2, grad_and_len_tag >> 6));
-                        switch (gradient) {
-                            .flat, .linear, .radial => {},
-                            _ => return error.InvalidData,
-                        }
-
-                        var style: Style = if (gradient == .flat) blk: {
-                            const color = try readUInt(reader);
-                            break :blk Style{ .flat = color };
-                        } else blk: {
-                            var grad = try Gradient.loadFromStream(reader);
-                            break :blk switch (gradient) {
-                                .flat => unreachable,
-                                .linear => Style{ .linear = grad },
-                                .radial => Style{ .radial = grad },
-                                _ => unreachable,
-                            };
-                        };
+                        const count_and_grad = @bitCast(CountAndStyleTag, try readByte(reader));
+                        const style = try Style.read(try count_and_grad.getStyleType());
+                        const path_length = count_and_grad.getCount();
 
                         var node_store: [64]Node = undefined;
                         var point_store = FixedBufferList(Point, 256){};
 
-                        if (path_length > 64) @panic("Path too long, fix implementation!");
+                        if (path_length > node_store.len) @panic("Path too long, fix implementation!");
 
                         const start_x = try readUnit(reader);
                         const start_y = try readUnit(reader);

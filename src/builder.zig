@@ -91,8 +91,27 @@ pub fn create(comptime scale: Scale) type {
             return buf;
         }
 
-        pub fn fillPathFlat(num_items: u6, color: u7) [3]u8 {
-            return join(.{ byte(3), byte(num_items), byte(color) });
+        fn countAndStyle(items: usize, style: u2) [1]u8 {
+            std.debug.assert(items > 0);
+            std.debug.assert(items <= 64);
+
+            return .{(@as(u8, style) << 6) | if (items == 64) @as(u6, 0) else @truncate(u6, items)};
+        }
+
+        pub fn fillPolygonFlat(num_items: usize, color: u7) [3]u8 {
+            return join(.{ byte(2), countAndStyle(num_items, 0), byte(color) });
+        }
+
+        pub fn fillRectanglesFlat(num_items: usize, color: u7) [3]u8 {
+            return join(.{ byte(2), countAndStyle(num_items, 0), byte(color) });
+        }
+
+        pub fn fillPathFlat(num_items: usize, color: u7) [3]u8 {
+            return join(.{ byte(3), countAndStyle(num_items, 0), byte(color) });
+        }
+
+        pub fn rectangle(x: f32, y: f32, w: f32, h: f32) [8]u8 {
+            return join(.{ unit(x), unit(y), unit(w), unit(h) });
         }
 
         pub const path = struct {
