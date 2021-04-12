@@ -50,6 +50,12 @@ pub fn build(b: *std.build.Builder) !void {
         tvg_conversion.addArg(file[0 .. file.len - 3] ++ "ppm");
         tvg_conversion.cwd = "examples";
 
+        const tvgt_conversion = text.run();
+        tvgt_conversion.addArg(file);
+        tvgt_conversion.addArg("--output");
+        tvgt_conversion.addArg(file[0 .. file.len - 3] ++ "tvgt");
+        tvgt_conversion.cwd = "examples";
+
         const png_conversion = b.addSystemCommand(&[_][]const u8{
             "convert",
             file[0 .. file.len - 3] ++ "ppm",
@@ -57,6 +63,8 @@ pub fn build(b: *std.build.Builder) !void {
         });
         png_conversion.cwd = "examples";
         png_conversion.step.dependOn(&tvg_conversion.step);
+
+        gen_gt_step.dependOn(&tvgt_conversion.step);
         gen_gt_step.dependOn(&png_conversion.step);
     }
 

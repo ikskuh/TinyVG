@@ -20,30 +20,57 @@ const DrawIconError = error{
     InvalidVersion,
 };
 
+pub const Scale = enum(u4) {
+    const Self = @This();
+
+    @"1/1" = 0,
+    @"1/2" = 1,
+    @"1/4" = 2,
+    @"1/8" = 3,
+    @"1/16" = 4,
+    @"1/32" = 5,
+    @"1/64" = 6,
+    @"1/128" = 7,
+    @"1/256" = 8,
+
+    pub fn map(self: Self, value: f32) Unit {
+        return Unit.init(self, value);
+    }
+
+
+    pub fn getShiftBits(self: Self) u4 {
+        return @enumToInt(self);
+    }
+
+    pub fn getScaleFactor(self: Self) u15 {
+        return @as(u15, 1) << self.getShiftBits();
+    }
+};
+
 /// A scalable fixed-point number.
 pub const Unit = enum(i16) {
     const Self = @This();
 
     _,
 
-    pub fn init(scale: u4, value: f32) Self {
-        return @intToEnum(Self, @floatToInt(i16, value * @intToFloat(f32, @as(u16, 1) << scale) + 0.5));
+    pub fn init(scale: Scale, value: f32) Self {
+        return @intToEnum(Self, @floatToInt(i16, value * @intToFloat(f32, scale.getScaleFactor()) + 0.5));
     }
 
     pub fn raw(self: Self) i16 {
         return @enumToInt(self);
     }
 
-    pub fn toFloat(self: Self, scale: u4) f32 {
-        return @intToFloat(f32, @enumToInt(self)) / @intToFloat(f32, @as(u16, 1) << scale);
+    pub fn toFloat(self: Self, scale: Scale) f32 {
+        return @intToFloat(f32, @enumToInt(self)) / @intToFloat(f32, scale.getScaleFactor());
     }
 
-    pub fn toInt(self: Self, scale: u4) i16 {
-        const factor = @as(i16, 1) << scale;
+    pub fn toInt(self: Self, scale: Scale) i16 {
+        const factor = scale.getScaleFactor();
         return @divFloor(@enumToInt(self) + (@divExact(factor, 2)), factor);
     }
 
-    pub fn toUnsignedInt(self: Self, scale: u4) !u15 {
+    pub fn toUnsignedInt(self: Self, scale: Scale) !u15 {
         const i = toInt(self, scale);
         if (i < 0)
             return error.InvalidData;
@@ -313,7 +340,7 @@ const Scaler = struct {
 
     scale_x: f32,
     scale_y: f32,
-    unit_scale: u4,
+    unit_scale: Scale,
 
     fn mapX(self: Self, unit: Unit) i16 {
         return round(self.mapX_f32(unit));
@@ -335,6 +362,12 @@ const Scaler = struct {
         return @floatToInt(i16, std.math.round(f));
     }
 };
+
+pub const parsing = @import("parsing.zig");
+
+pub fn parse(allocator: *std.mem.Allocator, reader: anytype) !parsing.Parser(@TypeOf(reader)) {
+    return try parsing.Parser(@TypeOf(reader)).init(allocator, reader);
+}
 
 /// 
 /// Draws a TVG icon
@@ -407,7 +440,7 @@ pub fn drawIcon(
             const custom_color_space = scale_and_flags.custom_color_space;
 
             var scaler = Scaler{
-                .unit_scale = @truncate(u4, scale_and_flags.scale),
+                .unit_scale = @intToEnum(Scale, @truncate(u4, scale_and_flags.scale)),
                 .scale_x = undefined,
                 .scale_y = undefined,
             };

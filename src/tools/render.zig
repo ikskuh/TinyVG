@@ -87,8 +87,6 @@ pub fn main() !u8 {
                 ".ppm",
             });
 
-            std.debug.print("out_name = '{s}'\n", .{out_name});
-
             break :blk try std.fs.cwd().createFile(out_name, .{});
         };
         defer if (!read_stdin)

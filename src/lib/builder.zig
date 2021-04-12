@@ -2,24 +2,6 @@ const std = @import("std");
 
 const tvg = @import("tvg.zig");
 
-pub const Scale = enum(u4) {
-    const Self = @This();
-
-    @"1/1" = 0,
-    @"1/2" = 1,
-    @"1/4" = 2,
-    @"1/8" = 3,
-    @"1/16" = 4,
-    @"1/32" = 5,
-    @"1/64" = 6,
-    @"1/128" = 7,
-    @"1/256" = 8,
-
-    pub fn map(self: Self, value: f32) tvg.Unit {
-        return tvg.Unit.init(@enumToInt(self), value);
-    }
-};
-
 fn JoinLength(comptime T: type) comptime_int {
     const info = @typeInfo(T);
 
@@ -52,7 +34,7 @@ fn writeU16(buf: *[2]u8, value: u16) void {
     buf[1] = @truncate(u8, value >> 8);
 }
 
-pub fn create(comptime scale: Scale) type {
+pub fn create(comptime scale: tvg.Scale) type {
     return struct {
         pub fn unit(value: f32) [2]u8 {
             var buf: [2]u8 = undefined;

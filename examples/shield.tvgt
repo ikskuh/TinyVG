@@ -1,0 +1,21 @@
+(tvg
+  (1 24 24)
+  (
+    (41 173 255)
+    (255 241 232)
+  )
+  (
+     (
+       fill_path
+       (flat 0)
+     )
+     (
+       fill_path
+       (flat 1)
+     )
+     (
+       fill_path
+       (flat 1)
+     )
+  )
+)
