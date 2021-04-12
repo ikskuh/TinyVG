@@ -117,6 +117,15 @@ pub const Color = extern struct {
     b: u8,
     a: u8,
 
+    fn toArray(self: Self) [4]u8 {
+        return [4]u8{
+            self.r,
+            self.g,
+            self.b,
+            self.a,
+        };
+    }
+
     fn lerp(lhs: Self, rhs: Self, factor: f32) Self {
         const l = struct {
             fn l(a: u8, b: u8, c: f32) u8 {
@@ -330,15 +339,18 @@ const Scaler = struct {
 /// 
 /// Draws a TVG icon
 pub fn drawIcon(
-    canvas: anytype,
-    target_x: isize,
-    target_y: isize,
-    target_width: usize,
-    target_height: usize,
-    comptime TargetColor: type,
-    comptime createColor: fn (r: u8, g: u8, b: u8, a: u8) TargetColor,
+    /// A struct that exports a single function `setPixel(x: isize, y: isize, color: [4]u8) void` as well as two fields width and height
+    framebuffer: anytype,
     icon: []const u8,
 ) DrawIconError!void {
+    const Framebuffer = if (@typeInfo(@TypeOf(framebuffer)) == .Pointer)
+        std.meta.Child(@TypeOf(framebuffer))
+    else
+        @TypeOf(framebuffer);
+    if (!comptime std.meta.trait.hasFn("setPixel")(Framebuffer)) @compileError("framebuffer requires function setPixel");
+    if (!comptime std.meta.trait.hasField("width")(Framebuffer)) @compileError("framebuffer requires field: width");
+    if (!comptime std.meta.trait.hasField("height")(Framebuffer)) @compileError("framebuffer requires field: height");
+
     var stream = std.io.fixedBufferStream(icon);
     var reader = stream.reader();
 
@@ -399,8 +411,8 @@ pub fn drawIcon(
                 .scale_x = undefined,
                 .scale_y = undefined,
             };
-            scaler.scale_x = @intToFloat(f32, target_width) / width.toFloat(scaler.unit_scale);
-            scaler.scale_y = @intToFloat(f32, target_height) / height.toFloat(scaler.unit_scale);
+            scaler.scale_x = @intToFloat(f32, framebuffer.width) / width.toFloat(scaler.unit_scale);
+            scaler.scale_y = @intToFloat(f32, framebuffer.height) / height.toFloat(scaler.unit_scale);
 
             if (width.raw() <= 0) return error.InvalidData;
             if (height.raw() <= 0) return error.InvalidData;
@@ -432,12 +444,7 @@ pub fn drawIcon(
 
                         switch (style) {
                             .flat => |color_index| {
-                                canvas.fillPolygon(target_x, target_y, createColor(
-                                    color_table[color_index].r,
-                                    color_table[color_index].g,
-                                    color_table[color_index].b,
-                                    color_table[color_index].a,
-                                ), Point, points[0..vertex_count]);
+                                fillPolygon(framebuffer, color_table[color_index], points[0..vertex_count]);
                             },
                             else => std.debug.panic("style {s} not implemented yet!", .{std.meta.tagName(style)}),
                         }
@@ -467,16 +474,12 @@ pub fn drawIcon(
 
                         switch (style) {
                             .flat => |color_index| {
-                                const color = createColor(
-                                    color_table[color_index].r,
-                                    color_table[color_index].g,
-                                    color_table[color_index].b,
-                                    color_table[color_index].a,
-                                );
+                                const color = color_table[color_index];
                                 for (rectangles) |rect| {
-                                    canvas.fillRectangle(
-                                        target_x + scaler.mapX(rect.x),
-                                        target_y + scaler.mapY(rect.y),
+                                    fillRectangle(
+                                        framebuffer,
+                                        scaler.mapX(rect.x),
+                                        scaler.mapY(rect.y),
                                         @intCast(u15, scaler.mapX(rect.width)),
                                         @intCast(u15, scaler.mapY(rect.height)),
                                         color,
@@ -564,12 +567,7 @@ pub fn drawIcon(
 
                         switch (style) {
                             .flat => |color_index| {
-                                canvas.fillPolygon(target_x, target_y, createColor(
-                                    color_table[color_index].r,
-                                    color_table[color_index].g,
-                                    color_table[color_index].b,
-                                    color_table[color_index].a,
-                                ), Point, point_store.items());
+                                fillPolygon(framebuffer, color_table[color_index], point_store.items());
                             },
                             else => std.debug.panic("style {s} not implemented yet!", .{std.meta.tagName(style)}),
                         }
@@ -579,6 +577,69 @@ pub fn drawIcon(
             }
         },
         else => return error.InvalidVersion,
+    }
+}
+
+pub fn fillPolygon(framebuffer: anytype, color: Color, points: []const Point) void {
+    std.debug.assert(points.len >= 3);
+
+    var min_x: i16 = std.math.maxInt(i16);
+    var min_y: i16 = std.math.maxInt(i16);
+    var max_x: i16 = std.math.minInt(i16);
+    var max_y: i16 = std.math.minInt(i16);
+
+    for (points) |pt| {
+        min_x = std.math.min(min_x, pt.x);
+        min_y = std.math.min(min_y, pt.y);
+        max_x = std.math.max(max_x, pt.x);
+        max_y = std.math.max(max_y, pt.y);
+    }
+
+    // limit to valid screen area
+    min_x = std.math.max(min_x, 0);
+    min_y = std.math.max(min_y, 0);
+
+    max_x = std.math.min(max_x, @intCast(i16, framebuffer.width - 1));
+    max_y = std.math.min(max_y, @intCast(i16, framebuffer.height - 1));
+
+    var y: i16 = min_y;
+    while (y <= max_y) : (y += 1) {
+        var x: i16 = min_x;
+        while (x <= max_x) : (x += 1) {
+            var inside = false;
+
+            const p = Point{ .x = x, .y = y };
+
+            // free after https://stackoverflow.com/a/17490923
+
+            var j = points.len - 1;
+            for (points) |p0, i| {
+                defer j = i;
+                const p1 = points[j];
+
+                if ((p0.y > p.y) != (p1.y > p.y) and
+                    @intToFloat(f32, p.x) < @intToFloat(f32, (p1.x - p0.x) * (p.y - p0.y)) / @intToFloat(f32, (p1.y - p0.y)) + @intToFloat(f32, p0.x))
+                {
+                    inside = !inside;
+                }
+            }
+            if (inside) {
+                framebuffer.setPixel(x, y, color.toArray());
+            }
+        }
+    }
+}
+
+pub fn fillRectangle(framebuffer: anytype, x: isize, y: isize, width: usize, height: usize, color: Color) void {
+    const xlimit = x + @intCast(isize, width);
+    const ylimit = y + @intCast(isize, height);
+
+    var py = y;
+    while (py < ylimit) : (py += 1) {
+        var px = x;
+        while (px < xlimit) : (px += 1) {
+            framebuffer.setPixel(px, py, color.toArray());
+        }
     }
 }
 
