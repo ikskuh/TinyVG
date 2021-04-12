@@ -55,6 +55,11 @@ The use cases here are listed to be considered while working on the specificatio
 
 This project is currently work-in-progress and there's neither a specification or a reference implementation. Consider this a mind-experiment for now
 
+See the following documents:
+
+- [Specification](documents/specification.md)
+- [Textual Representation](documents/text-format.md)
+
 ## Considerations
 
 - Which color format does TVG use?

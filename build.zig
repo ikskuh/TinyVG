@@ -13,10 +13,10 @@ pub fn build(b: *std.build.Builder) !void {
     render.setTarget(target);
     render.install();
 
-    const dump = b.addExecutable("tvg-dump", "src/tools/dump.zig");
-    dump.setBuildMode(mode);
-    dump.setTarget(target);
-    dump.install();
+    const text = b.addExecutable("tvg-text", "src/tools/text.zig");
+    text.setBuildMode(mode);
+    text.setTarget(target);
+    text.install();
 
     const tvg_tests = b.addTest("src/lib/tvg.zig");
 
