@@ -95,12 +95,39 @@ pub fn main() !u8 {
             .fill_path => |path| {
                 try writer.writeAll("     (\n       fill_path\n       ");
                 try renderStyle(writer, path.style);
-                try writer.writeAll("\n     )\n");
+                try writer.writeAll("\n       (");
+                for (path.path) |node| {
+                    try writer.writeAll("\n         (");
+                    switch (node) {
+                        .line => |line| try writer.print("line {d} {d}", .{ line.x, line.y }),
+                        .horiz => |horiz| try writer.print("horiz {d}", .{horiz}),
+                        .vert => |vert| try writer.print("vert {d}", .{vert}),
+                        .bezier => |bezier| try writer.print("bezier ({d} {d}) ({d} {d}) ({d} {d})", .{
+                            bezier.c0.x,
+                            bezier.c0.y,
+                            bezier.c1.x,
+                            bezier.c1.y,
+                            bezier.p1.x,
+                            bezier.p1.y,
+                        }),
+                        .arc_circle => |arc_circle| try writer.print("arc-circle", .{}),
+                        .arc_ellipse => |arc_ellipse| try writer.print("arc-ellipse", .{}),
+                        .close => try writer.writeAll("close"),
+                    }
+                    try writer.writeAll(")");
+                }
+                try writer.writeAll("\n       )\n     )\n");
             },
             .fill_polygon => |polygon| {
                 try writer.writeAll("     (\n       fill_polygon\n       ");
                 try renderStyle(writer, polygon.style);
-                try writer.writeAll("\n     )\n");
+                try writer.writeAll("\n       (");
+                for (polygon.vertices) |verts| {
+                    try writer.print("\n         ({d} {d})", .{
+                        verts.x, verts.y,
+                    });
+                }
+                try writer.writeAll("\n       )\n     )\n");
             },
             .fill_rectangles => |rects| {
                 try writer.writeAll("     (\n       fill_rectangles\n       ");
