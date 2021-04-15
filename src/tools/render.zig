@@ -45,12 +45,11 @@ pub fn main() !u8 {
     defer if (!read_stdin)
         source_file.close();
 
-    var icon_buffer = try source_file.readToEndAlloc(allocator, 1 << 20);
-    defer allocator.free(icon_buffer);
+    var parser = try tvg.parse(allocator, source_file.reader());
 
     var geometry = cli.options.geometry orelse Geometry{
-        .width = 256,
-        .height = 256,
+        .width = @floatToInt(u16, std.math.ceil(parser.header.width)),
+        .height = @floatToInt(u16, std.math.ceil(parser.header.height)),
     };
 
     const pixel_count = @as(usize, geometry.width) * @as(usize, geometry.height);
@@ -68,15 +67,16 @@ pub fn main() !u8 {
         }
     }
 
-    try tvg.drawIcon(
-        &Framebuffer{
-            .slice = slice,
-            .stride = geometry.width,
-            .width = geometry.width,
-            .height = geometry.height,
-        },
-        icon_buffer,
-    );
+    var fb =
+        Framebuffer{
+        .slice = slice,
+        .stride = geometry.width,
+        .width = geometry.width,
+        .height = geometry.height,
+    };
+    while (try parser.next()) |cmd| {
+        try tvg.rendering.render(&fb, parser.header, parser.color_table, cmd);
+    }
 
     {
         var dest_file: std.fs.File = if (write_stdout)

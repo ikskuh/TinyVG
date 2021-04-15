@@ -10,16 +10,37 @@ pub const magic_number = [2]u8{ 0x72, 0x56 };
 /// This is the latest TVG version supported by this library.
 pub const current_version = 1;
 
-const DrawIconError = error{
-    /// The icon data does not contain valid data. This is only triggered when
-    /// the library can actually determine that the data is bad. Not every bad
-    /// data might trigger that error, but when it's certain that the data is
-    /// bad (invalid magic, version, enumerations, ...) this error is returned.
-    InvalidData,
-    /// The version number of the TVG icon is not supported by this library.
-    InvalidVersion,
-};
+// submodules
 
+/// A generic module that provides functions for assembling TVG graphics at comptime or
+/// runtime.
+pub const builder = @import("builder.zig").create;
+
+/// Module that provides a generic purpose TVG parser. This parser exports all data as
+/// pre-scaled `f32` values.
+pub const parsing = @import("parsing.zig");
+
+/// A TVG software renderer based on the parsing module. Takes a parser stream as input.
+pub const rendering = @import("rendering.zig");
+
+/// Returns a stream of TVG commands as well as the document header.
+/// - `allocator` is used to allocate temporary data like the current set of vertices for *FillPolygon*. This can be a fixed-buffer allocator.
+/// - `reader` is a generic stream that provides the TVG byte data.
+pub fn parse(allocator: *std.mem.Allocator, reader: anytype) !parsing.Parser(@TypeOf(reader)) {
+    return try parsing.Parser(@TypeOf(reader)).init(allocator, reader);
+}
+
+comptime {
+    if (std.builtin.is_test) {
+        _ = @import("builder.zig"); // import file for tests
+        _ = parsing;
+        _ = rendering;
+    }
+}
+
+/// A TVG scale value. Defines the scale for all units inside a graphic.
+/// The scale is defined by the number of decimal bits in a `i16`, thus scaling
+/// can be trivially implemented by shifting the integers right by the scale bits.
 pub const Scale = enum(u4) {
     const Self = @This();
 
@@ -36,7 +57,6 @@ pub const Scale = enum(u4) {
     pub fn map(self: Self, value: f32) Unit {
         return Unit.init(self, value);
     }
-
 
     pub fn getShiftBits(self: Self) u4 {
         return @enumToInt(self);
@@ -78,64 +98,6 @@ pub const Unit = enum(i16) {
     }
 };
 
-fn readUInt(reader: anytype) error{InvalidData}!u32 {
-    var byte_count: u8 = 0;
-    var result: u32 = 0;
-    while (true) {
-        const byte = reader.readByte() catch return error.InvalidData;
-        // check for too long *and* out of range in a single check
-        if (byte_count == 4 and (byte & 0xF0) != 0)
-            return error.InvalidData;
-        const val = @as(u32, (byte & 0x7F)) << @intCast(u5, (7 * byte_count));
-        result |= val;
-        if ((byte & 0x80) == 0)
-            break;
-        byte_count += 1;
-        std.debug.assert(byte_count <= 5);
-    }
-    return result;
-}
-
-test "readUInt" {
-    const T = struct {
-        fn run(seq: []const u8) !u32 {
-            var stream = std.io.fixedBufferStream(seq);
-            return try readUInt(stream.reader());
-        }
-    };
-
-    std.testing.expectEqual(@as(u32, 0x00), try T.run(&[_]u8{0x00}));
-    std.testing.expectEqual(@as(u32, 0x40), try T.run(&[_]u8{0x40}));
-    std.testing.expectEqual(@as(u32, 0x80), try T.run(&[_]u8{ 0x80, 0x01 }));
-    std.testing.expectEqual(@as(u32, 0x100000), try T.run(&[_]u8{ 0x80, 0x80, 0x40 }));
-    std.testing.expectEqual(@as(u32, 0x8000_0000), try T.run(&[_]u8{ 0x80, 0x80, 0x80, 0x80, 0x08 }));
-    std.testing.expectError(error.InvalidData, T.run(&[_]u8{ 0x80, 0x80, 0x80, 0x80, 0x10 })); // out of range
-    std.testing.expectError(error.InvalidData, T.run(&[_]u8{ 0x80, 0x80, 0x80, 0x80, 0x80, 0x10 })); // too long
-}
-
-fn readByte(reader: anytype) error{InvalidData}!u8 {
-    return reader.readByte() catch return error.InvalidData;
-}
-
-fn readUnit(reader: anytype) error{InvalidData}!Unit {
-    return @intToEnum(Unit, reader.readIntLittle(i16) catch return error.InvalidData);
-}
-
-/// this is a convenient "readNoEof" without allocation
-fn readSlice(stream: *std.io.FixedBufferStream([]const u8), comptime T: type, len: usize) error{InvalidData}![]align(1) const T {
-    const byte_len = @sizeOf(T) * len;
-    const buffer = stream.buffer[stream.pos..];
-    stream.seekBy(@intCast(i64, byte_len)) catch return error.InvalidData;
-    var slice = std.mem.bytesAsSlice(T, buffer[0..byte_len]);
-    std.debug.assert(slice.len == len);
-    return slice;
-}
-
-const Point = struct {
-    x: i16,
-    y: i16,
-};
-
 pub const Color = extern struct {
     const Self = @This();
 
@@ -144,7 +106,7 @@ pub const Color = extern struct {
     b: u8,
     a: u8,
 
-    fn toArray(self: Self) [4]u8 {
+    pub fn toArray(self: Self) [4]u8 {
         return [4]u8{
             self.r,
             self.g,
@@ -153,7 +115,7 @@ pub const Color = extern struct {
         };
     }
 
-    fn lerp(lhs: Self, rhs: Self, factor: f32) Self {
+    pub fn lerp(lhs: Self, rhs: Self, factor: f32) Self {
         const l = struct {
             fn l(a: u8, b: u8, c: f32) u8 {
                 return @floatToInt(u8, @intToFloat(f32, a) + (@intToFloat(b) - @intToFloat(a)) * std.math.clamp(c, 0, 1));
@@ -181,520 +143,17 @@ pub const Color = extern struct {
     }
 };
 
-const Gradient = struct {
-    const Self = @This();
-
-    x0: Unit,
-    y0: Unit,
-    x1: Unit,
-    y1: Unit,
-    c0: u32,
-    c1: u32,
-
-    fn sampleLinear(self: Self, x: Unit, y: Unit) Color {
-        @panic("todo");
-    }
-
-    fn sampleRadial(self: Self, x: Unit, y: Unit) Color {
-        @panic("todo");
-    }
-
-    fn loadFromStream(reader: anytype) error{InvalidData}!Self {
-        var grad: Gradient = undefined;
-        grad.x0 = try readUnit(reader);
-        grad.y0 = try readUnit(reader);
-        grad.x1 = try readUnit(reader);
-        grad.y1 = try readUnit(reader);
-        grad.c0 = try readUInt(reader);
-        grad.c1 = try readUInt(reader);
-        return grad;
-    }
+pub const Point = struct {
+    x: f32,
+    y: f32,
 };
 
-const StyleType = enum(u2) {
-    flat = 0,
-    linear = 1,
-    radial = 2,
+pub const Rectangle = struct {
+    x: f32,
+    y: f32,
+    width: f32,
+    height: f32,
 };
-
-const Style = union(StyleType) {
-    const Self = @This();
-
-    flat: u32, // color
-    linear: Gradient,
-    radial: Gradient,
-
-    fn sample(self: Self, color_lut: []const Color, x: Unit, y: Unit) Color {
-        return switch (self) {
-            .flat => |index| color_lut[index],
-            .linear => |grad| grad.sampleLinear(color_lut, x, y),
-            .radial => |grad| grad.sampleRadial(color_lut, x, y),
-        };
-    }
-
-    fn read(reader: anytype, kind: StyleType) !Self {
-        return switch (kind) {
-            .flat => Style{ .flat = try readUInt(reader) },
-            .linear => Style{ .linear = try Gradient.loadFromStream(reader) },
-            .radial => Style{ .radial = try Gradient.loadFromStream(reader) },
-        };
-    }
-};
-
-const Node = struct {
-    const Self = @This();
-
-    const Type = packed enum(u3) {
-        line = 0, // x,y
-        horiz = 1, // x
-        vert = 2, // y
-        bezier = 3, // c0x,c0y,c1x,c1y,x,y
-        arc_circ = 4, //r,x,y
-        arc_ellipse = 5, // rx,ry,x,y
-        close = 6,
-        reserved = 7,
-    };
-
-    const Tag = packed struct {
-        type: Type,
-        padding0: u1 = 0,
-        has_line_width: bool,
-        padding1: u3 = 0,
-    };
-
-    const Data = union(Type) {
-        line: struct { x: Unit, y: Unit },
-        horiz: Unit,
-        vert: Unit,
-        bezier: struct {
-            c0x: Unit,
-            c0y: Unit,
-            c1x: Unit,
-            c1y: Unit,
-            p1x: Unit,
-            p1y: Unit,
-        },
-        arc_circ: struct {
-            radius: Unit,
-            x: Unit,
-            y: Unit,
-        },
-        arc_ellipse: struct {
-            radius_x: Unit,
-            radius_y: Unit,
-            x: Unit,
-            y: Unit,
-        },
-        close,
-        reserved,
-    };
-
-    line_width: ?Unit = null,
-    data: Data,
-
-    fn read(reader: anytype) !Self {
-        const tag = @bitCast(Node.Tag, try readByte(reader));
-
-        var node = Node{ .data = undefined };
-
-        if (tag.has_line_width) {
-            node.line_width = try readUnit(reader);
-        }
-
-        node.data = switch (tag.type) {
-            .line => Data{ .line = .{
-                .x = try readUnit(reader),
-                .y = try readUnit(reader),
-            } },
-            .horiz => Data{ .horiz = try readUnit(reader) },
-            .vert => Data{ .vert = try readUnit(reader) },
-            .bezier => Data{ .bezier = .{
-                .c0x = try readUnit(reader),
-                .c0y = try readUnit(reader),
-                .c1x = try readUnit(reader),
-                .c1y = try readUnit(reader),
-                .p1x = try readUnit(reader),
-                .p1y = try readUnit(reader),
-            } },
-            .arc_circ => Data{ .arc_circ = .{
-                .radius = try readUnit(reader),
-                .x = try readUnit(reader),
-                .y = try readUnit(reader),
-            } },
-            .arc_ellipse => Data{ .arc_ellipse = .{
-                .radius_x = try readUnit(reader),
-                .radius_y = try readUnit(reader),
-                .x = try readUnit(reader),
-                .y = try readUnit(reader),
-            } },
-            .close => .close,
-            .reserved => return error.InvalidData,
-        };
-
-        return node;
-    }
-};
-
-const Scaler = struct {
-    const Self = @This();
-
-    scale_x: f32,
-    scale_y: f32,
-    unit_scale: Scale,
-
-    fn mapX(self: Self, unit: Unit) i16 {
-        return round(self.mapX_f32(unit));
-    }
-
-    fn mapY(self: Self, unit: Unit) i16 {
-        return round(self.mapY_f32(unit));
-    }
-
-    fn mapX_f32(self: Self, unit: Unit) f32 {
-        return self.scale_x * unit.toFloat(self.unit_scale);
-    }
-
-    fn mapY_f32(self: Self, unit: Unit) f32 {
-        return self.scale_y * unit.toFloat(self.unit_scale);
-    }
-
-    fn round(f: f32) i16 {
-        return @floatToInt(i16, std.math.round(f));
-    }
-};
-
-pub const parsing = @import("parsing.zig");
-
-pub fn parse(allocator: *std.mem.Allocator, reader: anytype) !parsing.Parser(@TypeOf(reader)) {
-    return try parsing.Parser(@TypeOf(reader)).init(allocator, reader);
-}
-
-/// 
-/// Draws a TVG icon
-pub fn drawIcon(
-    /// A struct that exports a single function `setPixel(x: isize, y: isize, color: [4]u8) void` as well as two fields width and height
-    framebuffer: anytype,
-    icon: []const u8,
-) DrawIconError!void {
-    const Framebuffer = if (@typeInfo(@TypeOf(framebuffer)) == .Pointer)
-        std.meta.Child(@TypeOf(framebuffer))
-    else
-        @TypeOf(framebuffer);
-    if (!comptime std.meta.trait.hasFn("setPixel")(Framebuffer)) @compileError("framebuffer requires function setPixel");
-    if (!comptime std.meta.trait.hasField("width")(Framebuffer)) @compileError("framebuffer requires field: width");
-    if (!comptime std.meta.trait.hasField("height")(Framebuffer)) @compileError("framebuffer requires field: height");
-
-    var stream = std.io.fixedBufferStream(icon);
-    var reader = stream.reader();
-
-    var actual_magic_number: [2]u8 = undefined;
-    reader.readNoEof(&actual_magic_number) catch return error.InvalidData;
-    if (!std.mem.eql(u8, &actual_magic_number, &magic_number))
-        return error.InvalidData;
-
-    const version = reader.readByte() catch return error.InvalidData;
-    switch (version) {
-        1 => {
-            const Command = enum(u8) {
-                end_of_document = 0,
-                fill_polygon = 1,
-                fill_rectangle = 2,
-                fill_path = 3,
-                _,
-            };
-
-            const CountAndStyleTag = packed struct {
-                const Self = @This();
-                raw_count: u6,
-                style_kind: u2,
-
-                pub fn getCount(self: Self) usize {
-                    if (self.raw_count == 0)
-                        return self.raw_count -% 1;
-                    return self.raw_count;
-                }
-
-                pub fn getStyleType(self: Self) !StyleType {
-                    return switch (self.style_kind) {
-                        @enumToInt(StyleType.flat) => StyleType.flat,
-                        @enumToInt(StyleType.linear) => StyleType.linear,
-                        @enumToInt(StyleType.radial) => StyleType.radial,
-                        else => error.InvalidData,
-                    };
-                }
-            };
-
-            const ScaleAndFlags = packed struct {
-                scale: u4,
-                custom_color_space: bool,
-                padding: u3,
-            };
-
-            const scale_and_flags = @bitCast(ScaleAndFlags, try readByte(reader));
-            if (scale_and_flags.scale > 8)
-                return error.InvalidData;
-
-            const width: Unit = try readUnit(reader);
-            const height: Unit = try readUnit(reader);
-
-            const custom_color_space = scale_and_flags.custom_color_space;
-
-            var scaler = Scaler{
-                .unit_scale = @intToEnum(Scale, @truncate(u4, scale_and_flags.scale)),
-                .scale_x = undefined,
-                .scale_y = undefined,
-            };
-            scaler.scale_x = @intToFloat(f32, framebuffer.width) / width.toFloat(scaler.unit_scale);
-            scaler.scale_y = @intToFloat(f32, framebuffer.height) / height.toFloat(scaler.unit_scale);
-
-            if (width.raw() <= 0) return error.InvalidData;
-            if (height.raw() <= 0) return error.InvalidData;
-
-            const color_count = reader.readIntLittle(u16) catch return error.InvalidData;
-
-            // this is a convenient "readNoEof" without allocation
-            const color_table = try readSlice(&stream, Color, color_count);
-
-            command_loop: while (true) {
-                const command_byte = reader.readByte() catch return error.InvalidData;
-                switch (@intToEnum(Command, command_byte)) {
-                    .end_of_document => break :command_loop,
-                    .fill_polygon => {
-                        const count_and_grad = @bitCast(CountAndStyleTag, try readByte(reader));
-
-                        const vertex_count = count_and_grad.getCount();
-                        if (vertex_count < 2) return error.InvalidData;
-
-                        const style = try Style.read(reader, try count_and_grad.getStyleType());
-
-                        const vertices = try readSlice(&stream, Unit, 2 * vertex_count);
-
-                        var points: [64]Point = undefined;
-                        for (points[0..vertex_count]) |*pt, i| {
-                            pt.x = scaler.mapX(vertices[2 * i + 0]);
-                            pt.y = scaler.mapY(vertices[2 * i + 1]);
-                        }
-
-                        switch (style) {
-                            .flat => |color_index| {
-                                fillPolygon(framebuffer, color_table[color_index], points[0..vertex_count]);
-                            },
-                            else => std.debug.panic("style {s} not implemented yet!", .{std.meta.tagName(style)}),
-                        }
-                    },
-                    .fill_rectangle => {
-                        const count_and_grad = @bitCast(CountAndStyleTag, try readByte(reader));
-                        const style = try Style.read(reader, try count_and_grad.getStyleType());
-                        const rectangle_count = count_and_grad.getCount();
-
-                        const Rectangle = packed struct {
-                            x: Unit,
-                            y: Unit,
-                            width: Unit,
-                            height: Unit,
-                        };
-
-                        comptime {
-                            if (@sizeOf(Rectangle) != 8)
-                                @compileError("");
-                        }
-
-                        const rectangles = try readSlice(&stream, Rectangle, rectangle_count);
-                        for (rectangles) |rect| {
-                            if (@enumToInt(rect.width) <= 0) return error.InvalidData;
-                            if (@enumToInt(rect.height) <= 0) return error.InvalidData;
-                        }
-
-                        switch (style) {
-                            .flat => |color_index| {
-                                const color = color_table[color_index];
-                                for (rectangles) |rect| {
-                                    fillRectangle(
-                                        framebuffer,
-                                        scaler.mapX(rect.x),
-                                        scaler.mapY(rect.y),
-                                        @intCast(u15, scaler.mapX(rect.width)),
-                                        @intCast(u15, scaler.mapY(rect.height)),
-                                        color,
-                                    );
-                                }
-                            },
-                            else => std.debug.panic("style {s} not implemented yet!", .{std.meta.tagName(style)}),
-                        }
-                    },
-                    .fill_path => {
-                        const count_and_grad = @bitCast(CountAndStyleTag, try readByte(reader));
-                        const style = try Style.read(reader, try count_and_grad.getStyleType());
-                        const path_length = count_and_grad.getCount();
-
-                        var node_store: [64]Node = undefined;
-                        var point_store = FixedBufferList(Point, 256){};
-
-                        if (path_length > node_store.len) @panic("Path too long, fix implementation!");
-
-                        const start_x = try readUnit(reader);
-                        const start_y = try readUnit(reader);
-
-                        var nodes: []Node = node_store[0..path_length];
-                        for (nodes) |*node| {
-                            node.* = try Node.read(reader);
-                        }
-
-                        point_store.append(Point{
-                            .x = scaler.mapX(start_x),
-                            .y = scaler.mapY(start_y),
-                        }) catch @panic("point store too small");
-
-                        // render path to polygon
-                        for (nodes) |node, node_index| {
-                            switch (node.data) {
-                                .line => |pt| point_store.append(Point{ .x = scaler.mapX(pt.x), .y = scaler.mapY(pt.y) }) catch @panic(""),
-                                .horiz => |x| point_store.append(Point{ .x = scaler.mapX(x), .y = point_store.back().?.y }) catch @panic(""),
-                                .vert => |y| point_store.append(Point{ .x = point_store.back().?.x, .y = scaler.mapY(y) }) catch @panic(""),
-                                .bezier => |bezier| {
-                                    var previous = point_store.back().?;
-
-                                    const oct0_x = [4]f32{ @intToFloat(f32, previous.x), scaler.mapX_f32(bezier.c0x), scaler.mapX_f32(bezier.c1x), scaler.mapX_f32(bezier.p1x) };
-                                    const oct0_y = [4]f32{ @intToFloat(f32, previous.y), scaler.mapY_f32(bezier.c0y), scaler.mapY_f32(bezier.c1y), scaler.mapY_f32(bezier.p1y) };
-
-                                    // always 16 subdivs
-                                    const divs: usize = 16;
-                                    var i: usize = 1;
-                                    while (i < divs) : (i += 1) {
-                                        const f = @intToFloat(f32, i) / @intToFloat(f32, divs);
-
-                                        const x = lerpAndReduceToOne(4, oct0_x, f);
-                                        const y = lerpAndReduceToOne(4, oct0_y, f);
-
-                                        const current = Point{
-                                            .x = Scaler.round(x),
-                                            .y = Scaler.round(y),
-                                        };
-
-                                        if (std.meta.eql(previous, current))
-                                            continue;
-                                        point_store.append(current) catch @panic("");
-                                    }
-
-                                    point_store.append(Point{
-                                        .x = scaler.mapX(bezier.p1x),
-                                        .y = scaler.mapY(bezier.p1y),
-                                    }) catch @panic("");
-                                },
-                                .arc_circ => @panic("bezier not implemented yet!"),
-                                .arc_ellipse => @panic("bezier not implemented yet!"),
-                                .close => {
-                                    if (node_index != (nodes.len - 1)) {
-                                        // .close must be last!
-                                        return error.InvalidData;
-                                    }
-                                    point_store.append(point_store.front().?) catch @panic("");
-                                },
-                                .reserved => unreachable,
-                            }
-                        }
-
-                        // for (point_store.items()) |pt, i| {
-                        //     std.debug.print("[{}] = {}\n", .{ i, pt });
-                        // }
-
-                        switch (style) {
-                            .flat => |color_index| {
-                                fillPolygon(framebuffer, color_table[color_index], point_store.items());
-                            },
-                            else => std.debug.panic("style {s} not implemented yet!", .{std.meta.tagName(style)}),
-                        }
-                    },
-                    _ => return error.InvalidData,
-                }
-            }
-        },
-        else => return error.InvalidVersion,
-    }
-}
-
-pub fn fillPolygon(framebuffer: anytype, color: Color, points: []const Point) void {
-    std.debug.assert(points.len >= 3);
-
-    var min_x: i16 = std.math.maxInt(i16);
-    var min_y: i16 = std.math.maxInt(i16);
-    var max_x: i16 = std.math.minInt(i16);
-    var max_y: i16 = std.math.minInt(i16);
-
-    for (points) |pt| {
-        min_x = std.math.min(min_x, pt.x);
-        min_y = std.math.min(min_y, pt.y);
-        max_x = std.math.max(max_x, pt.x);
-        max_y = std.math.max(max_y, pt.y);
-    }
-
-    // limit to valid screen area
-    min_x = std.math.max(min_x, 0);
-    min_y = std.math.max(min_y, 0);
-
-    max_x = std.math.min(max_x, @intCast(i16, framebuffer.width - 1));
-    max_y = std.math.min(max_y, @intCast(i16, framebuffer.height - 1));
-
-    var y: i16 = min_y;
-    while (y <= max_y) : (y += 1) {
-        var x: i16 = min_x;
-        while (x <= max_x) : (x += 1) {
-            var inside = false;
-
-            const p = Point{ .x = x, .y = y };
-
-            // free after https://stackoverflow.com/a/17490923
-
-            var j = points.len - 1;
-            for (points) |p0, i| {
-                defer j = i;
-                const p1 = points[j];
-
-                if ((p0.y > p.y) != (p1.y > p.y) and
-                    @intToFloat(f32, p.x) < @intToFloat(f32, (p1.x - p0.x) * (p.y - p0.y)) / @intToFloat(f32, (p1.y - p0.y)) + @intToFloat(f32, p0.x))
-                {
-                    inside = !inside;
-                }
-            }
-            if (inside) {
-                framebuffer.setPixel(x, y, color.toArray());
-            }
-        }
-    }
-}
-
-pub fn fillRectangle(framebuffer: anytype, x: isize, y: isize, width: usize, height: usize, color: Color) void {
-    const xlimit = x + @intCast(isize, width);
-    const ylimit = y + @intCast(isize, height);
-
-    var py = y;
-    while (py < ylimit) : (py += 1) {
-        var px = x;
-        while (px < xlimit) : (px += 1) {
-            framebuffer.setPixel(px, py, color.toArray());
-        }
-    }
-}
-
-fn lerp(a: f32, b: f32, x: f32) f32 {
-    return a + (b - a) * x;
-}
-
-fn lerpAndReduce(comptime n: comptime_int, vals: [n]f32, f: f32) [n - 1]f32 {
-    var result: [n - 1]f32 = undefined;
-    for (result) |*r, i| {
-        r.* = lerp(vals[i + 0], vals[i + 1], f);
-    }
-    return result;
-}
-
-fn lerpAndReduceToOne(comptime n: comptime_int, vals: [n]f32, f: f32) f32 {
-    if (n == 1) {
-        return vals[0];
-    } else {
-        return lerpAndReduceToOne(n - 1, lerpAndReduce(n, vals, f), f);
-    }
-}
 
 // brainstorming
 
@@ -718,48 +177,3 @@ fn lerpAndReduceToOne(comptime n: comptime_int, vals: [n]f32, f: f32) f32 {
 // primitive types (other)
 // - line strip
 // - lines
-
-pub fn FixedBufferList(comptime T: type, comptime N: usize) type {
-    return struct {
-        const Self = @This();
-
-        buffer: [N]T = undefined,
-        length: usize = 0,
-
-        pub fn append(self: *Self, value: T) !void {
-            if (self.length == N)
-                return error.OutOfMemory;
-            self.buffer[self.length] = value;
-            self.length += 1;
-        }
-
-        pub fn popBack(self: Self) ?T {
-            if (self.length == 0)
-                return null;
-            self.length -= 1;
-            return self.buffer[self.length];
-        }
-
-        pub fn itemsMut(self: *Self) []T {
-            return self.buffer[0..self.length];
-        }
-
-        pub fn items(self: Self) []const T {
-            return self.buffer[0..self.length];
-        }
-
-        pub fn front(self: Self) ?T {
-            if (self.length == 0)
-                return null;
-            return self.buffer[0];
-        }
-
-        pub fn back(self: Self) ?T {
-            if (self.length == 0)
-                return null;
-            return self.buffer[self.length - 1];
-        }
-    };
-}
-
-pub const builder = @import("builder.zig").create;

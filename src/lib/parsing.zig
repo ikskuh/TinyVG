@@ -9,17 +9,8 @@ pub const Header = struct {
     height: f32,
 };
 
-pub const Point = struct {
-    x: f32,
-    y: f32,
-};
-
-pub const Rectangle = struct {
-    x: f32,
-    y: f32,
-    width: f32,
-    height: f32,
-};
+const Point = tvg.Point;
+const Rectangle = tvg.Rectangle;
 
 pub const DrawCommand = union(enum) {
     fill_polygon: FillPolygon,
@@ -381,4 +372,21 @@ fn readUnit(scale: tvg.Scale, reader: anytype) !f32 {
 
 fn readByte(reader: anytype) !u8 {
     return reader.readByte();
+}
+
+test "readUInt" {
+    const T = struct {
+        fn run(seq: []const u8) !u32 {
+            var stream = std.io.fixedBufferStream(seq);
+            return try readUInt(stream.reader());
+        }
+    };
+
+    std.testing.expectEqual(@as(u32, 0x00), try T.run(&[_]u8{0x00}));
+    std.testing.expectEqual(@as(u32, 0x40), try T.run(&[_]u8{0x40}));
+    std.testing.expectEqual(@as(u32, 0x80), try T.run(&[_]u8{ 0x80, 0x01 }));
+    std.testing.expectEqual(@as(u32, 0x100000), try T.run(&[_]u8{ 0x80, 0x80, 0x40 }));
+    std.testing.expectEqual(@as(u32, 0x8000_0000), try T.run(&[_]u8{ 0x80, 0x80, 0x80, 0x80, 0x08 }));
+    std.testing.expectError(error.InvalidData, T.run(&[_]u8{ 0x80, 0x80, 0x80, 0x80, 0x10 })); // out of range
+    std.testing.expectError(error.InvalidData, T.run(&[_]u8{ 0x80, 0x80, 0x80, 0x80, 0x80, 0x10 })); // too long
 }

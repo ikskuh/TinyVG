@@ -6,9 +6,11 @@ pub fn main() !void {
     try std.fs.cwd().writeFile("examples/workspace.tvg", &workspace);
     try std.fs.cwd().writeFile("examples/workspace_add.tvg", &workspace_add);
     try std.fs.cwd().writeFile("examples/shield.tvg", &shield);
+    try std.fs.cwd().writeFile("examples/feature-showcase.tvg", &feature_showcase);
 }
 
 const builder = tvg.builder(.@"1/256");
+const builder_16 = tvg.builder(.@"1/16");
 
 const app_menu = blk: {
     @setEvalBranchQuota(10_000);
@@ -84,7 +86,6 @@ const workspace_add = blk: {
 
 const shield = blk: {
     @setEvalBranchQuota(10_000);
-
     break :blk builder.header(24, 24) ++
         builder.colorTable(&[_]tvg.Color{
         tvg.Color.fromString("29adff") catch unreachable,
@@ -112,4 +113,17 @@ const shield = blk: {
         builder.path.bezier(10.5, 11, 9, 9.8, 9, 8) ++
         builder.path.bezier(9, 6.4, 10.2, 5, 12, 5) ++
         builder.end_of_document;
+};
+
+const feature_showcase = blk: {
+    @setEvalBranchQuota(10_000);
+    break :blk builder_16.header(1024, 1024) ++
+        builder_16.colorTable(&[_]tvg.Color{
+        tvg.Color.fromString("e7a915") catch unreachable,
+        tvg.Color.fromString("fff1e8") catch unreachable,
+    }) ++
+        builder_16.fillRectanglesFlat(2, 0) ++
+        builder_16.rectangle(16, 16, 64, 48) ++
+        builder_16.rectangle(96, 16, 64, 48) ++
+        builder_16.end_of_document;
 };

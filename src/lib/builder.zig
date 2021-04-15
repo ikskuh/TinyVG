@@ -129,3 +129,26 @@ pub fn create(comptime scale: tvg.Scale) type {
         pub const end_of_document = [1]u8{0x00};
     };
 }
+
+const test_builder = create(.@"1/256");
+
+test "join" {
+    std.testing.expectEqualSlices(
+        u8,
+        &[_]u8{ 1, 2, 3, 4, 5, 6, 7 },
+        &join(.{ [_]u8{ 1, 2 }, [_]u8{ 3, 4, 5, 6 }, [_]u8{7} }),
+    );
+}
+
+test "Builder.unit" {
+    std.testing.expectEqualSlices(u8, &[_]u8{ 0, 1 }, &create(.@"1/256").unit(1));
+    std.testing.expectEqualSlices(u8, &[_]u8{ 0, 1 }, &create(.@"1/16").unit(16));
+    std.testing.expectEqualSlices(u8, &[_]u8{ 0, 2 }, &create(.@"1/16").unit(32));
+    std.testing.expectEqualSlices(u8, &[_]u8{ 1, 0 }, &create(.@"1/1").unit(1));
+}
+
+test "Builder.byte" {
+    std.testing.expectEqual([_]u8{1}, test_builder.byte(1));
+    std.testing.expectEqual([_]u8{4}, test_builder.byte(4));
+    std.testing.expectEqual([_]u8{255}, test_builder.byte(255));
+}
