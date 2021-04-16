@@ -124,6 +124,7 @@ const feature_showcase = blk: {
         tvg.Color.fromString("40ff00") catch unreachable, // 2 green
         tvg.Color.fromString("ba004d") catch unreachable, // 3 reddish purple
         tvg.Color.fromString("62009e") catch unreachable, // 4 blueish purple
+        tvg.Color.fromString("94e538") catch unreachable, // 5 grass green
     }) ++
         builder_16.fillRectanglesFlat(2, 0) ++
         builder_16.rectangle(16, 16, 64, 48) ++
@@ -178,5 +179,17 @@ const feature_showcase = blk: {
         builder_16.point(256, 192) ++
         builder_16.point(224, 176) ++
         builder_16.point(192, 192) ++
+        builder_16.fillPathFlat(10, 5) ++
+        builder_16.point(288, 64) ++
+        builder_16.path.vert(32) ++
+        builder_16.path.bezier(288, 24, 288, 16, 304, 16) ++
+        builder_16.path.horiz(336) ++
+        builder_16.path.bezier(352, 16, 352, 24, 352, 32) ++
+        builder_16.path.vert(64) ++
+        builder_16.path.line(336, 48) ++ // this should be an arc segment
+        builder_16.path.line(320, 32) ++
+        builder_16.path.line(312, 48) ++
+        builder_16.path.line(304, 64) ++ // this should be an arc segment
+        builder_16.path.close() ++
         builder_16.end_of_document;
 };
