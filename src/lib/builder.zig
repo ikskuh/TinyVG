@@ -34,6 +34,23 @@ fn writeU16(buf: *[2]u8, value: u16) void {
     buf[1] = @truncate(u8, value >> 8);
 }
 
+pub const Gradient = struct {
+    point_0: tvg.Point,
+    point_1: tvg.Point,
+    color_0: u7,
+    color_1: u7,
+};
+
+const GradientSpecType = enum(u2) {
+    linear = 1,
+    radial = 2,
+};
+
+pub const GradientSpec = union(GradientSpecType) {
+    linear: Gradient,
+    radial: Gradient,
+};
+
 pub fn create(comptime scale: tvg.Scale) type {
     return struct {
         pub fn unit(value: f32) [2]u8 {
@@ -86,6 +103,21 @@ pub fn create(comptime scale: tvg.Scale) type {
 
         pub fn fillRectanglesFlat(num_items: usize, color: u7) [3]u8 {
             return join(.{ byte(2), countAndStyle(num_items, 0), byte(color) });
+        }
+
+        pub fn fillRectanglesGrad(num_items: usize, gradient: GradientSpec) [12]u8 {
+            const grad = switch (gradient) {
+                .linear => |g| g,
+                .radial => |g| g,
+            };
+            return join(.{
+                byte(2),
+                countAndStyle(num_items, @enumToInt(gradient)),
+                point(grad.point_0.x, grad.point_0.y),
+                point(grad.point_1.x, grad.point_1.y),
+                byte(grad.color_0),
+                byte(grad.color_1),
+            });
         }
 
         pub fn fillPathFlat(num_items: usize, color: u7) [3]u8 {

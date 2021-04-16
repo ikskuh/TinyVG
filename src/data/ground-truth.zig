@@ -119,11 +119,28 @@ const feature_showcase = blk: {
     @setEvalBranchQuota(10_000);
     break :blk builder_16.header(1024, 1024) ++
         builder_16.colorTable(&[_]tvg.Color{
-        tvg.Color.fromString("e7a915") catch unreachable,
-        tvg.Color.fromString("fff1e8") catch unreachable,
+        tvg.Color.fromString("e7a915") catch unreachable, // yellow
+        tvg.Color.fromString("ff7800") catch unreachable, // orange
+        tvg.Color.fromString("40ff00") catch unreachable, // green
     }) ++
         builder_16.fillRectanglesFlat(2, 0) ++
         builder_16.rectangle(16, 16, 64, 48) ++
         builder_16.rectangle(96, 16, 64, 48) ++
+        builder_16.fillRectanglesGrad(2, .{ .linear = .{
+        .point_0 = .{ .x = 32, .y = 80 },
+        .point_1 = .{ .x = 144, .y = 128 },
+        .color_0 = 1,
+        .color_1 = 2,
+    } }) ++
+        builder_16.rectangle(16, 80, 64, 48) ++
+        builder_16.rectangle(96, 80, 64, 48) ++
+        builder_16.fillRectanglesGrad(2, .{ .radial = .{
+        .point_0 = .{ .x = 80, .y = 144 },
+        .point_1 = .{ .x = 48, .y = 176 },
+        .color_0 = 1,
+        .color_1 = 2,
+    } }) ++
+        builder_16.rectangle(16, 144, 64, 48) ++
+        builder_16.rectangle(96, 144, 64, 48) ++
         builder_16.end_of_document;
 };

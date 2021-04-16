@@ -5,6 +5,7 @@ const parsing = tvg.parsing;
 const Point = tvg.Point;
 const Rectangle = tvg.Rectangle;
 const Color = tvg.Color;
+const Style = tvg.parsing.Style;
 
 pub fn isFramebuffer(comptime T: type) bool {
     const Framebuffer = if (@typeInfo(T) == .Pointer)
@@ -32,11 +33,11 @@ pub fn render(
 
     switch (cmd) {
         .fill_polygon => |data| {
-            fillPolygon(framebuffer, color_table[data.style.flat], data.vertices);
+            fillPolygon(framebuffer, color_table, data.style, data.vertices);
         },
         .fill_rectangles => |data| {
             for (data.rectangles) |rect| {
-                fillRectangle(framebuffer, rect.x, rect.y, rect.width, rect.height, color_table[data.style.flat]);
+                fillRectangle(framebuffer, rect.x, rect.y, rect.width, rect.height, color_table, data.style);
             }
         },
         .fill_path => |data| {
@@ -45,7 +46,7 @@ pub fn render(
             try point_store.append(data.start);
             try renderPath(&point_store, data.path);
 
-            fillPolygon(framebuffer, color_table[data.style.flat], point_store.items());
+            fillPolygon(framebuffer, color_table, data.style, point_store.items());
         },
     }
 }
@@ -93,35 +94,111 @@ fn renderPath(point_store: anytype, nodes: []const tvg.parsing.PathNode) !void {
     }
 }
 
-// const Scaler = struct {
-//     const Self = @This();
+fn pointFromInts(x: i16, y: i16) Point {
+    return Point{ .x = @intToFloat(f32, x) + 0.5, .y = @intToFloat(f32, y) + 0.5 };
+}
 
-//     scale_x: f32,
-//     scale_y: f32,
-//     unit_scale: Scale,
+fn distance(p1: Point, p2: Point) f32 {
+    const dx = p1.x - p2.x;
+    const dy = p1.y - p2.y;
+    return std.math.sqrt(dx * dx + dy * dy);
+}
 
-//     fn mapX(self: Self, unit: Unit) i16 {
-//         return round(self.mapX_f32(unit));
-//     }
+fn dot(p1: Point, p2: Point) f32 {
+    return p1.x * p2.x + p1.y * p2.y;
+}
 
-//     fn mapY(self: Self, unit: Unit) i16 {
-//         return round(self.mapY_f32(unit));
-//     }
+fn sub(p1: Point, p2: Point) Point {
+    return Point{ .x = p1.x - p2.x, .y = p1.y - p2.y };
+}
 
-//     fn mapX_f32(self: Self, unit: Unit) f32 {
-//         return self.scale_x * unit.toFloat(self.unit_scale);
-//     }
+fn length(p: Point) f32 {
+    return std.math.sqrt(p.x * p.x + p.y * p.y);
+}
 
-//     fn mapY_f32(self: Self, unit: Unit) f32 {
-//         return self.scale_y * unit.toFloat(self.unit_scale);
-//     }
+fn getProjectedPointOnLine(v1: Point, v2: Point, p: Point) Point {
+    // get dot product of e1, e2
+    var e1 = sub(v2, v1); // (v2.x - v1.x, v2.y - v1.y);
+    var e2 = sub(p, v1); // (p.x - v1.x, p.y - v1.y);
+    var valDp = dot(e1, e2);
+    // get length of vectors
+    var lenLineE1 = std.math.sqrt(e1.x * e1.x + e1.y * e1.y);
+    var lenLineE2 = std.math.sqrt(e2.x * e2.x + e2.y * e2.y);
+    var cos = valDp / (lenLineE1 * lenLineE2);
+    // length of v1P'
+    var projLenOfLine = cos * lenLineE2;
+    return Point{
+        .x = (v1.x + (projLenOfLine * e1.x) / lenLineE1),
+        .y = (v1.y + (projLenOfLine * e1.y) / lenLineE1),
+    };
+}
 
-//     fn round(f: f32) i16 {
-//         return @floatToInt(i16, std.math.round(f));
-//     }
-// };
+fn sampleStlye(color_table: []const Color, style: Style, x: i16, y: i16) Color {
+    return switch (style) {
+        .flat => |index| color_table[index],
+        .linear => |grad| blk: {
+            const c0 = color_table[grad.color_0];
+            const c1 = color_table[grad.color_1];
 
-pub fn fillPolygon(framebuffer: anytype, color: Color, points: []const Point) void {
+            const p0 = grad.point_0;
+            const p1 = grad.point_1;
+            const pt = pointFromInts(x, y);
+
+            const direction = sub(p1, p0);
+            const delta_pt = sub(pt, p0);
+
+            const dot_0 = dot(direction, delta_pt);
+            if (dot_0 <= 0.0)
+                break :blk c0;
+
+            const dot_1 = dot(direction, sub(pt, p1));
+            if (dot_1 >= 0.0)
+                break :blk c1;
+
+            const len_grad = length(direction);
+
+            const pos_grad = length(getProjectedPointOnLine(
+                Point{ .x = 0, .y = 0 },
+                direction,
+                delta_pt,
+            ));
+
+            break :blk lerp_sRGB(c0, c1, pos_grad / len_grad);
+        },
+        .radial => |grad| blk: {
+            const dist_max = distance(grad.point_0, grad.point_1);
+            const dist_is = distance(grad.point_0, pointFromInts(x, y));
+
+            const c0 = color_table[grad.color_0];
+            const c1 = color_table[grad.color_1];
+
+            break :blk lerp_sRGB(c0, c1, dist_is / dist_max);
+        },
+    };
+}
+
+const sRGB_gamma = 2.2;
+
+fn gamma2linear(v: f32) u8 {
+    std.debug.assert(v >= 0 and v <= 1);
+    return @floatToInt(u8, 255.0 * std.math.pow(f32, v, 1.0 / sRGB_gamma));
+}
+
+fn linear2gamma(v: u8) f32 {
+    return std.math.pow(f32, @intToFloat(f32, v) / 255.0, sRGB_gamma);
+}
+
+fn lerp_sRGB(c0: Color, c1: Color, f_unchecked: f32) Color {
+    const f = std.math.clamp(f_unchecked, 0, 1);
+    return Color{
+        .r = gamma2linear(lerp(linear2gamma(c0.r), linear2gamma(c1.r), f)),
+        .g = gamma2linear(lerp(linear2gamma(c0.g), linear2gamma(c1.g), f)),
+        .b = gamma2linear(lerp(linear2gamma(c0.b), linear2gamma(c1.b), f)),
+        .a = @floatToInt(u8, lerp(@intToFloat(f32, c0.a), @intToFloat(f32, c0.a), f)),
+    };
+}
+
+fn fillPolygon(framebuffer: anytype, color_table: []const Color, style: Style, points: []const Point) void {
     std.debug.assert(points.len >= 3);
 
     var min_x: i16 = std.math.maxInt(i16);
@@ -150,7 +227,7 @@ pub fn fillPolygon(framebuffer: anytype, color: Color, points: []const Point) vo
             var inside = false;
 
             // compute "center" of the pixel
-            const p = Point{ .x = @intToFloat(f32, x) + 0.5, .y = @intToFloat(f32, y) + 0.5 };
+            const p = pointFromInts(x, y);
 
             // free after https://stackoverflow.com/a/17490923
 
@@ -164,21 +241,21 @@ pub fn fillPolygon(framebuffer: anytype, color: Color, points: []const Point) vo
                 }
             }
             if (inside) {
-                framebuffer.setPixel(x, y, color.toArray());
+                framebuffer.setPixel(x, y, sampleStlye(color_table, style, x, y).toArray());
             }
         }
     }
 }
 
-pub fn fillRectangle(framebuffer: anytype, x: f32, y: f32, width: f32, height: f32, color: Color) void {
-    const xlimit = @floatToInt(isize, std.math.ceil(x + width));
-    const ylimit = @floatToInt(isize, std.math.ceil(y + height));
+fn fillRectangle(framebuffer: anytype, x: f32, y: f32, width: f32, height: f32, color_table: []const Color, style: Style) void {
+    const xlimit = @floatToInt(i16, std.math.ceil(x + width));
+    const ylimit = @floatToInt(i16, std.math.ceil(y + height));
 
-    var py = @floatToInt(isize, std.math.floor(y));
+    var py = @floatToInt(i16, std.math.floor(y));
     while (py < ylimit) : (py += 1) {
-        var px = @floatToInt(isize, std.math.floor(x));
+        var px = @floatToInt(i16, std.math.floor(x));
         while (px < xlimit) : (px += 1) {
-            framebuffer.setPixel(px, py, color.toArray());
+            framebuffer.setPixel(px, py, sampleStlye(color_table, style, px, py).toArray());
         }
     }
 }
