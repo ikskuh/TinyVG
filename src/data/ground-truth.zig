@@ -119,9 +119,11 @@ const feature_showcase = blk: {
     @setEvalBranchQuota(10_000);
     break :blk builder_16.header(1024, 1024) ++
         builder_16.colorTable(&[_]tvg.Color{
-        tvg.Color.fromString("e7a915") catch unreachable, // yellow
-        tvg.Color.fromString("ff7800") catch unreachable, // orange
-        tvg.Color.fromString("40ff00") catch unreachable, // green
+        tvg.Color.fromString("e7a915") catch unreachable, // 0 yellow
+        tvg.Color.fromString("ff7800") catch unreachable, // 1 orange
+        tvg.Color.fromString("40ff00") catch unreachable, // 2 green
+        tvg.Color.fromString("ba004d") catch unreachable, // 3 reddish purple
+        tvg.Color.fromString("62009e") catch unreachable, // 4 blueish purple
     }) ++
         builder_16.fillRectanglesFlat(2, 0) ++
         builder_16.rectangle(16, 16, 64, 48) ++
@@ -142,5 +144,39 @@ const feature_showcase = blk: {
     } }) ++
         builder_16.rectangle(16, 144, 64, 48) ++
         builder_16.rectangle(96, 144, 64, 48) ++
+        builder_16.fillPolygonFlat(7, 3) ++
+        builder_16.point(192, 32) ++
+        builder_16.point(208, 16) ++
+        builder_16.point(240, 16) ++
+        builder_16.point(256, 32) ++
+        builder_16.point(256, 64) ++
+        builder_16.point(224, 48) ++
+        builder_16.point(192, 64) ++
+        builder_16.fillPolygonGrad(7, .{ .linear = .{
+        .point_0 = .{ .x = 224, .y = 80 },
+        .point_1 = .{ .x = 224, .y = 128 },
+        .color_0 = 3,
+        .color_1 = 4,
+    } }) ++
+        builder_16.point(192, 96) ++
+        builder_16.point(208, 80) ++
+        builder_16.point(240, 80) ++
+        builder_16.point(256, 96) ++
+        builder_16.point(256, 128) ++
+        builder_16.point(224, 112) ++
+        builder_16.point(192, 128) ++
+        builder_16.fillPolygonGrad(7, .{ .radial = .{
+        .point_0 = .{ .x = 224, .y = 144 },
+        .point_1 = .{ .x = 224, .y = 192 },
+        .color_0 = 3,
+        .color_1 = 4,
+    } }) ++
+        builder_16.point(192, 160) ++
+        builder_16.point(208, 144) ++
+        builder_16.point(240, 144) ++
+        builder_16.point(256, 160) ++
+        builder_16.point(256, 192) ++
+        builder_16.point(224, 176) ++
+        builder_16.point(192, 192) ++
         builder_16.end_of_document;
 };

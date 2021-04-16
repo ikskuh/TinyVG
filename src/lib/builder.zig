@@ -97,22 +97,12 @@ pub fn create(comptime scale: tvg.Scale) type {
             return .{(@as(u8, style) << 6) | if (items == 64) @as(u6, 0) else @truncate(u6, items)};
         }
 
-        pub fn fillPolygonFlat(num_items: usize, color: u7) [3]u8 {
-            return join(.{ byte(1), countAndStyle(num_items, 0), byte(color) });
-        }
-
-        pub fn fillRectanglesFlat(num_items: usize, color: u7) [3]u8 {
-            return join(.{ byte(2), countAndStyle(num_items, 0), byte(color) });
-        }
-
-        pub fn fillRectanglesGrad(num_items: usize, gradient: GradientSpec) [12]u8 {
-            const grad = switch (gradient) {
+        fn gradient(gradspec: GradientSpec) [10]u8 {
+            const grad = switch (gradspec) {
                 .linear => |g| g,
                 .radial => |g| g,
             };
             return join(.{
-                byte(2),
-                countAndStyle(num_items, @enumToInt(gradient)),
                 point(grad.point_0.x, grad.point_0.y),
                 point(grad.point_1.x, grad.point_1.y),
                 byte(grad.color_0),
@@ -120,8 +110,28 @@ pub fn create(comptime scale: tvg.Scale) type {
             });
         }
 
+        pub fn fillPolygonFlat(num_items: usize, color: u7) [3]u8 {
+            return join(.{ byte(1), countAndStyle(num_items, 0), byte(color) });
+        }
+
+        pub fn fillPolygonGrad(num_items: usize, grad: GradientSpec) [12]u8 {
+            return join(.{ byte(1), countAndStyle(num_items, @enumToInt(grad)), gradient(grad) });
+        }
+
+        pub fn fillRectanglesFlat(num_items: usize, color: u7) [3]u8 {
+            return join(.{ byte(2), countAndStyle(num_items, 0), byte(color) });
+        }
+
+        pub fn fillRectanglesGrad(num_items: usize, grad: GradientSpec) [12]u8 {
+            return join(.{ byte(2), countAndStyle(num_items, @enumToInt(grad)), gradient(grad) });
+        }
+
         pub fn fillPathFlat(num_items: usize, color: u7) [3]u8 {
             return join(.{ byte(3), countAndStyle(num_items, 0), byte(color) });
+        }
+
+        pub fn fillPathGrad(num_items: usize, grad: GradientSpec) [12]u8 {
+            return join(.{ byte(3), countAndStyle(num_items, @enumToInt(grad)), gradient(grad) });
         }
 
         pub fn rectangle(x: f32, y: f32, w: f32, h: f32) [8]u8 {

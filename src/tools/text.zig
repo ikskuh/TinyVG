@@ -152,8 +152,16 @@ pub fn main() !u8 {
 fn renderStyle(writer: anytype, style: tvg.parsing.Style) !void {
     switch (style) {
         .flat => |color| try writer.print("(flat {d})", .{color}),
-        .linear, .radial => {
-            try writer.print("({s} ", .{std.meta.tagName(style)});
+        .linear, .radial => |grad| {
+            try writer.print("({s} ({d} {d}) ({d} {d}) {d} {d} )", .{
+                std.meta.tagName(style),
+                grad.point_0.x,
+                grad.point_0.y,
+                grad.point_1.x,
+                grad.point_1.y,
+                grad.color_0,
+                grad.color_1,
+            });
         },
     }
 }
