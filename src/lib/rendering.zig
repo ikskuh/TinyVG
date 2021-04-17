@@ -53,8 +53,26 @@ pub fn render(
                 drawLine(framebuffer, color_table, data.style, data.line_width, data.line_width, line);
             }
         },
-        .draw_line_strip => |data| {},
-        .draw_line_loop => |data| {},
+        .draw_line_strip => |data| {
+            for (data.vertices[1..]) |end, i| {
+                const start = data.vertices[i]; // is actually [i-1], but we access the slice off-by-one!
+                drawLine(framebuffer, color_table, data.style, data.line_width, data.line_width, .{
+                    .start = start,
+                    .end = end,
+                });
+            }
+        },
+        .draw_line_loop => |data| {
+            var start_index: usize = data.vertices.len - 1;
+            for (data.vertices) |end, end_index| {
+                const start = data.vertices[end_index];
+                drawLine(framebuffer, color_table, data.style, data.line_width, data.line_width, .{
+                    .start = start,
+                    .end = end,
+                });
+                start_index = end_index;
+            }
+        },
         .draw_line_path => |data| {},
     }
 }
@@ -314,15 +332,21 @@ fn drawCircle(framebuffer: anytype, color_table: []const Color, style: Style, lo
     const bottom = @floatToInt(i16, std.math.ceil(location.y + radius));
 
     const r2 = radius * radius;
-
-    var y: i16 = top;
-    while (y <= bottom) : (y += 1) {
-        var x: i16 = left;
-        while (x <= right) : (x += 1) {
-            const pt = pointFromInts(x, y);
-            if (distance2(pt, location) <= r2)
-                framebuffer.setPixel(x, y, sampleStlye(color_table, style, x, y).toArray());
+    if (r2 > 0.77) {
+        var y: i16 = top;
+        while (y <= bottom) : (y += 1) {
+            var x: i16 = left;
+            while (x <= right) : (x += 1) {
+                const pt = pointFromInts(x, y);
+                const dist = distance2(pt, location);
+                if (dist <= r2)
+                    framebuffer.setPixel(x, y, sampleStlye(color_table, style, x, y).toArray());
+            }
         }
+    } else {
+        const x = @floatToInt(i16, location.x);
+        const y = @floatToInt(i16, location.y);
+        framebuffer.setPixel(x, y, sampleStlye(color_table, style, x, y).toArray());
     }
 }
 

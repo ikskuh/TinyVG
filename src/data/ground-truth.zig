@@ -229,7 +229,7 @@ pub const feature_showcase = blk: {
         builder_16.path.line(304, 128 + 64) ++ // this should be an arc segment
         builder_16.path.close() ++
         // DRAW LINES
-        builder_16.drawLinesFlat(4, 3.0, 1) ++
+        builder_16.drawLinesFlat(4, 0.0, 1) ++
         builder_16.point(16 + 0, 224 + 0) ++ builder_16.point(16 + 64, 224 + 0) ++
         builder_16.point(16 + 0, 224 + 16) ++ builder_16.point(16 + 64, 224 + 16) ++
         builder_16.point(16 + 0, 224 + 32) ++ builder_16.point(16 + 64, 224 + 32) ++
@@ -244,7 +244,7 @@ pub const feature_showcase = blk: {
         builder_16.point(16 + 0, 304 + 16) ++ builder_16.point(16 + 64, 304 + 16) ++
         builder_16.point(16 + 0, 304 + 32) ++ builder_16.point(16 + 64, 304 + 32) ++
         builder_16.point(16 + 0, 304 + 48) ++ builder_16.point(16 + 64, 304 + 48) ++
-        builder_16.drawLinesGrad(4, 3.0, .{ .radial = .{
+        builder_16.drawLinesGrad(4, 6.0, .{ .radial = .{
         .point_0 = .{ .x = 48, .y = 408 },
         .point_1 = .{ .x = 48, .y = 432 },
         .color_0 = 3,
@@ -255,42 +255,42 @@ pub const feature_showcase = blk: {
         builder_16.point(16 + 0, 384 + 32) ++ builder_16.point(16 + 64, 384 + 32) ++
         builder_16.point(16 + 0, 384 + 48) ++ builder_16.point(16 + 64, 384 + 48) ++
         // DRAW LINE STRIP
-        builder_16.drawLineStripFlat(8, 3.0, 1) ++
-        builder_16.point(64 + 0, 224 + 0) ++
-        builder_16.point(64 + 64, 224 + 0) ++
-        builder_16.point(64 + 64, 224 + 16) ++
-        builder_16.point(64 + 0, 224 + 16) ++
-        builder_16.point(64 + 0, 224 + 32) ++
-        builder_16.point(64 + 64, 224 + 32) ++
-        builder_16.point(64 + 64, 224 + 48) ++
-        builder_16.point(64 + 0, 224 + 48) ++
+        builder_16.drawLineStripFlat(8, 0.0, 1) ++
+        builder_16.point(96 + 0, 224 + 0) ++
+        builder_16.point(96 + 64, 224 + 0) ++
+        builder_16.point(96 + 64, 224 + 16) ++
+        builder_16.point(96 + 0, 224 + 16) ++
+        builder_16.point(96 + 0, 224 + 32) ++
+        builder_16.point(96 + 64, 224 + 32) ++
+        builder_16.point(96 + 64, 224 + 48) ++
+        builder_16.point(96 + 0, 224 + 48) ++
         builder_16.drawLineStripGrad(8, 3.0, .{ .linear = .{
         .point_0 = .{ .x = 128, .y = 304 },
         .point_1 = .{ .x = 128, .y = 352 },
         .color_0 = 3,
         .color_1 = 4,
     } }) ++
-        builder_16.point(64 + 0, 304 + 0) ++
-        builder_16.point(64 + 64, 304 + 0) ++
-        builder_16.point(64 + 64, 304 + 16) ++
-        builder_16.point(64 + 0, 304 + 16) ++
-        builder_16.point(64 + 0, 304 + 32) ++
-        builder_16.point(64 + 64, 304 + 32) ++
-        builder_16.point(64 + 64, 304 + 48) ++
-        builder_16.point(64 + 0, 304 + 48) ++
-        builder_16.drawLineStripGrad(8, 3.0, .{ .radial = .{
+        builder_16.point(96 + 0, 304 + 0) ++
+        builder_16.point(96 + 64, 304 + 0) ++
+        builder_16.point(96 + 64, 304 + 16) ++
+        builder_16.point(96 + 0, 304 + 16) ++
+        builder_16.point(96 + 0, 304 + 32) ++
+        builder_16.point(96 + 64, 304 + 32) ++
+        builder_16.point(96 + 64, 304 + 48) ++
+        builder_16.point(96 + 0, 304 + 48) ++
+        builder_16.drawLineStripGrad(8, 6.0, .{ .radial = .{
         .point_0 = .{ .x = 128, .y = 408 },
         .point_1 = .{ .x = 128, .y = 432 },
         .color_0 = 3,
         .color_1 = 4,
     } }) ++
-        builder_16.point(64 + 0, 384 + 0) ++
-        builder_16.point(64 + 64, 384 + 0) ++
-        builder_16.point(64 + 64, 384 + 16) ++
-        builder_16.point(64 + 0, 384 + 16) ++
-        builder_16.point(64 + 0, 384 + 32) ++
-        builder_16.point(64 + 64, 384 + 32) ++
-        builder_16.point(64 + 64, 384 + 48) ++
-        builder_16.point(64 + 0, 384 + 48) ++
+        builder_16.point(96 + 0, 384 + 0) ++
+        builder_16.point(96 + 64, 384 + 0) ++
+        builder_16.point(96 + 64, 384 + 16) ++
+        builder_16.point(96 + 0, 384 + 16) ++
+        builder_16.point(96 + 0, 384 + 32) ++
+        builder_16.point(96 + 64, 384 + 32) ++
+        builder_16.point(96 + 64, 384 + 48) ++
+        builder_16.point(96 + 0, 384 + 48) ++
         builder_16.end_of_document;
 };
