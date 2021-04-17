@@ -4,34 +4,44 @@
 
 ![](app_menu.png)
 
-**TVG Size**: 72 (100%)
-**PNG Size**: 86 (119%)
+| File Type | Size (Bytes) | Size (Relative) |
+|-----------|--------------|-----------------|
+| TVG       | 72  | 100%            |
+| PNG       | 86  | 119% |
 
 ## `feature-showcase.tvg`
 
 ![](feature-showcase.png)
 
-**TVG Size**: 1247 (100%)
-**PNG Size**: 26567 (2130%)
+| File Type | Size (Bytes) | Size (Relative) |
+|-----------|--------------|-----------------|
+| TVG       | 1247  | 100%            |
+| PNG       | 26567  | 2130% |
 
 ## `shield.tvg`
 
 ![](shield.png)
 
-**TVG Size**: 207 (100%)
-**PNG Size**: 169 (81%)
+| File Type | Size (Bytes) | Size (Relative) |
+|-----------|--------------|-----------------|
+| TVG       | 207  | 100%            |
+| PNG       | 169  | 81% |
 
 ## `workspace_add.tvg`
 
 ![](workspace_add.png)
 
-**TVG Size**: 85 (100%)
-**PNG Size**: 126 (148%)
+| File Type | Size (Bytes) | Size (Relative) |
+|-----------|--------------|-----------------|
+| TVG       | 85  | 100%            |
+| PNG       | 126  | 148% |
 
 ## `workspace.tvg`
 
 ![](workspace.png)
 
-**TVG Size**: 56 (100%)
-**PNG Size**: 120 (214%)
+| File Type | Size (Bytes) | Size (Relative) |
+|-----------|--------------|-----------------|
+| TVG       | 56  | 100%            |
+| PNG       | 120  | 214% |
 

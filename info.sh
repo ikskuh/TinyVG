@@ -19,8 +19,10 @@ for file in examples/*.tvg ; do
     echo ""
     echo "![]($(basename "${PNG_FILE}"))"
     echo ""
-    echo "**TVG Size**: ${SIZE_TVG} (100%)"
-    echo "**PNG Size**: ${SIZE_PNG} ($(( (100 * ${SIZE_PNG} ) / ${SIZE_TVG} ))%)"
+    echo "| File Type | Size (Bytes) | Size (Relative) |"
+    echo "|-----------|--------------|-----------------|"
+    echo "| TVG       | ${SIZE_TVG}  | 100%            |"
+    echo "| PNG       | ${SIZE_PNG}  | $(( (100 * ${SIZE_PNG} ) / ${SIZE_TVG} ))% |"
     echo ""
   ) >> examples/README.md
 done
