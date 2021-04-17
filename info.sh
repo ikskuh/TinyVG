@@ -24,6 +24,13 @@ for file in examples/*.tvg ; do
     echo "| TVG       | ${SIZE_TVG}  | 100%            |"
     echo "| PNG       | ${SIZE_PNG}  | $(( (100 * ${SIZE_PNG} ) / ${SIZE_TVG} ))% |"
     echo ""
+    echo "<details>"
+    echo "<summary>Textual Representation</summary>"
+    echo '```'
+    cat "${file}t"
+    echo '```'
+    echo "</details>"
+    echo ""
   ) >> examples/README.md
 done
 
