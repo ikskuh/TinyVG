@@ -137,7 +137,8 @@ fn renderPath(point_store: anytype, nodes: []const tvg.parsing.PathNode) !void {
 }
 
 fn pointFromInts(x: i16, y: i16) Point {
-    return Point{ .x = @intToFloat(f32, x) + 0.5, .y = @intToFloat(f32, y) + 0.5 };
+    // return Point{ .x = @intToFloat(f32, x) + 0.5, .y = @intToFloat(f32, y) + 0.5 };
+    return Point{ .x = @intToFloat(f32, x), .y = @intToFloat(f32, y) };
 }
 
 fn distance2(p1: Point, p2: Point) f32 {
