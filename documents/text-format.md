@@ -4,6 +4,8 @@ This document is an auxiliary document side-by-side to the TVG specification to 
 
 This format is meant for debugging/development and is not required to be implemented by conforming implementations.
 
+## Example
+
 ```lisp
 (tvg
   ( ; header information

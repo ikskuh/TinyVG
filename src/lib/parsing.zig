@@ -11,11 +11,16 @@ pub const Header = struct {
 
 const Point = tvg.Point;
 const Rectangle = tvg.Rectangle;
+const Line = tvg.Line;
 
 pub const DrawCommand = union(enum) {
     fill_polygon: FillPolygon,
     fill_rectangles: FillRectangles,
     fill_path: FillPath,
+    draw_lines: DrawLines,
+    draw_line_loop: DrawLineSegments,
+    draw_line_strip: DrawLineSegments,
+    draw_line_path: DrawPath,
 
     pub const FillPolygon = struct {
         style: Style,
@@ -29,6 +34,25 @@ pub const DrawCommand = union(enum) {
 
     pub const FillPath = struct {
         style: Style,
+        start: Point,
+        path: []PathNode,
+    };
+
+    pub const DrawLines = struct {
+        style: Style,
+        line_width: f32,
+        lines: []Line,
+    };
+
+    pub const DrawLineSegments = struct {
+        style: Style,
+        line_width: f32,
+        vertices: []Point,
+    };
+
+    pub const DrawPath = struct {
+        style: Style,
+        line_width: f32,
         start: Point,
         path: []PathNode,
     };
@@ -226,8 +250,9 @@ pub fn Parser(comptime Reader: type) type {
             };
         }
 
-        pub fn deinit(self: *Self) !void {
+        pub fn deinit(self: *Self) void {
             self.temp_buffer.deinit();
+            self.allocator.free(self.color_table);
             self.* = undefined;
         }
 
@@ -243,7 +268,7 @@ pub fn Parser(comptime Reader: type) type {
             if (self.end_of_document)
                 return null;
             const command_byte = try self.reader.readByte();
-            return switch (@intToEnum(Command, command_byte)) {
+            return switch (@intToEnum(tvg.format.Command, command_byte)) {
                 .end_of_document => {
                     self.end_of_document = true;
                     return null;
@@ -269,7 +294,7 @@ pub fn Parser(comptime Reader: type) type {
                         },
                     };
                 },
-                .fill_rectangle => blk: {
+                .fill_rectangles => blk: {
                     const count_and_grad = @bitCast(CountAndStyleTag, try readByte(self.reader));
                     const style = try Style.read(self.reader, self.header.scale, try count_and_grad.getStyleType());
                     const rectangle_count = count_and_grad.getCount();
@@ -280,6 +305,8 @@ pub fn Parser(comptime Reader: type) type {
                         rect.y = try readUnit(self.header.scale, self.reader);
                         rect.width = try readUnit(self.header.scale, self.reader);
                         rect.height = try readUnit(self.header.scale, self.reader);
+                        if (rect.width <= 0 or rect.height <= 0)
+                            return error.InvalidFormat;
                     }
 
                     break :blk DrawCommand{
@@ -313,19 +340,103 @@ pub fn Parser(comptime Reader: type) type {
                         },
                     };
                 },
+                .draw_lines => blk: {
+                    const count_and_grad = @bitCast(CountAndStyleTag, try readByte(self.reader));
+                    const style = try Style.read(self.reader, self.header.scale, try count_and_grad.getStyleType());
+                    const line_count = count_and_grad.getCount();
+
+                    const line_width = try readUnit(self.header.scale, self.reader);
+
+                    var lines = try self.setTempStorage(Line, line_count);
+                    for (lines) |*line| {
+                        line.start.x = try readUnit(self.header.scale, self.reader);
+                        line.start.y = try readUnit(self.header.scale, self.reader);
+                        line.end.x = try readUnit(self.header.scale, self.reader);
+                        line.end.y = try readUnit(self.header.scale, self.reader);
+                    }
+
+                    break :blk DrawCommand{
+                        .draw_lines = DrawCommand.DrawLines{
+                            .style = style,
+                            .line_width = line_width,
+                            .lines = lines,
+                        },
+                    };
+                },
+                .draw_line_loop => blk: {
+                    const count_and_grad = @bitCast(CountAndStyleTag, try readByte(self.reader));
+                    const style = try Style.read(self.reader, self.header.scale, try count_and_grad.getStyleType());
+                    const point_count = count_and_grad.getCount() + 1;
+
+                    const line_width = try readUnit(self.header.scale, self.reader);
+
+                    var points = try self.setTempStorage(Point, point_count);
+                    for (points) |*point| {
+                        point.x = try readUnit(self.header.scale, self.reader);
+                        point.y = try readUnit(self.header.scale, self.reader);
+                    }
+
+                    break :blk DrawCommand{
+                        .draw_line_loop = DrawCommand.DrawLineSegments{
+                            .style = style,
+                            .line_width = line_width,
+                            .vertices = points,
+                        },
+                    };
+                },
+                .draw_line_strip => blk: {
+                    const count_and_grad = @bitCast(CountAndStyleTag, try readByte(self.reader));
+                    const style = try Style.read(self.reader, self.header.scale, try count_and_grad.getStyleType());
+                    const point_count = count_and_grad.getCount() + 1;
+
+                    const line_width = try readUnit(self.header.scale, self.reader);
+
+                    var points = try self.setTempStorage(Point, point_count);
+                    for (points) |*point| {
+                        point.x = try readUnit(self.header.scale, self.reader);
+                        point.y = try readUnit(self.header.scale, self.reader);
+                    }
+
+                    break :blk DrawCommand{
+                        .draw_line_strip = DrawCommand.DrawLineSegments{
+                            .style = style,
+                            .line_width = line_width,
+                            .vertices = points,
+                        },
+                    };
+                },
+                .draw_line_path => blk: {
+                    const count_and_grad = @bitCast(CountAndStyleTag, try readByte(self.reader));
+                    const style = try Style.read(self.reader, self.header.scale, try count_and_grad.getStyleType());
+                    const path_length = count_and_grad.getCount();
+
+                    const line_width = try readUnit(self.header.scale, self.reader);
+
+                    const start_x = try readUnit(self.header.scale, self.reader);
+                    const start_y = try readUnit(self.header.scale, self.reader);
+
+                    var path = try self.setTempStorage(PathNode, path_length);
+                    for (path) |*node| {
+                        node.* = try PathNode.read(self.header.scale, self.reader);
+                    }
+
+                    break :blk DrawCommand{
+                        .draw_line_path = DrawCommand.DrawPath{
+                            .style = style,
+                            .line_width = line_width,
+                            .start = Point{
+                                .x = start_x,
+                                .y = start_y,
+                            },
+                            .path = path,
+                        },
+                    };
+                },
                 _ => return error.InvalidData,
             };
         }
     };
 }
-
-const Command = enum(u8) {
-    end_of_document = 0,
-    fill_polygon = 1,
-    fill_rectangle = 2,
-    fill_path = 3,
-    _,
-};
 
 const CountAndStyleTag = packed struct {
     const Self = @This();
@@ -389,4 +500,17 @@ test "readUInt" {
     std.testing.expectEqual(@as(u32, 0x8000_0000), try T.run(&[_]u8{ 0x80, 0x80, 0x80, 0x80, 0x08 }));
     std.testing.expectError(error.InvalidData, T.run(&[_]u8{ 0x80, 0x80, 0x80, 0x80, 0x10 })); // out of range
     std.testing.expectError(error.InvalidData, T.run(&[_]u8{ 0x80, 0x80, 0x80, 0x80, 0x80, 0x10 })); // too long
+}
+
+test "coverage test" {
+    const source = &@import("ground-truth").feature_showcase;
+
+    var stream = std.io.fixedBufferStream(@as([]const u8, source));
+
+    var parser = try Parser(@TypeOf(stream).Reader).init(std.testing.allocator, stream.reader());
+    defer parser.deinit();
+
+    while (try parser.next()) |node| {
+        _ = node;
+    }
 }

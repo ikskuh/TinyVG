@@ -30,7 +30,7 @@ pub fn render(
 ) !void {
     if (!comptime isFramebuffer(@TypeOf(framebuffer)))
         @compileError("framebuffer needs fields width, height and function setPixel!");
-
+    // std.debug.print("render {}\n", .{cmd});
     switch (cmd) {
         .fill_polygon => |data| {
             fillPolygon(framebuffer, color_table, data.style, data.vertices);
@@ -48,6 +48,14 @@ pub fn render(
 
             fillPolygon(framebuffer, color_table, data.style, point_store.items());
         },
+        .draw_lines => |data| {
+            for (data.lines) |line| {
+                drawLine(framebuffer, color_table, data.style, data.line_width, data.line_width, line);
+            }
+        },
+        .draw_line_strip => |data| {},
+        .draw_line_loop => |data| {},
+        .draw_line_path => |data| {},
     }
 }
 
@@ -98,10 +106,14 @@ fn pointFromInts(x: i16, y: i16) Point {
     return Point{ .x = @intToFloat(f32, x) + 0.5, .y = @intToFloat(f32, y) + 0.5 };
 }
 
-fn distance(p1: Point, p2: Point) f32 {
+fn distance2(p1: Point, p2: Point) f32 {
     const dx = p1.x - p2.x;
     const dy = p1.y - p2.y;
-    return std.math.sqrt(dx * dx + dy * dy);
+    return dx * dx + dy * dy;
+}
+
+fn distance(p1: Point, p2: Point) f32 {
+    return std.math.sqrt(distance2(p1, p2));
 }
 
 fn dot(p1: Point, p2: Point) f32 {
@@ -256,6 +268,60 @@ fn fillRectangle(framebuffer: anytype, x: f32, y: f32, width: f32, height: f32, 
         var px = @floatToInt(i16, std.math.floor(x));
         while (px < xlimit) : (px += 1) {
             framebuffer.setPixel(px, py, sampleStlye(color_table, style, px, py).toArray());
+        }
+    }
+}
+
+fn drawLine(framebuffer: anytype, color_table: []const Color, style: Style, width_start: f32, width_end: f32, line: tvg.Line) void {
+    const len_fract = distance(line.start, line.end);
+
+    const num_dots = @floatToInt(usize, std.math.ceil(len_fract));
+
+    if (num_dots == 0)
+        return;
+
+    // std.debug.print("draw line with len={d}, dots={d}\n", .{ len_fract, num_dots });
+
+    var i: usize = 0;
+    while (i <= num_dots) : (i += 1) {
+        const f = @intToFloat(f32, i) / @intToFloat(f32, num_dots);
+
+        const pos = Point{
+            .x = lerp(line.start.x, line.end.x, f),
+            .y = lerp(line.start.y, line.end.y, f),
+        };
+        const width = lerp(width_start, width_end, f);
+
+        // std.debug.print("{d}\t{d} {d}\t{d}\n", .{ f, pos.x, pos.y, width });
+
+        drawCircle(
+            framebuffer,
+            color_table,
+            style,
+            pos,
+            width / 2.0, // circle uses radius, we use width/diameter
+        );
+    }
+}
+
+fn drawCircle(framebuffer: anytype, color_table: []const Color, style: Style, location: Point, radius: f32) void {
+    if (radius < 0)
+        return;
+    const left = @floatToInt(i16, std.math.floor(location.x - radius));
+    const right = @floatToInt(i16, std.math.ceil(location.x + radius));
+
+    const top = @floatToInt(i16, std.math.floor(location.y - radius));
+    const bottom = @floatToInt(i16, std.math.ceil(location.y + radius));
+
+    const r2 = radius * radius;
+
+    var y: i16 = top;
+    while (y <= bottom) : (y += 1) {
+        var x: i16 = left;
+        while (x <= right) : (x += 1) {
+            const pt = pointFromInts(x, y);
+            if (distance2(pt, location) <= r2)
+                framebuffer.setPixel(x, y, sampleStlye(color_table, style, x, y).toArray());
         }
     }
 }

@@ -69,6 +69,13 @@ pub fn build(b: *std.build.Builder) !void {
     }
 
     const tvg_tests = b.addTest("src/lib/tvg.zig");
+    tvg_tests.addPackage(std.build.Pkg{
+        .name = "ground-truth",
+        .path = "src/data/ground-truth.zig",
+        .dependencies = &[_]std.build.Pkg{
+            pkgs.tvg,
+        },
+    });
 
     const test_step = b.step("test", "Runs all tests");
     test_step.dependOn(&tvg_tests.step);

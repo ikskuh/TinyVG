@@ -12,7 +12,7 @@ pub fn main() !void {
 const builder = tvg.builder(.@"1/256");
 const builder_16 = tvg.builder(.@"1/16");
 
-const app_menu = blk: {
+pub const app_menu = blk: {
     @setEvalBranchQuota(10_000);
 
     break :blk builder.header(48, 48) ++
@@ -37,7 +37,7 @@ const app_menu = blk: {
         builder.end_of_document;
 };
 
-const workspace = blk: {
+pub const workspace = blk: {
     @setEvalBranchQuota(10_000);
 
     break :blk builder.header(48, 48) ++
@@ -55,7 +55,7 @@ const workspace = blk: {
         builder.end_of_document;
 };
 
-const workspace_add = blk: {
+pub const workspace_add = blk: {
     @setEvalBranchQuota(10_000);
 
     break :blk builder.header(48, 48) ++
@@ -84,7 +84,7 @@ const workspace_add = blk: {
         builder.end_of_document;
 };
 
-const shield = blk: {
+pub const shield = blk: {
     @setEvalBranchQuota(10_000);
     break :blk builder.header(24, 24) ++
         builder.colorTable(&[_]tvg.Color{
@@ -115,7 +115,7 @@ const shield = blk: {
         builder.end_of_document;
 };
 
-const feature_showcase = blk: {
+pub const feature_showcase = blk: {
     @setEvalBranchQuota(10_000);
     break :blk builder_16.header(1024, 1024) ++
         builder_16.colorTable(&[_]tvg.Color{
@@ -126,6 +126,7 @@ const feature_showcase = blk: {
         tvg.Color.fromString("62009e") catch unreachable, // 4 blueish purple
         tvg.Color.fromString("94e538") catch unreachable, // 5 grass green
     }) ++
+        // FILL RECTANGLE
         builder_16.fillRectanglesFlat(2, 0) ++
         builder_16.rectangle(16, 16, 64, 48) ++
         builder_16.rectangle(96, 16, 64, 48) ++
@@ -145,6 +146,7 @@ const feature_showcase = blk: {
     } }) ++
         builder_16.rectangle(16, 144, 64, 48) ++
         builder_16.rectangle(96, 144, 64, 48) ++
+        // FILL POLYGON
         builder_16.fillPolygonFlat(7, 3) ++
         builder_16.point(192, 32) ++
         builder_16.point(208, 16) ++
@@ -179,6 +181,7 @@ const feature_showcase = blk: {
         builder_16.point(256, 192) ++
         builder_16.point(224, 176) ++
         builder_16.point(192, 192) ++
+        // FILL PATH
         builder_16.fillPathFlat(10, 5) ++
         builder_16.point(288, 64) ++
         builder_16.path.vert(32) ++
@@ -191,5 +194,103 @@ const feature_showcase = blk: {
         builder_16.path.line(312, 48) ++
         builder_16.path.line(304, 64) ++ // this should be an arc segment
         builder_16.path.close() ++
+        builder_16.fillPathGrad(10, .{ .linear = .{
+        .point_0 = .{ .x = 320, .y = 80 },
+        .point_1 = .{ .x = 320, .y = 128 },
+        .color_0 = 3,
+        .color_1 = 4,
+    } }) ++
+        builder_16.point(288, 64 + 64) ++
+        builder_16.path.vert(64 + 32) ++
+        builder_16.path.bezier(288, 64 + 24, 288, 64 + 16, 304, 64 + 16) ++
+        builder_16.path.horiz(336) ++
+        builder_16.path.bezier(352, 64 + 16, 352, 64 + 24, 352, 64 + 32) ++
+        builder_16.path.vert(64 + 64) ++
+        builder_16.path.line(336, 64 + 48) ++ // this should be an arc segment
+        builder_16.path.line(320, 64 + 32) ++
+        builder_16.path.line(312, 64 + 48) ++
+        builder_16.path.line(304, 64 + 64) ++ // this should be an arc segment
+        builder_16.path.close() ++
+        builder_16.fillPathGrad(10, .{ .radial = .{
+        .point_0 = .{ .x = 320, .y = 144 },
+        .point_1 = .{ .x = 320, .y = 192 },
+        .color_0 = 3,
+        .color_1 = 4,
+    } }) ++
+        builder_16.point(288, 128 + 64) ++
+        builder_16.path.vert(128 + 32) ++
+        builder_16.path.bezier(288, 128 + 24, 288, 128 + 16, 304, 128 + 16) ++
+        builder_16.path.horiz(336) ++
+        builder_16.path.bezier(352, 128 + 16, 352, 128 + 24, 352, 128 + 32) ++
+        builder_16.path.vert(128 + 64) ++
+        builder_16.path.line(336, 128 + 48) ++ // this should be an arc segment
+        builder_16.path.line(320, 128 + 32) ++
+        builder_16.path.line(312, 128 + 48) ++
+        builder_16.path.line(304, 128 + 64) ++ // this should be an arc segment
+        builder_16.path.close() ++
+        // DRAW LINES
+        builder_16.drawLinesFlat(4, 3.0, 1) ++
+        builder_16.point(16 + 0, 224 + 0) ++ builder_16.point(16 + 64, 224 + 0) ++
+        builder_16.point(16 + 0, 224 + 16) ++ builder_16.point(16 + 64, 224 + 16) ++
+        builder_16.point(16 + 0, 224 + 32) ++ builder_16.point(16 + 64, 224 + 32) ++
+        builder_16.point(16 + 0, 224 + 48) ++ builder_16.point(16 + 64, 224 + 48) ++
+        builder_16.drawLinesGrad(4, 3.0, .{ .linear = .{
+        .point_0 = .{ .x = 48, .y = 304 },
+        .point_1 = .{ .x = 48, .y = 352 },
+        .color_0 = 3,
+        .color_1 = 4,
+    } }) ++
+        builder_16.point(16 + 0, 304 + 0) ++ builder_16.point(16 + 64, 304 + 0) ++
+        builder_16.point(16 + 0, 304 + 16) ++ builder_16.point(16 + 64, 304 + 16) ++
+        builder_16.point(16 + 0, 304 + 32) ++ builder_16.point(16 + 64, 304 + 32) ++
+        builder_16.point(16 + 0, 304 + 48) ++ builder_16.point(16 + 64, 304 + 48) ++
+        builder_16.drawLinesGrad(4, 3.0, .{ .radial = .{
+        .point_0 = .{ .x = 48, .y = 408 },
+        .point_1 = .{ .x = 48, .y = 432 },
+        .color_0 = 3,
+        .color_1 = 4,
+    } }) ++
+        builder_16.point(16 + 0, 384 + 0) ++ builder_16.point(16 + 64, 384 + 0) ++
+        builder_16.point(16 + 0, 384 + 16) ++ builder_16.point(16 + 64, 384 + 16) ++
+        builder_16.point(16 + 0, 384 + 32) ++ builder_16.point(16 + 64, 384 + 32) ++
+        builder_16.point(16 + 0, 384 + 48) ++ builder_16.point(16 + 64, 384 + 48) ++
+        // DRAW LINE STRIP
+        builder_16.drawLineStripFlat(8, 3.0, 1) ++
+        builder_16.point(64 + 0, 224 + 0) ++
+        builder_16.point(64 + 64, 224 + 0) ++
+        builder_16.point(64 + 64, 224 + 16) ++
+        builder_16.point(64 + 0, 224 + 16) ++
+        builder_16.point(64 + 0, 224 + 32) ++
+        builder_16.point(64 + 64, 224 + 32) ++
+        builder_16.point(64 + 64, 224 + 48) ++
+        builder_16.point(64 + 0, 224 + 48) ++
+        builder_16.drawLineStripGrad(8, 3.0, .{ .linear = .{
+        .point_0 = .{ .x = 128, .y = 304 },
+        .point_1 = .{ .x = 128, .y = 352 },
+        .color_0 = 3,
+        .color_1 = 4,
+    } }) ++
+        builder_16.point(64 + 0, 304 + 0) ++
+        builder_16.point(64 + 64, 304 + 0) ++
+        builder_16.point(64 + 64, 304 + 16) ++
+        builder_16.point(64 + 0, 304 + 16) ++
+        builder_16.point(64 + 0, 304 + 32) ++
+        builder_16.point(64 + 64, 304 + 32) ++
+        builder_16.point(64 + 64, 304 + 48) ++
+        builder_16.point(64 + 0, 304 + 48) ++
+        builder_16.drawLineStripGrad(8, 3.0, .{ .radial = .{
+        .point_0 = .{ .x = 128, .y = 408 },
+        .point_1 = .{ .x = 128, .y = 432 },
+        .color_0 = 3,
+        .color_1 = 4,
+    } }) ++
+        builder_16.point(64 + 0, 384 + 0) ++
+        builder_16.point(64 + 64, 384 + 0) ++
+        builder_16.point(64 + 64, 384 + 16) ++
+        builder_16.point(64 + 0, 384 + 16) ++
+        builder_16.point(64 + 0, 384 + 32) ++
+        builder_16.point(64 + 64, 384 + 32) ++
+        builder_16.point(64 + 64, 384 + 48) ++
+        builder_16.point(64 + 0, 384 + 48) ++
         builder_16.end_of_document;
 };

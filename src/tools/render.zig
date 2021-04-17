@@ -46,6 +46,7 @@ pub fn main() !u8 {
         source_file.close();
 
     var parser = try tvg.parse(allocator, source_file.reader());
+    defer parser.deinit();
 
     var geometry = cli.options.geometry orelse Geometry{
         .width = @floatToInt(u16, std.math.ceil(parser.header.width)),

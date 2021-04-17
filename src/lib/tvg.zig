@@ -23,6 +23,9 @@ pub const parsing = @import("parsing.zig");
 /// A TVG software renderer based on the parsing module. Takes a parser stream as input.
 pub const rendering = @import("rendering.zig");
 
+/// Contains common TVG constants
+pub const format = @import("format.zig");
+
 /// Returns a stream of TVG commands as well as the document header.
 /// - `allocator` is used to allocate temporary data like the current set of vertices for *FillPolygon*. This can be a fixed-buffer allocator.
 /// - `reader` is a generic stream that provides the TVG byte data.
@@ -153,6 +156,11 @@ pub const Rectangle = struct {
     y: f32,
     width: f32,
     height: f32,
+};
+
+pub const Line = struct {
+    start: Point,
+    end: Point,
 };
 
 // brainstorming

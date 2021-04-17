@@ -48,6 +48,7 @@ pub fn main() !u8 {
     // Parse file header before creating the output file
 
     var parser = try tvg.parse(allocator, source_file.reader());
+    defer parser.deinit();
 
     // Open/create the output file after the TVG header was valid
 
@@ -140,6 +141,10 @@ pub fn main() !u8 {
                 }
                 try writer.writeAll("\n       )\n     )\n");
             },
+            .draw_lines => |data| {},
+            .draw_line_strip => |data| {},
+            .draw_line_loop => |data| {},
+            .draw_line_path => |data| {},
         }
     }
     try writer.writeAll("  )\n");

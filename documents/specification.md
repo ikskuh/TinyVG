@@ -206,6 +206,7 @@ struct {
     style_type: u2,
     style: Style(style_type),
     start: Point,
+    nodes: [node_count]Node,
 }
 ```
 
@@ -323,3 +324,52 @@ Draws a segment of an ellipse from the current location to `point`. The size of 
 
 This command will close the path by drawing a straight line to `start`. This command **must** be the last one in a node sequence
 and will be ignored in case of a *Fill path* command.
+
+### `command=4` Draw lines
+
+```zig
+struct {
+    line_count: u6,
+    style_type: u2,
+    style: Style(style_type),
+    line_width: unit,
+    lines: [line_count] struct { p0: Point, p1: Point },
+}
+```
+
+### `command=5` Draw line loop
+
+```zig
+struct {
+    line_count: u6,
+    style_type: u2,
+    style: Style(style_type),
+    line_width: unit,
+    vertices: [1 + line_count]Point,
+}
+```
+
+### `command=6` Draw line strip
+
+```zig
+struct {
+    line_count: u6,
+    style_type: u2,
+    style: Style(style_type),
+    line_width: unit,
+    vertices: [1 + line_count]Point,
+}
+```
+
+### `command=7` Draw line path
+
+```zig
+struct {
+    node_count: u6,
+    style_type: u2,
+    style: Style(style_type),
+    line_width: unit,
+    start: Point,
+    nodes: [node_count]Node,
+}
+```
