@@ -11,6 +11,7 @@
 
 <details>
 <summary>Textual Representation</summary>
+
 ```
 (tvg
   (1 256 48 48)
@@ -64,6 +65,7 @@
 
 <details>
 <summary>Textual Representation</summary>
+
 ```
 (tvg
   (1 16 1024 1024)
@@ -404,6 +406,7 @@
 
 <details>
 <summary>Textual Representation</summary>
+
 ```
 (tvg
   (1 256 24 24)
@@ -461,6 +464,7 @@
 
 <details>
 <summary>Textual Representation</summary>
+
 ```
 (tvg
   (1 256 48 48)
@@ -517,6 +521,7 @@
 
 <details>
 <summary>Textual Representation</summary>
+
 ```
 (tvg
   (1 256 48 48)

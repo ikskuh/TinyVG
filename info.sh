@@ -26,6 +26,7 @@ for file in examples/*.tvg ; do
     echo ""
     echo "<details>"
     echo "<summary>Textual Representation</summary>"
+    echo ""
     echo '```'
     cat "${file}t"
     echo '```'
