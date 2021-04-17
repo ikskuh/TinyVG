@@ -58,6 +58,7 @@ pub fn build(b: *std.build.Builder) !void {
 
         const png_conversion = b.addSystemCommand(&[_][]const u8{
             "convert",
+            "-strip",
             file[0 .. file.len - 3] ++ "ppm",
             file[0 .. file.len - 3] ++ "png",
         });
