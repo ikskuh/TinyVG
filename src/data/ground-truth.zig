@@ -330,5 +330,52 @@ pub const feature_showcase = blk: {
         builder_16.point(176 + 64, 384 + 32) ++
         builder_16.point(176 + 64, 384 + 48) ++
         builder_16.point(176 + 0, 384 + 48) ++
+        // DRAW LINE PATH
+        builder_16.drawPathFlat(10, 0.0, 1) ++
+        builder_16.point(256 + 0, 224 + 0) ++
+        builder_16.path.horiz(256 + 48) ++
+        builder_16.path.bezier(256 + 64, 224 + 0, 256 + 64, 224 + 16, 256 + 48, 224 + 16) ++
+        builder_16.path.horiz(256 + 32) ++
+        builder_16.path.line(256 + 16, 224 + 24) ++
+        builder_16.path.line(256 + 32, 224 + 32) ++
+        builder_16.path.line(256 + 64, 224 + 32) ++ // this is arc-ellipse later
+        builder_16.path.line(256 + 48, 224 + 48) ++ // this is arc-circle later
+        builder_16.path.horiz(256 + 16) ++
+        builder_16.path.line(256 + 0, 224 + 32) ++ // this is arc-circle later
+        builder_16.path.close() ++
+        builder_16.drawPathGrad(10, 6.0, .{ .linear = .{
+        .point_0 = .{ .x = 288, .y = 408 },
+        .point_1 = .{ .x = 288, .y = 432 },
+        .color_0 = 3,
+        .color_1 = 4,
+    } }) ++
+        builder_16.point(256 + 0, 304 + 0) ++
+        builder_16.path.horiz(256 + 48) ++
+        builder_16.path.bezier(256 + 64, 304 + 0, 256 + 64, 304 + 16, 256 + 48, 304 + 16) ++
+        builder_16.path.horiz(256 + 32) ++
+        builder_16.path.line(256 + 16, 304 + 24) ++
+        builder_16.path.line(256 + 32, 304 + 32) ++
+        builder_16.path.line(256 + 64, 304 + 32) ++ // this is arc-ellipse later
+        builder_16.path.line(256 + 48, 304 + 48) ++ // this is arc-circle later
+        builder_16.path.horiz(256 + 16) ++
+        builder_16.path.line(256 + 0, 304 + 32) ++ // this is arc-circle later
+        builder_16.path.close() ++
+        builder_16.drawPathGrad(10, 3.0, .{ .radial = .{
+        .point_0 = .{ .x = 288, .y = 408 },
+        .point_1 = .{ .x = 288, .y = 432 },
+        .color_0 = 3,
+        .color_1 = 4,
+    } }) ++
+        builder_16.point(256 + 0, 384 + 0) ++
+        builder_16.path.horiz(256 + 48) ++
+        builder_16.path.bezier(256 + 64, 384 + 0, 256 + 64, 384 + 16, 256 + 48, 384 + 16) ++
+        builder_16.path.horiz(256 + 32) ++
+        builder_16.path.line(256 + 16, 384 + 24) ++
+        builder_16.path.line(256 + 32, 384 + 32) ++
+        builder_16.path.line(256 + 64, 384 + 32) ++ // this is arc-ellipse later
+        builder_16.path.line(256 + 48, 384 + 48) ++ // this is arc-circle later
+        builder_16.path.horiz(256 + 16) ++
+        builder_16.path.line(256 + 0, 384 + 32) ++ // this is arc-circle later
+        builder_16.path.close() ++
         builder_16.end_of_document;
 };

@@ -74,7 +74,22 @@ pub fn render(
                 start_index = end_index;
             }
         },
-        .draw_line_path => |data| {},
+        .draw_line_path => |data| {
+            var point_store = FixedBufferList(Point, 256){};
+
+            try point_store.append(data.start);
+            try renderPath(&point_store, data.path);
+
+            const vertices = point_store.items();
+
+            for (vertices[1..]) |end, i| {
+                const start = vertices[i]; // is actually [i-1], but we access the slice off-by-one!
+                drawLine(framebuffer, color_table, data.style, data.line_width, data.line_width, .{
+                    .start = start,
+                    .end = end,
+                });
+            }
+        },
     }
 }
 
