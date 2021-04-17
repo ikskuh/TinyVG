@@ -60,6 +60,10 @@ See the following documents:
 - [Specification](documents/specification.md)
 - [Textual Representation](documents/text-format.md)
 
+See also this image to have a preview of what is already implemented:
+
+![Preview](examples/feature-showcase.png)
+
 ## Considerations
 
 - Which color format does TVG use?

@@ -65,7 +65,8 @@ pub fn render(
         .draw_line_loop => |data| {
             var start_index: usize = data.vertices.len - 1;
             for (data.vertices) |end, end_index| {
-                const start = data.vertices[end_index];
+                const start = data.vertices[start_index];
+
                 drawLine(framebuffer, color_table, data.style, data.line_width, data.line_width, .{
                     .start = start,
                     .end = end,

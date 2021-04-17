@@ -255,7 +255,7 @@ pub const feature_showcase = blk: {
         builder_16.point(16 + 0, 384 + 32) ++ builder_16.point(16 + 64, 384 + 32) ++
         builder_16.point(16 + 0, 384 + 48) ++ builder_16.point(16 + 64, 384 + 48) ++
         // DRAW LINE STRIP
-        builder_16.drawLineStripFlat(8, 0.0, 1) ++
+        builder_16.drawLineStripFlat(8, 3.0, 1) ++
         builder_16.point(96 + 0, 224 + 0) ++
         builder_16.point(96 + 64, 224 + 0) ++
         builder_16.point(96 + 64, 224 + 16) ++
@@ -264,7 +264,7 @@ pub const feature_showcase = blk: {
         builder_16.point(96 + 64, 224 + 32) ++
         builder_16.point(96 + 64, 224 + 48) ++
         builder_16.point(96 + 0, 224 + 48) ++
-        builder_16.drawLineStripGrad(8, 3.0, .{ .linear = .{
+        builder_16.drawLineStripGrad(8, 6.0, .{ .linear = .{
         .point_0 = .{ .x = 128, .y = 304 },
         .point_1 = .{ .x = 128, .y = 352 },
         .color_0 = 3,
@@ -278,7 +278,7 @@ pub const feature_showcase = blk: {
         builder_16.point(96 + 64, 304 + 32) ++
         builder_16.point(96 + 64, 304 + 48) ++
         builder_16.point(96 + 0, 304 + 48) ++
-        builder_16.drawLineStripGrad(8, 6.0, .{ .radial = .{
+        builder_16.drawLineStripGrad(8, 0.0, .{ .radial = .{
         .point_0 = .{ .x = 128, .y = 408 },
         .point_1 = .{ .x = 128, .y = 432 },
         .color_0 = 3,
@@ -292,5 +292,43 @@ pub const feature_showcase = blk: {
         builder_16.point(96 + 64, 384 + 32) ++
         builder_16.point(96 + 64, 384 + 48) ++
         builder_16.point(96 + 0, 384 + 48) ++
+        // DRAW LINE LOOP
+        builder_16.drawLineLoopFlat(8, 6.0, 1) ++
+        builder_16.point(176 + 0, 224 + 0) ++
+        builder_16.point(176 + 64, 224 + 0) ++
+        builder_16.point(176 + 64, 224 + 16) ++
+        builder_16.point(176 + 16, 224 + 16) ++
+        builder_16.point(176 + 16, 224 + 32) ++
+        builder_16.point(176 + 64, 224 + 32) ++
+        builder_16.point(176 + 64, 224 + 48) ++
+        builder_16.point(176 + 0, 224 + 48) ++
+        builder_16.drawLineLoopGrad(8, 0.0, .{ .linear = .{
+        .point_0 = .{ .x = 208, .y = 304 },
+        .point_1 = .{ .x = 208, .y = 352 },
+        .color_0 = 3,
+        .color_1 = 4,
+    } }) ++
+        builder_16.point(176 + 0, 304 + 0) ++
+        builder_16.point(176 + 64, 304 + 0) ++
+        builder_16.point(176 + 64, 304 + 16) ++
+        builder_16.point(176 + 16, 304 + 16) ++
+        builder_16.point(176 + 16, 304 + 32) ++
+        builder_16.point(176 + 64, 304 + 32) ++
+        builder_16.point(176 + 64, 304 + 48) ++
+        builder_16.point(176 + 0, 304 + 48) ++
+        builder_16.drawLineLoopGrad(8, 3.0, .{ .radial = .{
+        .point_0 = .{ .x = 208, .y = 408 },
+        .point_1 = .{ .x = 208, .y = 432 },
+        .color_0 = 3,
+        .color_1 = 4,
+    } }) ++
+        builder_16.point(176 + 0, 384 + 0) ++
+        builder_16.point(176 + 64, 384 + 0) ++
+        builder_16.point(176 + 64, 384 + 16) ++
+        builder_16.point(176 + 16, 384 + 16) ++
+        builder_16.point(176 + 16, 384 + 32) ++
+        builder_16.point(176 + 64, 384 + 32) ++
+        builder_16.point(176 + 64, 384 + 48) ++
+        builder_16.point(176 + 0, 384 + 48) ++
         builder_16.end_of_document;
 };
