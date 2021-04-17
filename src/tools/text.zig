@@ -70,8 +70,9 @@ pub fn main() !u8 {
     var writer = dest_file.writer();
 
     try writer.writeAll("(tvg\n");
-    try writer.print("  ({d} {d} {d})\n", .{
+    try writer.print("  ({d} {d} {d} {d})\n", .{
         parser.header.version,
+        @as(u16, 1) << @enumToInt(parser.header.scale),
         parser.header.width,
         parser.header.height,
     });
@@ -141,10 +142,65 @@ pub fn main() !u8 {
                 }
                 try writer.writeAll("\n       )\n     )\n");
             },
-            .draw_lines => |data| {},
-            .draw_line_strip => |data| {},
-            .draw_line_loop => |data| {},
-            .draw_line_path => |data| {},
+            .draw_lines => |data| {
+                try writer.writeAll("     (\n       draw_lines\n       ");
+                try renderStyle(writer, data.style);
+                try writer.print("\n       {d}\n       (", .{data.line_width});
+                for (data.lines) |l| {
+                    try writer.print("\n         (({d} {d}) ({d} {d}))", .{
+                        l.start.x, l.start.y, l.end.x, l.end.y,
+                    });
+                }
+                try writer.writeAll("\n       )\n     )\n");
+            },
+            .draw_line_strip => |data| {
+                try writer.writeAll("     (\n       draw_line_strip\n       ");
+                try renderStyle(writer, data.style);
+                try writer.print("\n       {d}\n       (", .{data.line_width});
+                for (data.vertices) |p| {
+                    try writer.print("\n         ({d} {d})", .{
+                        p.x, p.y,
+                    });
+                }
+                try writer.writeAll("\n       )\n     )\n");
+            },
+            .draw_line_loop => |data| {
+                try writer.writeAll("     (\n       draw_line_loop\n       ");
+                try renderStyle(writer, data.style);
+                try writer.print("\n       {d}\n       (", .{data.line_width});
+                for (data.vertices) |p| {
+                    try writer.print("\n         ({d} {d})", .{
+                        p.x, p.y,
+                    });
+                }
+                try writer.writeAll("\n       )\n     )\n");
+            },
+            .draw_line_path => |data| {
+                try writer.writeAll("     (\n       draw_line_path\n       ");
+                try renderStyle(writer, data.style);
+                try writer.print("\n       {d}\n       (", .{data.line_width});
+                for (data.path) |node| {
+                    try writer.writeAll("\n         (");
+                    switch (node) {
+                        .line => |line| try writer.print("line {d} {d}", .{ line.x, line.y }),
+                        .horiz => |horiz| try writer.print("horiz {d}", .{horiz}),
+                        .vert => |vert| try writer.print("vert {d}", .{vert}),
+                        .bezier => |bezier| try writer.print("bezier ({d} {d}) ({d} {d}) ({d} {d})", .{
+                            bezier.c0.x,
+                            bezier.c0.y,
+                            bezier.c1.x,
+                            bezier.c1.y,
+                            bezier.p1.x,
+                            bezier.p1.y,
+                        }),
+                        .arc_circle => |arc_circle| try writer.print("arc-circle", .{}),
+                        .arc_ellipse => |arc_ellipse| try writer.print("arc-ellipse", .{}),
+                        .close => try writer.writeAll("close"),
+                    }
+                    try writer.writeAll(")");
+                }
+                try writer.writeAll("\n       )\n     )\n");
+            },
         }
     }
     try writer.writeAll("  )\n");
