@@ -1,6 +1,6 @@
 # Example Files
 
-## `app_menu.tvg`
+## `app_menu.tvg` ()
 
 ![](app_menu.png)
 
@@ -54,7 +54,7 @@
 ```
 </details>
 
-## `feature-showcase.tvg`
+## `feature-showcase.tvg` ()
 
 ![](feature-showcase.png)
 
@@ -395,7 +395,7 @@
 ```
 </details>
 
-## `shield.tvg`
+## `shield.tvg` ()
 
 ![](shield.png)
 
@@ -453,7 +453,7 @@
 ```
 </details>
 
-## `workspace_add.tvg`
+## `workspace_add.tvg` ()
 
 ![](workspace_add.png)
 
@@ -510,7 +510,7 @@
 ```
 </details>
 
-## `workspace.tvg`
+## `workspace.tvg` ()
 
 ![](workspace.png)
 

@@ -15,7 +15,7 @@ for file in examples/*.tvg ; do
   SIZE_TVG="$(wc -c "${file}" | awk '{ print $1 }')"
   SIZE_PNG="$(wc -c "${PNG_FILE}" | awk '{ print $1 }')"
   (
-    echo "## \`$(basename "${file}")\`"
+    echo "## \`$(basename "${file}")\` ($(identify "${file}" | cut -d " " -f 3))"
     echo ""
     echo "![]($(basename "${PNG_FILE}"))"
     echo ""
