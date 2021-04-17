@@ -10,6 +10,7 @@ This format is meant for debugging/development and is not required to be impleme
 (tvg
   ( ; header information
     1 ; version
+    256 ; scale
     128 ; virtual canvas width 
     128 ; virtual canvas height
   )

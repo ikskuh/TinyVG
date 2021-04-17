@@ -22,6 +22,10 @@ pub const DrawCommand = union(enum) {
     draw_line_strip: DrawLineSegments,
     draw_line_path: DrawPath,
 
+    outline_fill_polygon: OutlineFillPolygon,
+    outline_fill_rectangles: OutlineFillRectangles,
+    outline_fill_path: OutlineFillPath,
+
     pub const FillPolygon = struct {
         style: Style,
         vertices: []Point,
@@ -34,6 +38,28 @@ pub const DrawCommand = union(enum) {
 
     pub const FillPath = struct {
         style: Style,
+        start: Point,
+        path: []PathNode,
+    };
+
+    pub const OutlineFillPolygon = struct {
+        fill_style: Style,
+        line_style: Style,
+        line_width: f32,
+        vertices: []Point,
+    };
+
+    pub const OutlineFillRectangles = struct {
+        fill_style: Style,
+        line_style: Style,
+        line_width: f32,
+        rectangles: []Rectangle,
+    };
+
+    pub const OutlineFillPath = struct {
+        fill_style: Style,
+        line_style: Style,
+        line_width: f32,
         start: Point,
         path: []PathNode,
     };
@@ -61,13 +87,27 @@ pub const DrawCommand = union(enum) {
 pub const PathNode = union(enum) {
     const Self = @This();
 
-    line: Point,
-    horiz: f32,
-    vert: f32,
-    bezier: Bezier,
-    arc_circle,
-    arc_ellipse,
-    close,
+    line: NodeData(Point),
+    horiz: NodeData(f32),
+    vert: NodeData(f32),
+    bezier: NodeData(Bezier),
+    arc_circle: NodeData(void),
+    arc_ellipse: NodeData(void),
+    close: NodeData(void),
+
+    fn NodeData(comptime Payload: type) type {
+        return struct {
+            line_width: ?f32,
+            data: Payload,
+
+            fn init(
+                line_width: ?f32,
+                data: Payload,
+            ) @This() {
+                return .{ .line_width = line_width, .data = data };
+            }
+        };
+    }
 
     pub const Bezier = struct {
         c0: Point,
@@ -102,13 +142,13 @@ pub const PathNode = union(enum) {
             null;
 
         return switch (tag.type) {
-            .line => Self{ .line = .{
+            .line => Self{ .line = NodeData(Point).init(line_width, .{
                 .x = try readUnit(scale, reader),
                 .y = try readUnit(scale, reader),
-            } },
-            .horiz => Self{ .horiz = try readUnit(scale, reader) },
-            .vert => Self{ .vert = try readUnit(scale, reader) },
-            .bezier => Self{ .bezier = Bezier{
+            }) },
+            .horiz => Self{ .horiz = NodeData(f32).init(line_width, try readUnit(scale, reader)) },
+            .vert => Self{ .vert = NodeData(f32).init(line_width, try readUnit(scale, reader)) },
+            .bezier => Self{ .bezier = NodeData(Bezier).init(line_width, Bezier{
                 .c0 = Point{
                     .x = try readUnit(scale, reader),
                     .y = try readUnit(scale, reader),
@@ -121,10 +161,10 @@ pub const PathNode = union(enum) {
                     .x = try readUnit(scale, reader),
                     .y = try readUnit(scale, reader),
                 },
-            } },
+            }) },
             .arc_circ => @panic("todo"),
             .arc_ellipse => @panic("todo"),
-            .close => .close,
+            .close => Self{ .close = NodeData(void).init(line_width, {}) },
             .reserved => return error.InvalidData,
         };
     }
@@ -432,6 +472,38 @@ pub fn Parser(comptime Reader: type) type {
                         },
                     };
                 },
+                .outline_fill_polygon => @panic("parsing outline_fill_polygon not implemented yet!"),
+                .outline_fill_rectangles => blk: {
+                    const count_and_grad = @bitCast(CountAndStyleTag, try readByte(self.reader));
+                    const line_style_dat = try readByte(self.reader);
+
+                    const line_style = try Style.read(self.reader, self.header.scale, try convertStyleType(@truncate(u2, line_style_dat)));
+                    const fill_style = try Style.read(self.reader, self.header.scale, try count_and_grad.getStyleType());
+
+                    const line_width = try readUnit(self.header.scale, self.reader);
+
+                    const rectangle_count = count_and_grad.getCount();
+
+                    var rectangles = try self.setTempStorage(Rectangle, rectangle_count);
+                    for (rectangles) |*rect| {
+                        rect.x = try readUnit(self.header.scale, self.reader);
+                        rect.y = try readUnit(self.header.scale, self.reader);
+                        rect.width = try readUnit(self.header.scale, self.reader);
+                        rect.height = try readUnit(self.header.scale, self.reader);
+                        if (rect.width <= 0 or rect.height <= 0)
+                            return error.InvalidFormat;
+                    }
+
+                    break :blk DrawCommand{
+                        .outline_fill_rectangles = DrawCommand.OutlineFillRectangles{
+                            .fill_style = fill_style,
+                            .line_style = line_style,
+                            .line_width = line_width,
+                            .rectangles = rectangles,
+                        },
+                    };
+                },
+                .outline_fill_path => @panic("parsing outline_fill_path not implemented yet!"),
                 _ => return error.InvalidData,
             };
         }
@@ -450,14 +522,18 @@ const CountAndStyleTag = packed struct {
     }
 
     pub fn getStyleType(self: Self) !StyleType {
-        return switch (self.style_kind) {
-            @enumToInt(StyleType.flat) => StyleType.flat,
-            @enumToInt(StyleType.linear) => StyleType.linear,
-            @enumToInt(StyleType.radial) => StyleType.radial,
-            else => error.InvalidData,
-        };
+        return convertStyleType(self.style_kind);
     }
 };
+
+fn convertStyleType(value: u2) !StyleType {
+    return switch (value) {
+        @enumToInt(StyleType.flat) => StyleType.flat,
+        @enumToInt(StyleType.linear) => StyleType.linear,
+        @enumToInt(StyleType.radial) => StyleType.radial,
+        else => error.InvalidData,
+    };
+}
 
 fn readUInt(reader: anytype) error{InvalidData}!u32 {
     var byte_count: u8 = 0;

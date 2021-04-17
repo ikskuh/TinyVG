@@ -99,24 +99,8 @@ pub fn main() !u8 {
                 try renderStyle(writer, path.style);
                 try writer.writeAll("\n       (");
                 for (path.path) |node| {
-                    try writer.writeAll("\n         (");
-                    switch (node) {
-                        .line => |line| try writer.print("line {d} {d}", .{ line.x, line.y }),
-                        .horiz => |horiz| try writer.print("horiz {d}", .{horiz}),
-                        .vert => |vert| try writer.print("vert {d}", .{vert}),
-                        .bezier => |bezier| try writer.print("bezier ({d} {d}) ({d} {d}) ({d} {d})", .{
-                            bezier.c0.x,
-                            bezier.c0.y,
-                            bezier.c1.x,
-                            bezier.c1.y,
-                            bezier.p1.x,
-                            bezier.p1.y,
-                        }),
-                        .arc_circle => |arc_circle| try writer.print("arc-circle", .{}),
-                        .arc_ellipse => |arc_ellipse| try writer.print("arc-ellipse", .{}),
-                        .close => try writer.writeAll("close"),
-                    }
-                    try writer.writeAll(")");
+                    try writer.writeAll("\n         ");
+                    try renderPathNode(writer, node);
                 }
                 try writer.writeAll("\n       )\n     )\n");
             },
@@ -180,26 +164,19 @@ pub fn main() !u8 {
                 try renderStyle(writer, data.style);
                 try writer.print("\n       {d}\n       (", .{data.line_width});
                 for (data.path) |node| {
-                    try writer.writeAll("\n         (");
-                    switch (node) {
-                        .line => |line| try writer.print("line {d} {d}", .{ line.x, line.y }),
-                        .horiz => |horiz| try writer.print("horiz {d}", .{horiz}),
-                        .vert => |vert| try writer.print("vert {d}", .{vert}),
-                        .bezier => |bezier| try writer.print("bezier ({d} {d}) ({d} {d}) ({d} {d})", .{
-                            bezier.c0.x,
-                            bezier.c0.y,
-                            bezier.c1.x,
-                            bezier.c1.y,
-                            bezier.p1.x,
-                            bezier.p1.y,
-                        }),
-                        .arc_circle => |arc_circle| try writer.print("arc-circle", .{}),
-                        .arc_ellipse => |arc_ellipse| try writer.print("arc-ellipse", .{}),
-                        .close => try writer.writeAll("close"),
-                    }
-                    try writer.writeAll(")");
+                    try writer.writeAll("\n         ");
+                    try renderPathNode(writer, node);
                 }
                 try writer.writeAll("\n       )\n     )\n");
+            },
+            .outline_fill_polygon => |data| {
+                try writer.writeAll("     (\n       outline_fill_polygon\n     )\n");
+            },
+            .outline_fill_rectangles => |data| {
+                try writer.writeAll("     (\n       outline_fill_rectangles\n     )\n");
+            },
+            .outline_fill_path => |data| {
+                try writer.writeAll("     (\n       outline_fill_path\n     )\n");
             },
         }
     }
@@ -208,6 +185,25 @@ pub fn main() !u8 {
     try writer.writeAll(")\n");
 
     return 0;
+}
+
+fn renderPathNode(writer: anytype, node: tvg.parsing.PathNode) !void {
+    switch (node) {
+        .line => |line| try writer.print("(line {d} {d})", .{ line.data.x, line.data.y }),
+        .horiz => |horiz| try writer.print("(horiz {d})", .{horiz.data}),
+        .vert => |vert| try writer.print("(vert {d})", .{vert.data}),
+        .bezier => |bezier| try writer.print("(bezier ({d} {d}) ({d} {d}) ({d} {d}))", .{
+            bezier.data.c0.x,
+            bezier.data.c0.y,
+            bezier.data.c1.x,
+            bezier.data.c1.y,
+            bezier.data.p1.x,
+            bezier.data.p1.y,
+        }),
+        .arc_circle => |arc_circle| try writer.print("(arc-circle)", .{}),
+        .arc_ellipse => |arc_ellipse| try writer.print("(arc-ellipse)", .{}),
+        .close => try writer.writeAll("(close)"),
+    }
 }
 
 fn renderStyle(writer: anytype, style: tvg.parsing.Style) !void {

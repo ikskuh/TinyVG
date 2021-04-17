@@ -41,18 +41,25 @@ pub const Gradient = struct {
     color_1: u7,
 };
 
-const GradientSpecType = enum(u2) {
+pub const StyleSpec = enum(u2) {
+    flat = 0,
     linear = 1,
     radial = 2,
+
+    fn byteSize(self: @This()) usize {
+        return switch (self) {
+            .flat => 1,
+            .linear, .radial => 10,
+        };
+    }
 };
 
-pub const GradientSpec = union(GradientSpecType) {
-    linear: Gradient,
-    radial: Gradient,
-};
-
-fn command(cmd: tvg.format.Command) [1]u8 {
-    return [1]u8{@enumToInt(cmd)};
+fn StyleType(comptime spec: StyleSpec) type {
+    return switch (spec) {
+        .flat => u7,
+        .linear => Gradient,
+        .radial => Gradient,
+    };
 }
 
 pub fn create(comptime scale: tvg.Scale) type {
@@ -65,6 +72,10 @@ pub fn create(comptime scale: tvg.Scale) type {
 
         pub fn byte(val: u8) [1]u8 {
             return [1]u8{val};
+        }
+
+        fn command(cmd: tvg.format.Command) [1]u8 {
+            return [1]u8{@enumToInt(cmd)};
         }
 
         pub fn point(x: f32, y: f32) [4]u8 {
@@ -94,18 +105,16 @@ pub fn create(comptime scale: tvg.Scale) type {
             return buf;
         }
 
-        fn countAndStyle(items: usize, style: u2) [1]u8 {
+        fn countAndStyle(items: usize, style_type: StyleSpec) [1]u8 {
             std.debug.assert(items > 0);
             std.debug.assert(items <= 64);
+
+            const style = @enumToInt(style_type);
 
             return .{(@as(u8, style) << 6) | if (items == 64) @as(u6, 0) else @truncate(u6, items)};
         }
 
-        fn gradient(gradspec: GradientSpec) [10]u8 {
-            const grad = switch (gradspec) {
-                .linear => |g| g,
-                .radial => |g| g,
-            };
+        fn gradient(grad: Gradient) [10]u8 {
             return join(.{
                 point(grad.point_0.x, grad.point_0.y),
                 point(grad.point_1.x, grad.point_1.y),
@@ -114,60 +123,72 @@ pub fn create(comptime scale: tvg.Scale) type {
             });
         }
 
-        pub fn fillPolygonFlat(num_items: usize, color: u7) [3]u8 {
-            return join(.{ command(.fill_polygon), countAndStyle(num_items, 0), byte(color) });
+        fn encodeStyle(comptime style_type: StyleSpec, value: StyleType(style_type)) [style_type.byteSize()]u8 {
+            return switch (style_type) {
+                .flat => byte(value),
+                .linear, .radial => gradient(value),
+            };
         }
 
-        pub fn fillPolygonGrad(num_items: usize, grad: GradientSpec) [12]u8 {
-            return join(.{ command(.fill_polygon), countAndStyle(num_items, @enumToInt(grad)), gradient(grad) });
+        pub fn fillPolygon(num_items: usize, comptime style_type: StyleSpec, style: StyleType(style_type)) [2 + style_type.byteSize()]u8 {
+            return join(.{ command(.fill_polygon), countAndStyle(num_items, style_type), encodeStyle(style_type, style) });
         }
 
-        pub fn fillRectanglesFlat(num_items: usize, color: u7) [3]u8 {
-            return join(.{ command(.fill_rectangles), countAndStyle(num_items, 0), byte(color) });
+        pub fn fillRectangles(num_items: usize, comptime style_type: StyleSpec, style: StyleType(style_type)) [2 + style_type.byteSize()]u8 {
+            return join(.{ command(.fill_rectangles), countAndStyle(num_items, style_type), encodeStyle(style_type, style) });
         }
 
-        pub fn fillRectanglesGrad(num_items: usize, grad: GradientSpec) [12]u8 {
-            return join(.{ command(.fill_rectangles), countAndStyle(num_items, @enumToInt(grad)), gradient(grad) });
+        pub fn fillPath(num_items: usize, comptime style_type: StyleSpec, style: StyleType(style_type)) [2 + style_type.byteSize()]u8 {
+            return join(.{ command(.fill_path), countAndStyle(num_items, style_type), encodeStyle(style_type, style) });
         }
 
-        pub fn fillPathFlat(num_items: usize, color: u7) [3]u8 {
-            return join(.{ command(.fill_path), countAndStyle(num_items, 0), byte(color) });
+        pub fn drawLines(num_items: usize, line_width: f32, comptime style_type: StyleSpec, style: StyleType(style_type)) [4 + style_type.byteSize()]u8 {
+            return join(.{ command(.draw_lines), countAndStyle(num_items, style_type), encodeStyle(style_type, style), unit(line_width) });
         }
 
-        pub fn fillPathGrad(num_items: usize, grad: GradientSpec) [12]u8 {
-            return join(.{ command(.fill_path), countAndStyle(num_items, @enumToInt(grad)), gradient(grad) });
+        pub fn drawLineLoop(num_items: usize, line_width: f32, comptime style_type: StyleSpec, style: StyleType(style_type)) [4 + style_type.byteSize()]u8 {
+            return join(.{ command(.draw_line_loop), countAndStyle(num_items - 1, style_type), encodeStyle(style_type, style), unit(line_width) });
         }
 
-        pub fn drawLinesFlat(num_items: usize, line_width: f32, color: u7) [5]u8 {
-            return join(.{ command(.draw_lines), countAndStyle(num_items, 0), byte(color), unit(line_width) });
+        pub fn drawLineStrip(num_items: usize, line_width: f32, comptime style_type: StyleSpec, style: StyleType(style_type)) [4 + style_type.byteSize()]u8 {
+            return join(.{ command(.draw_line_strip), countAndStyle(num_items - 1, style_type), encodeStyle(style_type, style), unit(line_width) });
         }
 
-        pub fn drawLinesGrad(num_items: usize, line_width: f32, grad: GradientSpec) [14]u8 {
-            return join(.{ command(.draw_lines), countAndStyle(num_items, @enumToInt(grad)), gradient(grad), unit(line_width) });
+        pub fn drawPath(num_items: usize, line_width: f32, comptime style_type: StyleSpec, style: StyleType(style_type)) [4 + style_type.byteSize()]u8 {
+            return join(.{ command(.draw_line_path), countAndStyle(num_items, style_type), encodeStyle(style_type, style), unit(line_width) });
         }
 
-        pub fn drawLineLoopFlat(num_items: usize, line_width: f32, color: u7) [5]u8 {
-            return join(.{ command(.draw_line_loop), countAndStyle(num_items - 1, 0), byte(color), unit(line_width) });
+        pub fn outlineFillPolygon(
+            num_items: usize,
+            line_width: f32,
+            comptime fill_style_type: StyleSpec,
+            fill_style: StyleType(fill_style_type),
+            comptime line_style_type: StyleSpec,
+            line_style: StyleType(line_style_type),
+        ) [5 + fill_style_type.byteSize() + line_style_type.byteSize()]u8 {
+            return join(.{ command(.outline_fill_polygon), countAndStyle(num_items, fill_style_type), byte(@enumToInt(line_style_type)), encodeStyle(line_style_type, line_style), encodeStyle(fill_style_type, fill_style), unit(line_width) });
         }
 
-        pub fn drawLineLoopGrad(num_items: usize, line_width: f32, grad: GradientSpec) [14]u8 {
-            return join(.{ command(.draw_line_loop), countAndStyle(num_items - 1, @enumToInt(grad)), gradient(grad), unit(line_width) });
+        pub fn outlineFillRectangles(
+            num_items: usize,
+            line_width: f32,
+            comptime fill_style_type: StyleSpec,
+            fill_style: StyleType(fill_style_type),
+            comptime line_style_type: StyleSpec,
+            line_style: StyleType(line_style_type),
+        ) [5 + fill_style_type.byteSize() + line_style_type.byteSize()]u8 {
+            return join(.{ command(.outline_fill_rectangles), countAndStyle(num_items, fill_style_type), byte(@enumToInt(line_style_type)), encodeStyle(line_style_type, line_style), encodeStyle(fill_style_type, fill_style), unit(line_width) });
         }
 
-        pub fn drawLineStripFlat(num_items: usize, line_width: f32, color: u7) [5]u8 {
-            return join(.{ command(.draw_line_strip), countAndStyle(num_items - 1, 0), byte(color), unit(line_width) });
-        }
-
-        pub fn drawLineStripGrad(num_items: usize, line_width: f32, grad: GradientSpec) [14]u8 {
-            return join(.{ command(.draw_line_strip), countAndStyle(num_items - 1, @enumToInt(grad)), gradient(grad), unit(line_width) });
-        }
-
-        pub fn drawPathFlat(num_items: usize, line_width: f32, color: u7) [5]u8 {
-            return join(.{ command(.draw_line_path), countAndStyle(num_items, 0), byte(color), unit(line_width) });
-        }
-
-        pub fn drawPathGrad(num_items: usize, line_width: f32, grad: GradientSpec) [14]u8 {
-            return join(.{ command(.draw_line_path), countAndStyle(num_items, @enumToInt(grad)), gradient(grad), unit(line_width) });
+        pub fn outlineFillPath(
+            num_items: usize,
+            line_width: f32,
+            comptime fill_style_type: StyleSpec,
+            fill_style: StyleType(fill_style_type),
+            comptime line_style_type: StyleSpec,
+            line_style: StyleType(line_style_type),
+        ) [5 + fill_style_type.byteSize() + line_style_type.byteSize()]u8 {
+            return join(.{ command(.outline_fill_path), countAndStyle(num_items, fill_style_type), byte(@enumToInt(line_style_type)), encodeStyle(line_style_type, line_style), encodeStyle(fill_style_type, fill_style), unit(line_width) });
         }
 
         pub fn rectangle(x: f32, y: f32, w: f32, h: f32) [8]u8 {

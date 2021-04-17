@@ -90,20 +90,39 @@ pub fn render(
                 });
             }
         },
+        .outline_fill_polygon => |data| {
+            @panic("outline_fill_polygon not implemented yet!");
+        },
+        .outline_fill_rectangles => |data| {
+            for (data.rectangles) |rect| {
+                fillRectangle(framebuffer, rect.x, rect.y, rect.width, rect.height, color_table, data.fill_style);
+                var tl = Point{ .x = rect.x, .y = rect.y };
+                var tr = Point{ .x = rect.x + rect.width, .y = rect.y };
+                var bl = Point{ .x = rect.x, .y = rect.y + rect.height };
+                var br = Point{ .x = rect.x + rect.width, .y = rect.y + rect.height };
+                drawLine(framebuffer, color_table, data.line_style, data.line_width, data.line_width, .{ .start = tl, .end = tr });
+                drawLine(framebuffer, color_table, data.line_style, data.line_width, data.line_width, .{ .start = tr, .end = br });
+                drawLine(framebuffer, color_table, data.line_style, data.line_width, data.line_width, .{ .start = br, .end = bl });
+                drawLine(framebuffer, color_table, data.line_style, data.line_width, data.line_width, .{ .start = bl, .end = tl });
+            }
+        },
+        .outline_fill_path => |data| {
+            @panic("outline_fill_path not implemented yet!");
+        },
     }
 }
 
 fn renderPath(point_store: anytype, nodes: []const tvg.parsing.PathNode) !void {
     for (nodes) |node, node_index| {
         switch (node) {
-            .line => |pt| try point_store.append(pt),
-            .horiz => |x| try point_store.append(Point{ .x = x, .y = point_store.back().?.y }),
-            .vert => |y| try point_store.append(Point{ .x = point_store.back().?.x, .y = y }),
+            .line => |pt| try point_store.append(pt.data),
+            .horiz => |x| try point_store.append(Point{ .x = x.data, .y = point_store.back().?.y }),
+            .vert => |y| try point_store.append(Point{ .x = point_store.back().?.x, .y = y.data }),
             .bezier => |bezier| {
                 var previous = point_store.back().?;
 
-                const oct0_x = [4]f32{ previous.x, bezier.c0.x, bezier.c1.x, bezier.p1.x };
-                const oct0_y = [4]f32{ previous.y, bezier.c0.y, bezier.c1.y, bezier.p1.y };
+                const oct0_x = [4]f32{ previous.x, bezier.data.c0.x, bezier.data.c1.x, bezier.data.p1.x };
+                const oct0_y = [4]f32{ previous.y, bezier.data.c0.y, bezier.data.c1.y, bezier.data.p1.y };
 
                 // always 16 subdivs
                 const divs: usize = 16;
@@ -121,7 +140,7 @@ fn renderPath(point_store: anytype, nodes: []const tvg.parsing.PathNode) !void {
                     try point_store.append(current);
                 }
 
-                try point_store.append(bezier.p1);
+                try point_store.append(bezier.data.p1);
             },
             .arc_circle => @panic("arc not implemented yet!"),
             .arc_ellipse => @panic("arc not implemented yet!"),
@@ -137,7 +156,54 @@ fn renderPath(point_store: anytype, nodes: []const tvg.parsing.PathNode) !void {
 }
 
 fn pointFromInts(x: i16, y: i16) Point {
-    return Point{ .x = @intToFloat(f32, x), .y = @intToFloat(f32, y) };
+    return Point{ .x = @intToFloat(f32, x) + 0.5, .y = @intToFloat(f32, y) + 0.5 };
+}
+
+fn pointToInts(point: Point) struct { x: i16, y: i16 } {
+    return .{
+        .x = @floatToInt(i16, std.math.round(point.x)),
+        .y = @floatToInt(i16, std.math.round(point.y)),
+    };
+}
+
+fn xy(x: f32, y: f32) Point {
+    return Point{ .x = x, .y = y };
+}
+
+test "point conversion" {
+    const TestData = struct { point: Point, x: i16, y: i16 };
+
+    const pt2int = [_]TestData{
+        .{ .point = xy(0, 0), .x = 0, .y = 0 },
+        .{ .point = xy(1, 0), .x = 1, .y = 0 },
+        .{ .point = xy(2, 0), .x = 2, .y = 0 },
+        .{ .point = xy(0, 1), .x = 0, .y = 1 },
+        .{ .point = xy(0, 2), .x = 0, .y = 2 },
+        .{ .point = xy(1, 3), .x = 1, .y = 3 },
+        .{ .point = xy(2, 4), .x = 2, .y = 4 },
+    };
+    const int2pt = [_]TestData{
+        .{ .point = xy(0, 0), .x = 0, .y = 0 },
+        .{ .point = xy(1, 0), .x = 1, .y = 0 },
+        .{ .point = xy(2, 0), .x = 2, .y = 0 },
+        .{ .point = xy(0, 1), .x = 0, .y = 1 },
+        .{ .point = xy(0, 2), .x = 0, .y = 2 },
+        .{ .point = xy(1, 3), .x = 1, .y = 3 },
+        .{ .point = xy(2, 4), .x = 2, .y = 4 },
+    };
+    for (pt2int) |data| {
+        const ints = pointToInts(data.point);
+        //std.debug.print("{d} {d} => {d} {d}\n", .{
+        //    data.point.x, data.point.y,
+        //    ints.x,       ints.y,
+        //});
+        std.testing.expectEqual(data.x, ints.x);
+        std.testing.expectEqual(data.y, ints.y);
+    }
+    for (int2pt) |data| {
+        const pt = pointFromInts(data.x, data.y);
+        std.testing.expectApproxEqAbs(@as(f32, 0.0), distance(pt, data.point), std.math.sqrt(2.0) / 2.0);
+    }
 }
 
 fn distance2(p1: Point, p2: Point) f32 {
@@ -341,11 +407,11 @@ fn drawLine(framebuffer: anytype, color_table: []const Color, style: Style, widt
 fn drawCircle(framebuffer: anytype, color_table: []const Color, style: Style, location: Point, radius: f32) void {
     if (radius < 0)
         return;
-    const left = @floatToInt(i16, std.math.floor(location.x - radius));
-    const right = @floatToInt(i16, std.math.ceil(location.x + radius));
+    const left = @floatToInt(i16, std.math.floor(location.x - radius - 0.5));
+    const right = @floatToInt(i16, std.math.ceil(location.x + radius + 0.5));
 
-    const top = @floatToInt(i16, std.math.floor(location.y - radius));
-    const bottom = @floatToInt(i16, std.math.ceil(location.y + radius));
+    const top = @floatToInt(i16, std.math.floor(location.y - radius - 0.5));
+    const bottom = @floatToInt(i16, std.math.ceil(location.y + radius + 0.5));
 
     const r2 = radius * radius;
     if (r2 > 0.77) {
@@ -360,9 +426,8 @@ fn drawCircle(framebuffer: anytype, color_table: []const Color, style: Style, lo
             }
         }
     } else {
-        const x = @floatToInt(i16, location.x);
-        const y = @floatToInt(i16, location.y);
-        framebuffer.setPixel(x, y, sampleStlye(color_table, style, x, y).toArray());
+        const pt = pointToInts(location);
+        framebuffer.setPixel(pt.x, pt.y, sampleStlye(color_table, style, pt.x, pt.y).toArray());
     }
 }
 

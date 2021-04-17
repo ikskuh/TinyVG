@@ -373,3 +373,54 @@ struct {
     nodes: [node_count]Node,
 }
 ```
+
+### `command=8` Outline fill polygon
+
+```zig
+struct {
+    vertex_count: u6, // Number of vertices in the polygon.
+    fill_style_type: u2,   
+    line_style_type: u2,
+    padding: u6,
+    line_style: Style(line_style_type),
+    fill_style: Style(fill_style_type),
+    line_width: unit,
+    vertices: [vertex_count]Point,
+}
+```
+
+### `command=9` Outline fill rectangles
+
+```zig
+struct {
+    rectangle_count: u6,
+    fill_style_type: u2,
+    line_style_type: u2,
+    padding: u6,
+    line_style: Style(line_style_type),
+    fill_style: Style(fill_style_type),
+    line_width: unit,
+    rectangles: [rectangle_count] struct {
+        x: unit,
+        y: unit,
+        width: unit,
+        height: unit,
+    },
+}
+```
+
+### `command=10` Outline fill path
+
+```zig
+struct {
+    node_count: u6,
+    fill_style_type: u2,
+    line_style_type: u2,
+    padding: u6,
+    line_style: Style(line_style_type),
+    fill_style: Style(fill_style_type),
+    line_width: unit,
+    start: Point,
+    nodes: [node_count]Node,
+}
+```
