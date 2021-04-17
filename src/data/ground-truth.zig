@@ -378,23 +378,24 @@ pub const feature_showcase = blk: {
         builder_16.path.line(256 + 0, 384 + 32) ++ // this is arc-circle later
         builder_16.path.close() ++
         // Outline Fill Rectangle
-        builder_16.outlineFillRectangles(1, 6.0, .flat, 0, .flat, 3) ++
+        builder_16.outlineFillRectangles(1, 0.0, .flat, 0, .flat, 3) ++
         builder_16.rectangle(384, 16, 64, 48) ++
-        builder_16.outlineFillRectangles(1, 6.0, .flat, 0, .linear, .{ .point_0 = .{ .x = 416, .y = 80 }, .point_1 = .{ .x = 416, .y = 128 }, .color_0 = 3, .color_1 = 4 }) ++
+        builder_16.outlineFillRectangles(1, 1.0, .flat, 0, .linear, .{ .point_0 = .{ .x = 416, .y = 80 }, .point_1 = .{ .x = 416, .y = 128 }, .color_0 = 3, .color_1 = 4 }) ++
         builder_16.rectangle(384, 80, 64, 48) ++
-        builder_16.outlineFillRectangles(1, 6.0, .flat, 0, .radial, .{ .point_0 = .{ .x = 416, .y = 168 }, .point_1 = .{ .x = 416, .y = 216 }, .color_0 = 3, .color_1 = 4 }) ++
+        builder_16.outlineFillRectangles(1, 2.0, .flat, 0, .radial, .{ .point_0 = .{ .x = 416, .y = 168 }, .point_1 = .{ .x = 416, .y = 216 }, .color_0 = 3, .color_1 = 4 }) ++
         builder_16.rectangle(384, 144, 64, 48) ++
-        builder_16.outlineFillRectangles(1, 6.0, .linear, .{ .point_0 = .{ .x = 496, .y = 16 }, .point_1 = .{ .x = 496, .y = 64 }, .color_0 = 1, .color_1 = 2 }, .flat, 3) ++
+        builder_16.outlineFillRectangles(1, 3.0, .linear, .{ .point_0 = .{ .x = 496, .y = 16 }, .point_1 = .{ .x = 496, .y = 64 }, .color_0 = 1, .color_1 = 2 }, .flat, 3) ++
         builder_16.rectangle(464, 16, 64, 48) ++
-        builder_16.outlineFillRectangles(1, 6.0, .linear, .{ .point_0 = .{ .x = 496, .y = 80 }, .point_1 = .{ .x = 496, .y = 128 }, .color_0 = 1, .color_1 = 2 }, .linear, .{ .point_0 = .{ .x = 496, .y = 80 }, .point_1 = .{ .x = 496, .y = 128 }, .color_0 = 3, .color_1 = 4 }) ++
+        builder_16.outlineFillRectangles(1, 4.0, .linear, .{ .point_0 = .{ .x = 496, .y = 80 }, .point_1 = .{ .x = 496, .y = 128 }, .color_0 = 1, .color_1 = 2 }, .linear, .{ .point_0 = .{ .x = 496, .y = 80 }, .point_1 = .{ .x = 496, .y = 128 }, .color_0 = 3, .color_1 = 4 }) ++
         builder_16.rectangle(464, 80, 64, 48) ++
-        builder_16.outlineFillRectangles(1, 6.0, .linear, .{ .point_0 = .{ .x = 496, .y = 144 }, .point_1 = .{ .x = 496, .y = 192 }, .color_0 = 1, .color_1 = 2 }, .radial, .{ .point_0 = .{ .x = 496, .y = 168 }, .point_1 = .{ .x = 496, .y = 216 }, .color_0 = 3, .color_1 = 4 }) ++
+        builder_16.outlineFillRectangles(1, 5.0, .linear, .{ .point_0 = .{ .x = 496, .y = 144 }, .point_1 = .{ .x = 496, .y = 192 }, .color_0 = 1, .color_1 = 2 }, .radial, .{ .point_0 = .{ .x = 496, .y = 168 }, .point_1 = .{ .x = 496, .y = 216 }, .color_0 = 3, .color_1 = 4 }) ++
         builder_16.rectangle(464, 144, 64, 48) ++
         builder_16.outlineFillRectangles(1, 6.0, .radial, .{ .point_0 = .{ .x = 576, .y = 40 }, .point_1 = .{ .x = 576, .y = 88 }, .color_0 = 1, .color_1 = 2 }, .flat, 3) ++
         builder_16.rectangle(544, 16, 64, 48) ++
-        builder_16.outlineFillRectangles(1, 6.0, .radial, .{ .point_0 = .{ .x = 576, .y = 104 }, .point_1 = .{ .x = 576, .y = 150 }, .color_0 = 1, .color_1 = 2 }, .linear, .{ .point_0 = .{ .x = 576, .y = 80 }, .point_1 = .{ .x = 576, .y = 128 }, .color_0 = 3, .color_1 = 4 }) ++
+        builder_16.outlineFillRectangles(1, 7.0, .radial, .{ .point_0 = .{ .x = 576, .y = 104 }, .point_1 = .{ .x = 576, .y = 150 }, .color_0 = 1, .color_1 = 2 }, .linear, .{ .point_0 = .{ .x = 576, .y = 80 }, .point_1 = .{ .x = 576, .y = 128 }, .color_0 = 3, .color_1 = 4 }) ++
         builder_16.rectangle(544, 80, 64, 48) ++
-        builder_16.outlineFillRectangles(1, 6.0, .radial, .{ .point_0 = .{ .x = 576, .y = 168 }, .point_1 = .{ .x = 576, .y = 216 }, .color_0 = 1, .color_1 = 2 }, .radial, .{ .point_0 = .{ .x = 576, .y = 168 }, .point_1 = .{ .x = 576, .y = 216 }, .color_0 = 3, .color_1 = 4 }) ++
+        builder_16.outlineFillRectangles(1, 8.0, .radial, .{ .point_0 = .{ .x = 576, .y = 168 }, .point_1 = .{ .x = 576, .y = 216 }, .color_0 = 1, .color_1 = 2 }, .radial, .{ .point_0 = .{ .x = 576, .y = 168 }, .point_1 = .{ .x = 576, .y = 216 }, .color_0 = 3, .color_1 = 4 }) ++
         builder_16.rectangle(544, 144, 64, 48) ++
+        // Outline Fill Polygon
         builder_16.end_of_document;
 };
