@@ -33,6 +33,39 @@ pub fn parse(allocator: *std.mem.Allocator, reader: anytype) !parsing.Parser(@Ty
     return try parsing.Parser(@TypeOf(reader)).init(allocator, reader);
 }
 
+pub fn renderStream(
+    /// Allocator for temporary allocations
+    allocator: *std.mem.Allocator,
+    /// A struct that exports a single function `setPixel(x: isize, y: isize, color: [4]u8) void` as well as two fields width and height
+    framebuffer: anytype,
+    /// The icon data
+    reader: anytype,
+) !void {
+    var parser = try parse(allocator, reader);
+    defer parser.deinit();
+
+    while (try parser.next()) |cmd| {
+        try rendering.render(
+            framebuffer,
+            parser.header,
+            parser.color_table,
+            cmd,
+        );
+    }
+}
+
+pub fn render(
+    /// Allocator for temporary allocations
+    allocator: *std.mem.Allocator,
+    /// A struct that exports a single function `setPixel(x: isize, y: isize, color: [4]u8) void` as well as two fields width and height
+    framebuffer: anytype,
+    /// The icon data
+    icon: []const u8,
+) !void {
+    var stream = std.io.fixedBufferStream(icon);
+    return try renderStream(allocator, framebuffer, stream.reader());
+}
+
 comptime {
     if (std.builtin.is_test) {
         _ = @import("builder.zig"); // import file for tests

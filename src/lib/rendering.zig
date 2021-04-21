@@ -11,7 +11,14 @@ pub fn isFramebuffer(comptime T: type) bool {
     const Framebuffer = if (@typeInfo(T) == .Pointer)
         std.meta.Child(T)
     else
-        @TypeOf(T);
+        T;
+    // @compileLog(
+    //     T,
+    //     Framebuffer,
+    //     std.meta.trait.hasFn("setPixel")(Framebuffer),
+    //     std.meta.trait.hasField("width")(Framebuffer),
+    //     std.meta.trait.hasField("height")(Framebuffer),
+    // );
     return std.meta.trait.hasFn("setPixel")(Framebuffer) and
         std.meta.trait.hasField("width")(Framebuffer) and
         std.meta.trait.hasField("height")(Framebuffer);
@@ -30,14 +37,22 @@ pub fn render(
 ) !void {
     if (!comptime isFramebuffer(@TypeOf(framebuffer)))
         @compileError("framebuffer needs fields width, height and function setPixel!");
+    const fb_width = @intToFloat(f32, framebuffer.width);
+    const fb_height = @intToFloat(f32, framebuffer.height);
     // std.debug.print("render {}\n", .{cmd});
+
+    var painter = Painter{
+        .scale_x = fb_width / header.width,
+        .scale_y = fb_height / header.height,
+    };
+
     switch (cmd) {
         .fill_polygon => |data| {
-            fillPolygon(framebuffer, color_table, data.style, data.vertices);
+            painter.fillPolygon(framebuffer, color_table, data.style, data.vertices);
         },
         .fill_rectangles => |data| {
             for (data.rectangles) |rect| {
-                fillRectangle(framebuffer, rect.x, rect.y, rect.width, rect.height, color_table, data.style);
+                painter.fillRectangle(framebuffer, rect.x, rect.y, rect.width, rect.height, color_table, data.style);
             }
         },
         .fill_path => |data| {
@@ -46,17 +61,17 @@ pub fn render(
             try point_store.append(data.start);
             try renderPath(&point_store, data.path);
 
-            fillPolygon(framebuffer, color_table, data.style, point_store.items());
+            painter.fillPolygon(framebuffer, color_table, data.style, point_store.items());
         },
         .draw_lines => |data| {
             for (data.lines) |line| {
-                drawLine(framebuffer, color_table, data.style, data.line_width, data.line_width, line);
+                painter.drawLine(framebuffer, color_table, data.style, data.line_width, data.line_width, line);
             }
         },
         .draw_line_strip => |data| {
             for (data.vertices[1..]) |end, i| {
                 const start = data.vertices[i]; // is actually [i-1], but we access the slice off-by-one!
-                drawLine(framebuffer, color_table, data.style, data.line_width, data.line_width, .{
+                painter.drawLine(framebuffer, color_table, data.style, data.line_width, data.line_width, .{
                     .start = start,
                     .end = end,
                 });
@@ -67,7 +82,7 @@ pub fn render(
             for (data.vertices) |end, end_index| {
                 const start = data.vertices[start_index];
 
-                drawLine(framebuffer, color_table, data.style, data.line_width, data.line_width, .{
+                painter.drawLine(framebuffer, color_table, data.style, data.line_width, data.line_width, .{
                     .start = start,
                     .end = end,
                 });
@@ -84,7 +99,7 @@ pub fn render(
 
             for (vertices[1..]) |end, i| {
                 const start = vertices[i]; // is actually [i-1], but we access the slice off-by-one!
-                drawLine(framebuffer, color_table, data.style, data.line_width, data.line_width, .{
+                painter.drawLine(framebuffer, color_table, data.style, data.line_width, data.line_width, .{
                     .start = start,
                     .end = end,
                 });
@@ -95,15 +110,15 @@ pub fn render(
         },
         .outline_fill_rectangles => |data| {
             for (data.rectangles) |rect| {
-                fillRectangle(framebuffer, rect.x, rect.y, rect.width, rect.height, color_table, data.fill_style);
+                painter.fillRectangle(framebuffer, rect.x, rect.y, rect.width, rect.height, color_table, data.fill_style);
                 var tl = Point{ .x = rect.x, .y = rect.y };
                 var tr = Point{ .x = rect.x + rect.width, .y = rect.y };
                 var bl = Point{ .x = rect.x, .y = rect.y + rect.height };
                 var br = Point{ .x = rect.x + rect.width, .y = rect.y + rect.height };
-                drawLine(framebuffer, color_table, data.line_style, data.line_width, data.line_width, .{ .start = tl, .end = tr });
-                drawLine(framebuffer, color_table, data.line_style, data.line_width, data.line_width, .{ .start = tr, .end = br });
-                drawLine(framebuffer, color_table, data.line_style, data.line_width, data.line_width, .{ .start = br, .end = bl });
-                drawLine(framebuffer, color_table, data.line_style, data.line_width, data.line_width, .{ .start = bl, .end = tl });
+                painter.drawLine(framebuffer, color_table, data.line_style, data.line_width, data.line_width, .{ .start = tl, .end = tr });
+                painter.drawLine(framebuffer, color_table, data.line_style, data.line_width, data.line_width, .{ .start = tr, .end = br });
+                painter.drawLine(framebuffer, color_table, data.line_style, data.line_width, data.line_width, .{ .start = br, .end = bl });
+                painter.drawLine(framebuffer, color_table, data.line_style, data.line_width, data.line_width, .{ .start = bl, .end = tl });
             }
         },
         .outline_fill_path => |data| {
@@ -206,6 +221,14 @@ test "point conversion" {
     }
 }
 
+fn length2(p: Point) f32 {
+    return dot(p, p);
+}
+
+fn length(p: Point) f32 {
+    return std.math.sqrt(length2(p));
+}
+
 fn distance2(p1: Point, p2: Point) f32 {
     const dx = p1.x - p2.x;
     const dy = p1.y - p2.y;
@@ -222,10 +245,6 @@ fn dot(p1: Point, p2: Point) f32 {
 
 fn sub(p1: Point, p2: Point) Point {
     return Point{ .x = p1.x - p2.x, .y = p1.y - p2.y };
-}
-
-fn length(p: Point) f32 {
-    return std.math.sqrt(p.x * p.x + p.y * p.y);
 }
 
 fn getProjectedPointOnLine(v1: Point, v2: Point, p: Point) Point {
@@ -289,6 +308,138 @@ fn sampleStlye(color_table: []const Color, style: Style, x: i16, y: i16) Color {
     };
 }
 
+const Painter = struct {
+    scale_x: f32,
+    scale_y: f32,
+
+    fn fillPolygon(self: Painter, framebuffer: anytype, color_table: []const Color, style: Style, points: []const Point) void {
+        std.debug.assert(points.len >= 3);
+
+        var min_x: i16 = std.math.maxInt(i16);
+        var min_y: i16 = std.math.maxInt(i16);
+        var max_x: i16 = std.math.minInt(i16);
+        var max_y: i16 = std.math.minInt(i16);
+
+        for (points) |pt| {
+            min_x = std.math.min(min_x, @floatToInt(i16, std.math.floor(self.scale_x * pt.x)));
+            min_y = std.math.min(min_y, @floatToInt(i16, std.math.floor(self.scale_y * pt.y)));
+            max_x = std.math.max(max_x, @floatToInt(i16, std.math.ceil(self.scale_x * pt.x)));
+            max_y = std.math.max(max_y, @floatToInt(i16, std.math.ceil(self.scale_y * pt.y)));
+        }
+
+        // limit to valid screen area
+        min_x = std.math.max(min_x, 0);
+        min_y = std.math.max(min_y, 0);
+
+        max_x = std.math.min(max_x, @intCast(i16, framebuffer.width - 1));
+        max_y = std.math.min(max_y, @intCast(i16, framebuffer.height - 1));
+
+        var y: i16 = min_y;
+        while (y <= max_y) : (y += 1) {
+            var x: i16 = min_x;
+            while (x <= max_x) : (x += 1) {
+                var inside = false;
+
+                // compute "center" of the pixel
+                var p = pointFromInts(x, y);
+                p.x /= self.scale_x;
+                p.y /= self.scale_y;
+
+                // free after https://stackoverflow.com/a/17490923
+
+                var j = points.len - 1;
+                for (points) |p0, i| {
+                    defer j = i;
+                    const p1 = points[j];
+
+                    if ((p0.y > p.y) != (p1.y > p.y) and p.x < (p1.x - p0.x) * (p.y - p0.y) / (p1.y - p0.y) + p0.x) {
+                        inside = !inside;
+                    }
+                }
+                if (inside) {
+                    framebuffer.setPixel(x, y, sampleStlye(color_table, style, x, y).toArray());
+                }
+            }
+        }
+    }
+
+    fn fillRectangle(self: Painter, framebuffer: anytype, x: f32, y: f32, width: f32, height: f32, color_table: []const Color, style: Style) void {
+        const xlimit = @floatToInt(i16, std.math.ceil(self.scale_x * (x + width)));
+        const ylimit = @floatToInt(i16, std.math.ceil(self.scale_y * (y + height)));
+
+        var py = @floatToInt(i16, std.math.floor(self.scale_y * y));
+        while (py < ylimit) : (py += 1) {
+            var px = @floatToInt(i16, std.math.floor(self.scale_x * x));
+            while (px < xlimit) : (px += 1) {
+                framebuffer.setPixel(px, py, sampleStlye(color_table, style, px, py).toArray());
+            }
+        }
+    }
+
+    fn drawLine(self: Painter, framebuffer: anytype, color_table: []const Color, style: Style, width_start: f32, width_end: f32, line: tvg.Line) void {
+        const len_fract = distance(line.start, line.end);
+
+        const num_dots = @floatToInt(usize, std.math.ceil(len_fract));
+
+        if (num_dots == 0)
+            return;
+
+        // std.debug.print("draw line with len={d}, dots={d}\n", .{ len_fract, num_dots });
+
+        var i: usize = 0;
+        while (i <= num_dots) : (i += 1) {
+            const f = @intToFloat(f32, i) / @intToFloat(f32, num_dots);
+
+            const pos = Point{
+                .x = lerp(line.start.x, line.end.x, f),
+                .y = lerp(line.start.y, line.end.y, f),
+            };
+            const width = lerp(width_start, width_end, f);
+
+            // std.debug.print("{d}\t{d} {d}\t{d}\n", .{ f, pos.x, pos.y, width });
+
+            self.drawCircle(
+                framebuffer,
+                color_table,
+                style,
+                pos,
+                width / 2.0, // circle uses radius, we use width/diameter
+            );
+        }
+    }
+
+    fn drawCircle(self: Painter, framebuffer: anytype, color_table: []const Color, style: Style, location: Point, radius: f32) void {
+        if (radius < 0)
+            return;
+
+        const left = @floatToInt(i16, std.math.floor(self.scale_x * (location.x - radius) - 0.5));
+        const right = @floatToInt(i16, std.math.ceil(self.scale_y * (location.x + radius) + 0.5));
+
+        const top = @floatToInt(i16, std.math.floor(self.scale_x * (location.y - radius) - 0.5));
+        const bottom = @floatToInt(i16, std.math.ceil(self.scale_y * (location.y + radius) + 0.5));
+
+        const r2 = radius * radius;
+        if (r2 > 0.77) {
+            var y: i16 = top;
+            while (y <= bottom) : (y += 1) {
+                var x: i16 = left;
+                while (x <= right) : (x += 1) {
+                    const pt = pointFromInts(x, y);
+                    var delta = sub(pt, location);
+                    delta.x /= self.scale_x;
+                    delta.y /= self.scale_y;
+                    const dist = length2(delta);
+                    if (dist <= r2)
+                        framebuffer.setPixel(x, y, sampleStlye(color_table, style, x, y).toArray());
+                }
+            }
+        } else {
+            const pt = pointToInts(location);
+            framebuffer.setPixel(pt.x, pt.y, sampleStlye(color_table, style, pt.x, pt.y).toArray());
+        }
+    }
+};
+
 const sRGB_gamma = 2.2;
 
 fn gamma2linear(v: f32) u8 {
@@ -308,127 +459,6 @@ fn lerp_sRGB(c0: Color, c1: Color, f_unchecked: f32) Color {
         .b = gamma2linear(lerp(linear2gamma(c0.b), linear2gamma(c1.b), f)),
         .a = @floatToInt(u8, lerp(@intToFloat(f32, c0.a), @intToFloat(f32, c0.a), f)),
     };
-}
-
-fn fillPolygon(framebuffer: anytype, color_table: []const Color, style: Style, points: []const Point) void {
-    std.debug.assert(points.len >= 3);
-
-    var min_x: i16 = std.math.maxInt(i16);
-    var min_y: i16 = std.math.maxInt(i16);
-    var max_x: i16 = std.math.minInt(i16);
-    var max_y: i16 = std.math.minInt(i16);
-
-    for (points) |pt| {
-        min_x = std.math.min(min_x, @floatToInt(i16, std.math.floor(pt.x)));
-        min_y = std.math.min(min_y, @floatToInt(i16, std.math.floor(pt.y)));
-        max_x = std.math.max(max_x, @floatToInt(i16, std.math.ceil(pt.x)));
-        max_y = std.math.max(max_y, @floatToInt(i16, std.math.ceil(pt.y)));
-    }
-
-    // limit to valid screen area
-    min_x = std.math.max(min_x, 0);
-    min_y = std.math.max(min_y, 0);
-
-    max_x = std.math.min(max_x, @intCast(i16, framebuffer.width - 1));
-    max_y = std.math.min(max_y, @intCast(i16, framebuffer.height - 1));
-
-    var y: i16 = min_y;
-    while (y <= max_y) : (y += 1) {
-        var x: i16 = min_x;
-        while (x <= max_x) : (x += 1) {
-            var inside = false;
-
-            // compute "center" of the pixel
-            const p = pointFromInts(x, y);
-
-            // free after https://stackoverflow.com/a/17490923
-
-            var j = points.len - 1;
-            for (points) |p0, i| {
-                defer j = i;
-                const p1 = points[j];
-
-                if ((p0.y > p.y) != (p1.y > p.y) and p.x < (p1.x - p0.x) * (p.y - p0.y) / (p1.y - p0.y) + p0.x) {
-                    inside = !inside;
-                }
-            }
-            if (inside) {
-                framebuffer.setPixel(x, y, sampleStlye(color_table, style, x, y).toArray());
-            }
-        }
-    }
-}
-
-fn fillRectangle(framebuffer: anytype, x: f32, y: f32, width: f32, height: f32, color_table: []const Color, style: Style) void {
-    const xlimit = @floatToInt(i16, std.math.ceil(x + width));
-    const ylimit = @floatToInt(i16, std.math.ceil(y + height));
-
-    var py = @floatToInt(i16, std.math.floor(y));
-    while (py < ylimit) : (py += 1) {
-        var px = @floatToInt(i16, std.math.floor(x));
-        while (px < xlimit) : (px += 1) {
-            framebuffer.setPixel(px, py, sampleStlye(color_table, style, px, py).toArray());
-        }
-    }
-}
-
-fn drawLine(framebuffer: anytype, color_table: []const Color, style: Style, width_start: f32, width_end: f32, line: tvg.Line) void {
-    const len_fract = distance(line.start, line.end);
-
-    const num_dots = @floatToInt(usize, std.math.ceil(len_fract));
-
-    if (num_dots == 0)
-        return;
-
-    // std.debug.print("draw line with len={d}, dots={d}\n", .{ len_fract, num_dots });
-
-    var i: usize = 0;
-    while (i <= num_dots) : (i += 1) {
-        const f = @intToFloat(f32, i) / @intToFloat(f32, num_dots);
-
-        const pos = Point{
-            .x = lerp(line.start.x, line.end.x, f),
-            .y = lerp(line.start.y, line.end.y, f),
-        };
-        const width = lerp(width_start, width_end, f);
-
-        // std.debug.print("{d}\t{d} {d}\t{d}\n", .{ f, pos.x, pos.y, width });
-
-        drawCircle(
-            framebuffer,
-            color_table,
-            style,
-            pos,
-            width / 2.0, // circle uses radius, we use width/diameter
-        );
-    }
-}
-
-fn drawCircle(framebuffer: anytype, color_table: []const Color, style: Style, location: Point, radius: f32) void {
-    if (radius < 0)
-        return;
-    const left = @floatToInt(i16, std.math.floor(location.x - radius - 0.5));
-    const right = @floatToInt(i16, std.math.ceil(location.x + radius + 0.5));
-
-    const top = @floatToInt(i16, std.math.floor(location.y - radius - 0.5));
-    const bottom = @floatToInt(i16, std.math.ceil(location.y + radius + 0.5));
-
-    const r2 = radius * radius;
-    if (r2 > 0.77) {
-        var y: i16 = top;
-        while (y <= bottom) : (y += 1) {
-            var x: i16 = left;
-            while (x <= right) : (x += 1) {
-                const pt = pointFromInts(x, y);
-                const dist = distance2(pt, location);
-                if (dist <= r2)
-                    framebuffer.setPixel(x, y, sampleStlye(color_table, style, x, y).toArray());
-            }
-        }
-    } else {
-        const pt = pointToInts(location);
-        framebuffer.setPixel(pt.x, pt.y, sampleStlye(color_table, style, pt.x, pt.y).toArray());
-    }
 }
 
 fn lerp(a: f32, b: f32, x: f32) f32 {
