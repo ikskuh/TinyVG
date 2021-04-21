@@ -6,8 +6,8 @@
 
 | File Type | Size (Bytes) | Size (Relative) |
 |-----------|--------------|-----------------|
-| TVG       | 72  | 100%            |
-| PNG       | 86  | 119% |
+| TVG       | 42  | 100%            |
+| PNG       | 86  | 204% |
 
 <details>
 <summary>Textual Representation</summary>
@@ -20,33 +20,12 @@
   )
   (
      (
-       fill_polygon
+       fill_rectangles
        (flat 0)
        (
-         (6 12)
-         (42 12)
-         (42 16)
-         (6 16)
-       )
-     )
-     (
-       fill_polygon
-       (flat 0)
-       (
-         (6 22)
-         (42 22)
-         (42 26)
-         (6 26)
-       )
-     )
-     (
-       fill_polygon
-       (flat 0)
-       (
-         (6 32)
-         (42 32)
-         (42 36)
-         (6 36)
+         (6 12 36 4)
+         (6 22 36 4)
+         (6 32 36 4)
        )
      )
   )

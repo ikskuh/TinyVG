@@ -58,8 +58,7 @@ pub fn render(
         .fill_path => |data| {
             var point_store = FixedBufferList(Point, 256){};
 
-            try point_store.append(data.start);
-            try renderPath(&point_store, data.path);
+            try renderPath(&point_store, data.start, data.path);
 
             painter.fillPolygon(framebuffer, color_table, data.style, point_store.items());
         },
@@ -92,8 +91,7 @@ pub fn render(
         .draw_line_path => |data| {
             var point_store = FixedBufferList(Point, 256){};
 
-            try point_store.append(data.start);
-            try renderPath(&point_store, data.path);
+            try renderPath(&point_store, data.start, data.path);
 
             const vertices = point_store.items();
 
@@ -127,14 +125,35 @@ pub fn render(
     }
 }
 
-fn renderPath(point_store: anytype, nodes: []const tvg.parsing.PathNode) !void {
+pub fn renderPath(point_list: anytype, start: Point, nodes: []const tvg.parsing.PathNode) !void {
+    const Helper = struct {
+        list: @TypeOf(point_list),
+        last: Point,
+
+        fn append(self: *@This(), pt: Point) !void {
+            try self.list.append(pt);
+            self.last = pt;
+        }
+
+        fn back(self: @This()) Point {
+            return self.last;
+        }
+    };
+
+    var point_store = Helper{
+        .list = point_list,
+        .last = undefined,
+    };
+
+    try point_store.append(start);
+
     for (nodes) |node, node_index| {
         switch (node) {
             .line => |pt| try point_store.append(pt.data),
-            .horiz => |x| try point_store.append(Point{ .x = x.data, .y = point_store.back().?.y }),
-            .vert => |y| try point_store.append(Point{ .x = point_store.back().?.x, .y = y.data }),
+            .horiz => |x| try point_store.append(Point{ .x = x.data, .y = point_store.back().y }),
+            .vert => |y| try point_store.append(Point{ .x = point_store.back().x, .y = y.data }),
             .bezier => |bezier| {
-                var previous = point_store.back().?;
+                var previous = point_store.back();
 
                 const oct0_x = [4]f32{ previous.x, bezier.data.c0.x, bezier.data.c1.x, bezier.data.p1.x };
                 const oct0_y = [4]f32{ previous.y, bezier.data.c0.y, bezier.data.c1.y, bezier.data.p1.y };
@@ -164,7 +183,7 @@ fn renderPath(point_store: anytype, nodes: []const tvg.parsing.PathNode) !void {
                     // .close must be last!
                     return error.InvalidData;
                 }
-                try point_store.append(point_store.front().?);
+                try point_store.append(start);
             },
         }
     }
@@ -384,8 +403,6 @@ const Painter = struct {
         if (num_dots == 0)
             return;
 
-        // std.debug.print("draw line with len={d}, dots={d}\n", .{ len_fract, num_dots });
-
         var i: usize = 0;
         while (i <= num_dots) : (i += 1) {
             const f = @intToFloat(f32, i) / @intToFloat(f32, num_dots);
@@ -395,8 +412,6 @@ const Painter = struct {
                 .y = lerp(line.start.y, line.end.y, f),
             };
             const width = lerp(width_start, width_end, f);
-
-            // std.debug.print("{d}\t{d} {d}\t{d}\n", .{ f, pos.x, pos.y, width });
 
             self.drawCircle(
                 framebuffer,

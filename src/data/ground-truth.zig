@@ -19,21 +19,10 @@ pub const app_menu = blk: {
         builder.colorTable(&[_]tvg.Color{
         tvg.Color.fromString("000000") catch unreachable,
     }) ++
-        builder.fillPolygon(4, .flat, 0) ++
-        builder.point(6, 12) ++
-        builder.point(42, 12) ++
-        builder.point(42, 16) ++
-        builder.point(6, 16) ++
-        builder.fillPolygon(4, .flat, 0) ++
-        builder.point(6, 22) ++
-        builder.point(42, 22) ++
-        builder.point(42, 26) ++
-        builder.point(6, 26) ++
-        builder.fillPolygon(4, .flat, 0) ++
-        builder.point(6, 32) ++
-        builder.point(42, 32) ++
-        builder.point(42, 36) ++
-        builder.point(6, 36) ++
+        builder.fillRectangles(3, .flat, 0) ++
+        builder.rectangle(6, 12, 36, 4) ++
+        builder.rectangle(6, 22, 36, 4) ++
+        builder.rectangle(6, 32, 36, 4) ++
         builder.end_of_document;
 };
 
