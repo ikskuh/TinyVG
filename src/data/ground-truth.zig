@@ -391,22 +391,22 @@ pub const feature_showcase = blk: {
         builder_16.drawPath(3, 2.0, .flat, 1) ++
         builder_16.point(16 + 0, 464 + 0) ++
         builder_16.path.line(16 + 16, 464 + 16) ++
-        builder_16.path.arc_ellipse(10, 15, 45, false, false, 16 + 48, 464 + 48) ++
+        builder_16.path.arc_ellipse(24, 32, 30, false, false, 16 + 48, 464 + 48) ++
         builder_16.path.line(16 + 64, 464 + 64) ++
         builder_16.drawPath(3, 2.0, .flat, 1) ++
         builder_16.point(96 + 0, 464 + 0) ++
         builder_16.path.line(96 + 16, 464 + 16) ++
-        builder_16.path.arc_ellipse(10, 15, 45, false, true, 96 + 48, 464 + 48) ++
+        builder_16.path.arc_ellipse(24, 32, 30, false, true, 96 + 48, 464 + 48) ++
         builder_16.path.line(96 + 64, 464 + 64) ++
         builder_16.drawPath(3, 2.0, .flat, 1) ++
         builder_16.point(176 + 0, 464 + 0) ++
         builder_16.path.line(176 + 16, 464 + 16) ++
-        builder_16.path.arc_ellipse(10, 15, 45, true, false, 176 + 48, 464 + 48) ++
+        builder_16.path.arc_ellipse(24, 32, 30, true, false, 176 + 48, 464 + 48) ++
         builder_16.path.line(176 + 64, 464 + 64) ++
         builder_16.drawPath(3, 2.0, .flat, 1) ++
         builder_16.point(256 + 0, 464 + 0) ++
         builder_16.path.line(256 + 16, 464 + 16) ++
-        builder_16.path.arc_ellipse(10, 15, 45, true, true, 256 + 48, 464 + 48) ++
+        builder_16.path.arc_ellipse(24, 32, 30, true, true, 256 + 48, 464 + 48) ++
         builder_16.path.line(256 + 64, 464 + 64) ++
         builder_16.end_of_document;
 };
