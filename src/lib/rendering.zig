@@ -234,7 +234,7 @@ pub fn renderEllipse(
     turn_left: bool,
 ) !void {
     const ratio = radius_x / radius_y;
-    const rot = rotationMat(toRadians(90-rotation));
+    const rot = rotationMat(toRadians(rotation-90));
     const transform = [2][2]f32{
         rot[0],
         .{ rot[1][0] * ratio, rot[1][1] * ratio }
@@ -278,7 +278,7 @@ fn renderCircle(
 
     const angle = std.math.asin(sqrt(len_squared) / r) * 2;
     const arc = if (large_arc) (std.math.tau - angle) else angle;
-    const step_mat = rotationMat((if (turn_left) arc else -arc) / circle_divs);
+    const step_mat = rotationMat((if (turn_left) -arc else arc) / circle_divs);
 
     var pos = sub(p0, center);
     var i: usize = 0;
@@ -296,8 +296,8 @@ fn rotationMat(angle: f32) [2][2]f32 {
     const s = sin(angle);
     const c = cos(angle);
     return .{
-        .{ c, s },
-        .{ -s, c }
+        .{ c, -s },
+        .{ s, c }
     };
 }
 
