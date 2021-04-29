@@ -7,6 +7,11 @@ const Rectangle = tvg.Rectangle;
 const Color = tvg.Color;
 const Style = tvg.parsing.Style;
 
+
+// TODO: Make these configurable
+const circle_divs = 100;
+const bezier_divs = 16;
+
 pub fn isFramebuffer(comptime T: type) bool {
     const Framebuffer = if (@typeInfo(T) == .Pointer)
         std.meta.Child(T)
@@ -28,9 +33,9 @@ pub fn isFramebuffer(comptime T: type) bool {
 pub fn render(
     /// A struct that exports a single function `setPixel(x: isize, y: isize, color: [4]u8) void` as well as two fields width and height
     framebuffer: anytype,
-    /// The parsed header of a TVG 
+    /// The parsed header of a TVG
     header: parsing.Header,
-    /// The color lookup table 
+    /// The color lookup table
     color_table: []const tvg.Color,
     /// The command that should be executed.
     cmd: parsing.DrawCommand,
@@ -163,11 +168,9 @@ pub fn renderPath(point_list: anytype, start: Point, nodes: []const tvg.parsing.
                 const oct0_x = [4]f32{ previous.x, bezier.data.c0.x, bezier.data.c1.x, bezier.data.p1.x };
                 const oct0_y = [4]f32{ previous.y, bezier.data.c0.y, bezier.data.c1.y, bezier.data.p1.y };
 
-                // always 16 subdivs
-                const divs: usize = 16;
                 var i: usize = 1;
-                while (i < divs) : (i += 1) {
-                    const f = @intToFloat(f32, i) / @intToFloat(f32, divs);
+                while (i < bezier_divs) : (i += 1) {
+                    const f = @intToFloat(f32, i) / @intToFloat(f32, bezier_divs);
 
                     const x = lerpAndReduceToOne(4, oct0_x, f);
                     const y = lerpAndReduceToOne(4, oct0_y, f);
@@ -179,27 +182,25 @@ pub fn renderPath(point_list: anytype, start: Point, nodes: []const tvg.parsing.
             },
             // /home/felix/projects/forks/svg-curve-lib/src/js/svg-curve-lib.js
             .arc_circle => |circle| {
-                try renderEllipse(
+                try renderCircle(
                     &point_store,
                     point_store.back(),
+                    circle.data.target,
                     circle.data.radius,
-                    circle.data.radius,
-                    0.0,
                     circle.data.large_arc,
                     circle.data.sweep,
-                    circle.data.target,
                 );
             },
             .arc_ellipse => |ellipse| {
                 try renderEllipse(
                     &point_store,
                     point_store.back(),
+                    ellipse.data.target,
                     ellipse.data.radius_x,
                     ellipse.data.radius_y,
                     ellipse.data.rotation,
                     ellipse.data.large_arc,
                     ellipse.data.sweep,
-                    ellipse.data.target,
                 );
             },
             .close => {
@@ -214,153 +215,97 @@ pub fn renderPath(point_list: anytype, start: Point, nodes: []const tvg.parsing.
 }
 
 fn toRadians(a: f32) f32 {
-    return std.math.pi * a / 180.0;
+    return std.math.pi / 180.0 * a;
 }
 
-fn angleBetween(v0: Point, v1: Point) f32 {
-    const p = v0.x * v1.x + v0.y * v1.y;
-    const n = std.math.sqrt((pow2(v0.x) + pow2(v0.y)) * (pow2(v1.x) + pow2(v1.y)));
-    const sign = v0.x * v1.y - (if (v0.y * v1.x < 0) @as(f32, -1) else 1);
-    const angle = sign * std.math.acos(p / n);
-
-    //var angle = Math.atan2(v0.y, v0.x) - Math.atan2(v1.y,  v1.x);
-
-    return angle;
-}
-
-fn pow2(a: f32) f32 {
-    return a * a;
-}
+const cos = std.math.cos;
+const sin = std.math.sin;
+const sqrt = std.math.sqrt;
+const abs = std.math.fabs;
 
 pub fn renderEllipse(
     point_list: anytype,
     p0: Point,
+    p1: Point,
     radius_x: f32,
     radius_y: f32,
     rotation: f32,
     large_arc: bool,
-    sweep: bool,
-    p1: Point,
+    turn_left: bool,
 ) !void {
-    std.log.info("draw ellipse arc: ({d} {d}) {d} {d} {d} {} {} ({d} {d})", .{
-        p0.x,     p0.y,
-        radius_x, radius_y,
-        rotation, large_arc,
-        sweep,    p1.x,
-        p1.y,
-    });
+    const ratio = radius_x / radius_y;
+    const rot = rotationMat(toRadians(90-rotation));
+    const transform = [2][2]f32{
+        rot[0],
+        .{ rot[1][0] * ratio, rot[1][1] * ratio }
+    };
+    const transform_back = [2][2]f32{
+        .{  rot[1][1], -rot[0][1] / ratio },
+        .{ -rot[1][0],  rot[0][0] / ratio },
+    };
 
-    const cos = std.math.cos;
-    const sin = std.math.sin;
-    const sqrt = std.math.sqrt;
-    const abs = std.math.fabs;
+    var tmp = FixedBufferList(Point, circle_divs){};
+    renderCircle(&tmp, applyMat(transform, p0), applyMat(transform, p1), radius_x, large_arc, turn_left)
+        catch unreachable; // buffer is correctly sized
 
-    // In accordance to: http://www.w3.org/TR/SVG/implnote.html#ArcOutOfRangeParameters
-    var rx = abs(radius_x);
-    var ry = abs(radius_y);
-    const xAxisRotationRadians = toRadians(@mod(rotation, 360.0));
-
-    try point_list.append(p0);
-
-    // If the endpoints are identical, then this is equivalent to omitting the elliptical arc segment entirely.
-    if (distance(p0, p1) < 0.25) {
-        return;
+    for (tmp.buffer) |p| {
+        try point_list.append(applyMat(transform_back, p));
     }
+}
 
-    // If rx = 0 or ry = 0 then this arc is treated as a straight line segment joining the endpoints.
-    if (std.math.approxEqAbs(f32, rx, 0.0, 1e-3) or std.math.approxEqAbs(f32, ry, 0.0, 1e-3)) {
-        try point_list.append(p1);
-        return;
-    }
+fn renderCircle(
+    point_list: anytype,
+    p0: Point,
+    p1: Point,
+    r: f32,
+    large_arc: bool,
+    turn_left: bool,
+) !void {
+    // Whether the center should be to the left of the vector from p0 to p1
+    const left_side = (turn_left and large_arc) or (!turn_left and !large_arc);
 
-    // Following "Conversion from endpoint to center parameterization"
-    // http://www.w3.org/TR/SVG/implnote.html#ArcConversionEndpointToCenter
+    const delta = scale(sub(p1, p0), 0.5);
+    const midpoint = add(p0, delta);
 
-    // Step #1: Compute transformedPoint
-    var dx = (p0.x - p1.x) / 2;
-    var dy = (p0.y - p1.y) / 2;
-    var transformedPoint = Point{
-        .x = cos(xAxisRotationRadians) * dx + sin(xAxisRotationRadians) * dy,
-        .y = -sin(xAxisRotationRadians) * dx + cos(xAxisRotationRadians) * dy,
-    };
-    // Ensure radii are large enough
-    var radiiCheck = pow2(transformedPoint.x) / pow2(rx) + pow2(transformedPoint.y) / pow2(ry);
-    if (radiiCheck > 1) {
-        rx = sqrt(radiiCheck) * rx;
-        ry = sqrt(radiiCheck) * ry;
-    }
+    // Vector from midpoint to center, but incorrect length
+    const radius_vec = if (left_side) Point{ .x = -delta.y, .y = delta.x }
+        else Point{ .x = delta.y, .y = -delta.x };
+    const len_squared = length2(radius_vec);
+    if (len_squared > r*r or r < 0) return error.InvalidRadius;
 
-    // Step #2: Compute transformedCenter
-    var cSquareNumerator = pow2(rx) * pow2(ry) - pow2(rx) * pow2(transformedPoint.y) - pow2(ry) * pow2(transformedPoint.x);
-    var cSquareRootDenom = pow2(rx) * pow2(transformedPoint.y) + pow2(ry) * pow2(transformedPoint.x);
+    const to_center = scale(radius_vec, sqrt(r*r / len_squared - 1));
+    const center = add(midpoint, to_center);
 
-    // Make sure this never drops below zero because of precision
-    var cRadicand = std.math.max(0.0, cSquareNumerator / cSquareRootDenom);
+    const angle = std.math.asin(sqrt(len_squared) / r) * 2;
+    const arc = if (large_arc) (std.math.tau - angle) else angle;
+    const step_mat = rotationMat((if (turn_left) arc else -arc) / circle_divs);
 
-    var cCoef = (if (large_arc != sweep) @as(f32, 1) else -1) * sqrt(cRadicand);
-    var transformedCenter = Point{
-        .x = cCoef * ((rx * transformedPoint.y) / ry),
-        .y = cCoef * (-(ry * transformedPoint.x) / rx),
-    };
-
-    // Step #3: Compute center
-    var center = Point{
-        .x = cos(xAxisRotationRadians) * transformedCenter.x - sin(xAxisRotationRadians) * transformedCenter.y + ((p0.x + p1.x) / 2),
-        .y = sin(xAxisRotationRadians) * transformedCenter.x + cos(xAxisRotationRadians) * transformedCenter.y + ((p0.y + p1.y) / 2),
-    };
-
-    // Step #4: Compute start/sweep angles
-    // Start angle of the elliptical arc prior to the stretch and rotate operations.
-    // Difference between the start and end angles
-    var startVector = Point{
-        .x = (transformedPoint.x - transformedCenter.x) / rx,
-        .y = (transformedPoint.y - transformedCenter.y) / ry,
-    };
-    var startAngle = angleBetween(Point{ .x = 1, .y = 0 }, startVector);
-
-    var endVector = Point{
-        .x = (-transformedPoint.x - transformedCenter.x) / rx,
-        .y = (-transformedPoint.y - transformedCenter.y) / ry,
-    };
-    var sweepAngle = angleBetween(startVector, endVector);
-
-    if (!sweep and (sweepAngle > 0)) {
-        sweepAngle -= 2 * std.math.pi;
-    } else if (sweep and (sweepAngle < 0)) {
-        sweepAngle += 2 * std.math.pi;
-    }
-    // We use % instead of `mod(..)` because we want it to be -360deg to 360deg(but actually in radians)
-    sweepAngle = @rem(sweepAngle, 2 * std.math.pi);
-
-    const subdiv = 100;
-    var i: usize = 1;
-    while (i < subdiv) : (i += 1) {
-        const t = @intToFloat(f32, i) / subdiv;
-
-        // From http://www.w3.org/TR/SVG/implnote.html#ArcParameterizationAlternatives
-        const angle = startAngle + (sweepAngle * t);
-        const ellipseComponentX = rx * cos(angle);
-        const ellipseComponentY = ry * sin(angle);
-
-        const point = Point{
-            .x = center.x + cos(xAxisRotationRadians) * ellipseComponentX - sin(xAxisRotationRadians) * ellipseComponentY,
-            .y = center.y + sin(xAxisRotationRadians) * ellipseComponentX + cos(xAxisRotationRadians) * ellipseComponentY,
-        };
+    var pos = sub(p0, center);
+    var i: usize = 0;
+    while (i < circle_divs - 1) : (i += 1) {
+        pos = applyMat(step_mat, pos);
+        const point = add(pos, center);
 
         try point_list.append(point);
-
-        // Attach some extra info to use
-        // point.ellipticalArcStartAngle = startAngle;
-        // point.ellipticalArcEndAngle = startAngle + sweepAngle;
-        // point.ellipticalArcAngle = angle;
-
-        // point.ellipticalArcCenter = center;
-        // point.resultantRx = rx;
-        // point.resultantRy = ry;
-
     }
 
     try point_list.append(p1);
+}
+
+fn rotationMat(angle: f32) [2][2]f32 {
+    const s = sin(angle);
+    const c = cos(angle);
+    return .{
+        .{ c, s },
+        .{ -s, c }
+    };
+}
+
+fn applyMat(mat: [2][2]f32, p: Point) Point {
+    return .{
+        .x = p.x * mat[0][0] + p.y * mat[0][1],
+        .y = p.x * mat[1][0] + p.y * mat[1][1],
+    };
 }
 
 fn pointFromInts(x: i16, y: i16) Point {
@@ -410,8 +355,24 @@ test "point conversion" {
     }
     for (int2pt) |data| {
         const pt = pointFromInts(data.x, data.y);
-        std.testing.expectApproxEqAbs(@as(f32, 0.0), distance(pt, data.point), std.math.sqrt(2.0) / 2.0);
+        std.testing.expectApproxEqAbs(@as(f32, 0.0), distance(pt, data.point), sqrt(2.0) / 2.0);
     }
+}
+
+fn add(a: Point, b: Point) Point {
+    return .{ .x = a.x+b.x, .y = a.y+b.y };
+}
+
+fn sub(p1: Point, p2: Point) Point {
+    return Point{ .x = p1.x - p2.x, .y = p1.y - p2.y };
+}
+
+fn dot(p1: Point, p2: Point) f32 {
+    return p1.x * p2.x + p1.y * p2.y;
+}
+
+fn scale(a: Point, s: f32) Point {
+    return .{ .x = a.x*s, .y = a.y*s };
 }
 
 fn length2(p: Point) f32 {
@@ -419,42 +380,20 @@ fn length2(p: Point) f32 {
 }
 
 fn length(p: Point) f32 {
-    return std.math.sqrt(length2(p));
-}
-
-fn distance2(p1: Point, p2: Point) f32 {
-    const dx = p1.x - p2.x;
-    const dy = p1.y - p2.y;
-    return dx * dx + dy * dy;
+    return sqrt(length2(p));
 }
 
 fn distance(p1: Point, p2: Point) f32 {
-    return std.math.sqrt(distance2(p1, p2));
+    return length(sub(p1, p2));
 }
 
-fn dot(p1: Point, p2: Point) f32 {
-    return p1.x * p2.x + p1.y * p2.y;
-}
-
-fn sub(p1: Point, p2: Point) Point {
-    return Point{ .x = p1.x - p2.x, .y = p1.y - p2.y };
-}
 
 fn getProjectedPointOnLine(v1: Point, v2: Point, p: Point) Point {
-    // get dot product of e1, e2
-    var e1 = sub(v2, v1); // (v2.x - v1.x, v2.y - v1.y);
-    var e2 = sub(p, v1); // (p.x - v1.x, p.y - v1.y);
-    var valDp = dot(e1, e2);
-    // get length of vectors
-    var lenLineE1 = std.math.sqrt(e1.x * e1.x + e1.y * e1.y);
-    var lenLineE2 = std.math.sqrt(e2.x * e2.x + e2.y * e2.y);
-    var cos = valDp / (lenLineE1 * lenLineE2);
-    // length of v1P'
-    var projLenOfLine = cos * lenLineE2;
-    return Point{
-        .x = (v1.x + (projLenOfLine * e1.x) / lenLineE1),
-        .y = (v1.y + (projLenOfLine * e1.y) / lenLineE1),
-    };
+    var l1 = sub(v2, v1);
+    var l2 = sub(p, v1);
+    var proj = dot(l1, l2) / length2(l1);
+
+    return add(v1, scale(l1, proj));
 }
 
 fn sampleStlye(color_table: []const Color, style: Style, x: i16, y: i16) Color {
