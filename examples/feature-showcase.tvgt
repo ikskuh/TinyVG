@@ -321,5 +321,45 @@
      (
        outline_fill_rectangles
      )
+     (
+       draw_line_path
+       (flat 1)
+       2
+       (
+         (line 32 480)
+         (arc-ellipse)
+         (line 80 528)
+       )
+     )
+     (
+       draw_line_path
+       (flat 1)
+       2
+       (
+         (line 112 480)
+         (arc-ellipse)
+         (line 160 528)
+       )
+     )
+     (
+       draw_line_path
+       (flat 1)
+       2
+       (
+         (line 192 480)
+         (arc-ellipse)
+         (line 240 528)
+       )
+     )
+     (
+       draw_line_path
+       (flat 1)
+       2
+       (
+         (line 272 480)
+         (arc-ellipse)
+         (line 320 528)
+       )
+     )
   )
 )

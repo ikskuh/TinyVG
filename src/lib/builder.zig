@@ -62,6 +62,7 @@ fn StyleType(comptime spec: StyleSpec) type {
     };
 }
 
+// TODO: Add 8 or 16 bit precision option
 pub fn create(comptime scale: tvg.Scale) type {
     return struct {
         pub fn unit(value: f32) [2]u8 {
@@ -212,12 +213,14 @@ pub fn create(comptime scale: tvg.Scale) type {
                 return join(.{ byte(3), point(c0x, c0y), point(c1x, c1y), point(p1x, p1y) });
             }
 
-            pub fn arc_circ() [N]u8 {
-                return byte(4);
+            pub fn arc_circle(radius: f32, large_arc: bool, sweep: bool, p1x: f32, p1y: f32) [8]u8 {
+                const flag: u8 = (if (large_arc) @as(u8, 1) else 0) | (if (sweep) @as(u8, 2) else 0);
+                return join(.{ byte(4), byte(flag), unit(radius), point(p1x, p1y) });
             }
 
-            pub fn arc_ellipse() [N]u8 {
-                return byte(5);
+            pub fn arc_ellipse(radius_x: f32, radius_y: f32, rotation: f32, large_arc: bool, sweep: bool, p1x: f32, p1y: f32) [12]u8 {
+                const flag: u8 = (if (large_arc) @as(u8, 1) else 0) | (if (sweep) @as(u8, 2) else 0);
+                return join(.{ byte(5), byte(flag), unit(radius_x), unit(radius_y), unit(rotation), point(p1x, p1y) });
             }
 
             pub fn close() [1]u8 {

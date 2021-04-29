@@ -91,8 +91,8 @@ pub const PathNode = union(enum) {
     horiz: NodeData(f32),
     vert: NodeData(f32),
     bezier: NodeData(Bezier),
-    arc_circle: NodeData(void),
-    arc_ellipse: NodeData(void),
+    arc_circle: NodeData(ArcCircle),
+    arc_ellipse: NodeData(ArcEllipse),
     close: NodeData(void),
 
     fn NodeData(comptime Payload: type) type {
@@ -108,6 +108,22 @@ pub const PathNode = union(enum) {
             }
         };
     }
+
+    pub const ArcCircle = struct {
+        radius: f32,
+        large_arc: bool,
+        sweep: bool,
+        target: Point,
+    };
+
+    pub const ArcEllipse = struct {
+        radius_x: f32,
+        radius_y: f32,
+        rotation: f32,
+        large_arc: bool,
+        sweep: bool,
+        target: Point,
+    };
 
     pub const Bezier = struct {
         c0: Point,
@@ -162,8 +178,32 @@ pub const PathNode = union(enum) {
                     .y = try readUnit(scale, reader),
                 },
             }) },
-            .arc_circ => @panic("todo"),
-            .arc_ellipse => @panic("todo"),
+            .arc_circ => blk: {
+                var flags = try readByte(reader);
+                break :blk Self{ .arc_circle = NodeData(ArcCircle).init(line_width, ArcCircle{
+                    .radius = try readUnit(scale, reader),
+                    .large_arc = (flags & 1) != 0,
+                    .sweep = (flags & 2) != 0,
+                    .target = Point{
+                        .x = try readUnit(scale, reader),
+                        .y = try readUnit(scale, reader),
+                    },
+                }) };
+            },
+            .arc_ellipse => blk: {
+                var flags = try readByte(reader);
+                break :blk Self{ .arc_ellipse = NodeData(ArcEllipse).init(line_width, ArcEllipse{
+                    .radius_x = try readUnit(scale, reader),
+                    .radius_y = try readUnit(scale, reader),
+                    .rotation = try readUnit(scale, reader),
+                    .large_arc = (flags & 1) != 0,
+                    .sweep = (flags & 2) != 0,
+                    .target = Point{
+                        .x = try readUnit(scale, reader),
+                        .y = try readUnit(scale, reader),
+                    },
+                }) };
+            },
             .close => Self{ .close = NodeData(void).init(line_width, {}) },
             .reserved => return error.InvalidData,
         };

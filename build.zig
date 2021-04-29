@@ -15,6 +15,17 @@ pub fn build(b: *std.build.Builder) !void {
     const target = b.standardTargetOptions(.{});
     const mode = b.standardReleaseOptions();
 
+    const enable_dotnet = b.option(bool, "enable-dotnet", "Enables building the .NET based tools.") orelse false;
+
+    if (enable_dotnet) {
+        const svg2cs = b.addSystemCommand(&[_][]const u8{
+            "mcs",
+            "/out:zig-cache/bin/svg2tvg.exe",
+            "src/tools/svg2tvg.cs",
+        });
+        b.getInstallStep().dependOn(&svg2cs.step);
+    }
+
     const render = b.addExecutable("tvg-render", "src/tools/render.zig");
     render.setBuildMode(mode);
     render.setTarget(target);

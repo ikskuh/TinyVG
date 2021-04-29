@@ -131,6 +131,11 @@ pub fn renderPath(point_list: anytype, start: Point, nodes: []const tvg.parsing.
         last: Point,
 
         fn append(self: *@This(), pt: Point) !void {
+            // Discard when point is in the vicinity of the last point (same pixel)
+            const delta = 0.25;
+            if (std.math.approxEqAbs(f32, pt.x, self.last.x, delta) and std.math.approxEqAbs(f32, pt.y, self.last.y, delta))
+                return;
+
             try self.list.append(pt);
             self.last = pt;
         }
@@ -167,17 +172,36 @@ pub fn renderPath(point_list: anytype, start: Point, nodes: []const tvg.parsing.
                     const x = lerpAndReduceToOne(4, oct0_x, f);
                     const y = lerpAndReduceToOne(4, oct0_y, f);
 
-                    const current = Point{ .x = x, .y = y };
-
-                    if (std.math.approxEqAbs(f32, previous.x, current.x, 0.5) and std.math.approxEqAbs(f32, previous.y, current.y, 0.5))
-                        continue;
-                    try point_store.append(current);
+                    try point_store.append(Point{ .x = x, .y = y });
                 }
 
                 try point_store.append(bezier.data.p1);
             },
-            .arc_circle => @panic("arc not implemented yet!"),
-            .arc_ellipse => @panic("arc not implemented yet!"),
+            // /home/felix/projects/forks/svg-curve-lib/src/js/svg-curve-lib.js
+            .arc_circle => |circle| {
+                try renderEllipse(
+                    &point_store,
+                    point_store.back(),
+                    circle.data.radius,
+                    circle.data.radius,
+                    0.0,
+                    circle.data.large_arc,
+                    circle.data.sweep,
+                    circle.data.target,
+                );
+            },
+            .arc_ellipse => |ellipse| {
+                try renderEllipse(
+                    &point_store,
+                    point_store.back(),
+                    ellipse.data.radius_x,
+                    ellipse.data.radius_y,
+                    ellipse.data.rotation,
+                    ellipse.data.large_arc,
+                    ellipse.data.sweep,
+                    ellipse.data.target,
+                );
+            },
             .close => {
                 if (node_index != (nodes.len - 1)) {
                     // .close must be last!
@@ -187,6 +211,156 @@ pub fn renderPath(point_list: anytype, start: Point, nodes: []const tvg.parsing.
             },
         }
     }
+}
+
+fn toRadians(a: f32) f32 {
+    return std.math.pi * a / 180.0;
+}
+
+fn angleBetween(v0: Point, v1: Point) f32 {
+    const p = v0.x * v1.x + v0.y * v1.y;
+    const n = std.math.sqrt((pow2(v0.x) + pow2(v0.y)) * (pow2(v1.x) + pow2(v1.y)));
+    const sign = v0.x * v1.y - (if (v0.y * v1.x < 0) @as(f32, -1) else 1);
+    const angle = sign * std.math.acos(p / n);
+
+    //var angle = Math.atan2(v0.y, v0.x) - Math.atan2(v1.y,  v1.x);
+
+    return angle;
+}
+
+fn pow2(a: f32) f32 {
+    return a * a;
+}
+
+pub fn renderEllipse(
+    point_list: anytype,
+    p0: Point,
+    radius_x: f32,
+    radius_y: f32,
+    rotation: f32,
+    large_arc: bool,
+    sweep: bool,
+    p1: Point,
+) !void {
+    std.log.info("draw ellipse arc: ({d} {d}) {d} {d} {d} {} {} ({d} {d})", .{
+        p0.x,     p0.y,
+        radius_x, radius_y,
+        rotation, large_arc,
+        sweep,    p1.x,
+        p1.y,
+    });
+
+    const cos = std.math.cos;
+    const sin = std.math.sin;
+    const sqrt = std.math.sqrt;
+    const abs = std.math.fabs;
+
+    // In accordance to: http://www.w3.org/TR/SVG/implnote.html#ArcOutOfRangeParameters
+    var rx = abs(radius_x);
+    var ry = abs(radius_y);
+    const xAxisRotationRadians = toRadians(@mod(rotation, 360.0));
+
+    try point_list.append(p0);
+
+    // If the endpoints are identical, then this is equivalent to omitting the elliptical arc segment entirely.
+    if (distance(p0, p1) < 0.25) {
+        return;
+    }
+
+    // If rx = 0 or ry = 0 then this arc is treated as a straight line segment joining the endpoints.
+    if (std.math.approxEqAbs(f32, rx, 0.0, 1e-3) or std.math.approxEqAbs(f32, ry, 0.0, 1e-3)) {
+        try point_list.append(p1);
+        return;
+    }
+
+    // Following "Conversion from endpoint to center parameterization"
+    // http://www.w3.org/TR/SVG/implnote.html#ArcConversionEndpointToCenter
+
+    // Step #1: Compute transformedPoint
+    var dx = (p0.x - p1.x) / 2;
+    var dy = (p0.y - p1.y) / 2;
+    var transformedPoint = Point{
+        .x = cos(xAxisRotationRadians) * dx + sin(xAxisRotationRadians) * dy,
+        .y = -sin(xAxisRotationRadians) * dx + cos(xAxisRotationRadians) * dy,
+    };
+    // Ensure radii are large enough
+    var radiiCheck = pow2(transformedPoint.x) / pow2(rx) + pow2(transformedPoint.y) / pow2(ry);
+    if (radiiCheck > 1) {
+        rx = sqrt(radiiCheck) * rx;
+        ry = sqrt(radiiCheck) * ry;
+    }
+
+    // Step #2: Compute transformedCenter
+    var cSquareNumerator = pow2(rx) * pow2(ry) - pow2(rx) * pow2(transformedPoint.y) - pow2(ry) * pow2(transformedPoint.x);
+    var cSquareRootDenom = pow2(rx) * pow2(transformedPoint.y) + pow2(ry) * pow2(transformedPoint.x);
+
+    // Make sure this never drops below zero because of precision
+    var cRadicand = std.math.max(0.0, cSquareNumerator / cSquareRootDenom);
+
+    var cCoef = (if (large_arc != sweep) @as(f32, 1) else -1) * sqrt(cRadicand);
+    var transformedCenter = Point{
+        .x = cCoef * ((rx * transformedPoint.y) / ry),
+        .y = cCoef * (-(ry * transformedPoint.x) / rx),
+    };
+
+    // Step #3: Compute center
+    var center = Point{
+        .x = cos(xAxisRotationRadians) * transformedCenter.x - sin(xAxisRotationRadians) * transformedCenter.y + ((p0.x + p1.x) / 2),
+        .y = sin(xAxisRotationRadians) * transformedCenter.x + cos(xAxisRotationRadians) * transformedCenter.y + ((p0.y + p1.y) / 2),
+    };
+
+    // Step #4: Compute start/sweep angles
+    // Start angle of the elliptical arc prior to the stretch and rotate operations.
+    // Difference between the start and end angles
+    var startVector = Point{
+        .x = (transformedPoint.x - transformedCenter.x) / rx,
+        .y = (transformedPoint.y - transformedCenter.y) / ry,
+    };
+    var startAngle = angleBetween(Point{ .x = 1, .y = 0 }, startVector);
+
+    var endVector = Point{
+        .x = (-transformedPoint.x - transformedCenter.x) / rx,
+        .y = (-transformedPoint.y - transformedCenter.y) / ry,
+    };
+    var sweepAngle = angleBetween(startVector, endVector);
+
+    if (!sweep and (sweepAngle > 0)) {
+        sweepAngle -= 2 * std.math.pi;
+    } else if (sweep and (sweepAngle < 0)) {
+        sweepAngle += 2 * std.math.pi;
+    }
+    // We use % instead of `mod(..)` because we want it to be -360deg to 360deg(but actually in radians)
+    sweepAngle = @rem(sweepAngle, 2 * std.math.pi);
+
+    const subdiv = 100;
+    var i: usize = 1;
+    while (i < subdiv) : (i += 1) {
+        const t = @intToFloat(f32, i) / subdiv;
+
+        // From http://www.w3.org/TR/SVG/implnote.html#ArcParameterizationAlternatives
+        const angle = startAngle + (sweepAngle * t);
+        const ellipseComponentX = rx * cos(angle);
+        const ellipseComponentY = ry * sin(angle);
+
+        const point = Point{
+            .x = center.x + cos(xAxisRotationRadians) * ellipseComponentX - sin(xAxisRotationRadians) * ellipseComponentY,
+            .y = center.y + sin(xAxisRotationRadians) * ellipseComponentX + cos(xAxisRotationRadians) * ellipseComponentY,
+        };
+
+        try point_list.append(point);
+
+        // Attach some extra info to use
+        // point.ellipticalArcStartAngle = startAngle;
+        // point.ellipticalArcEndAngle = startAngle + sweepAngle;
+        // point.ellipticalArcAngle = angle;
+
+        // point.ellipticalArcCenter = center;
+        // point.resultantRx = rx;
+        // point.resultantRy = ry;
+
+    }
+
+    try point_list.append(p1);
 }
 
 fn pointFromInts(x: i16, y: i16) Point {
