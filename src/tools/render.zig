@@ -49,8 +49,8 @@ pub fn main() !u8 {
     defer parser.deinit();
 
     var geometry = cli.options.geometry orelse Geometry{
-        .width = @floatToInt(u16, std.math.ceil(parser.header.width)),
-        .height = @floatToInt(u16, std.math.ceil(parser.header.height)),
+        .width = parser.header.width,
+        .height = parser.header.height,
     };
 
     const pixel_count = @as(usize, geometry.width) * @as(usize, geometry.height);

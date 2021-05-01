@@ -5,8 +5,8 @@ pub const Header = struct {
     version: u8,
     scale: tvg.Scale,
     custom_color_space: bool,
-    width: f32,
-    height: f32,
+    width: u16,
+    height: u16,
 };
 
 const Point = tvg.Point;
@@ -292,8 +292,8 @@ pub fn Parser(comptime Reader: type) type {
 
                     const scale = @intToEnum(tvg.Scale, scale_and_flags.scale);
 
-                    const width = try readUnit(scale, reader);
-                    const height = try readUnit(scale, reader);
+                    const width = try readU16(reader);
+                    const height = try readU16(reader);
 
                     const color_count = reader.readIntLittle(u16) catch return error.InvalidData;
 
@@ -599,6 +599,10 @@ fn readUnit(scale: tvg.Scale, reader: anytype) !f32 {
 
 fn readByte(reader: anytype) !u8 {
     return reader.readByte();
+}
+
+fn readU16(reader: anytype) !u16 {
+    return try reader.readIntLittle(u16);
 }
 
 test "readUInt" {

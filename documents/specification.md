@@ -122,8 +122,8 @@ struct {
     scale: u4, 
     custom_color_space: bool,
     padding: u3 = 0,
-    width: unit,
-    height: unit,
+    width: u16,
+    height: u16,
     color_count: u16,
 }
 ```
@@ -133,7 +133,7 @@ It defines how to convert units (16 bit integers) to pixels in the final image, 
 sub-pixel precision of vector data. 0 means that no bits are used (thus 1 unit is 1 pixel),
 and 8 means that 8 bits are used as decimal places (thus 256 units is 1 pixel).
 
-`width` and `height` must both be larger than 0 and define the size of the vector graphic. Negative values or zero is not allowed.
+`width` and `height` must both be larger than 0 and define the size of the vector graphic.
 
 After this header, there are `color_count` entries into a color table, each entry consists of four byte.
 

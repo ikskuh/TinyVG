@@ -62,6 +62,12 @@ fn StyleType(comptime spec: StyleSpec) type {
     };
 }
 
+fn uint16(v: u16) [2]u8 {
+    var buf: [2]u8 = undefined;
+    writeU16(&buf, v);
+    return buf;
+}
+
 // TODO: Add 8 or 16 bit precision option
 pub fn create(comptime scale: tvg.Scale) type {
     return struct {
@@ -83,13 +89,13 @@ pub fn create(comptime scale: tvg.Scale) type {
             return join(.{ unit(x), unit(y) });
         }
 
-        pub fn header(width: f32, height: f32) [8]u8 {
+        pub fn header(width: u16, height: u16) [8]u8 {
             return join(.{
                 tvg.magic_number,
                 byte(tvg.current_version),
                 byte(@enumToInt(scale)),
-                unit(width),
-                unit(height),
+                uint16(width),
+                uint16(height),
             });
         }
 

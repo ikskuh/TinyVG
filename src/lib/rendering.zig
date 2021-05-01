@@ -7,7 +7,6 @@ const Rectangle = tvg.Rectangle;
 const Color = tvg.Color;
 const Style = tvg.parsing.Style;
 
-
 // TODO: Make these configurable
 const circle_divs = 100;
 const bezier_divs = 16;
@@ -47,8 +46,8 @@ pub fn render(
     // std.debug.print("render {}\n", .{cmd});
 
     var painter = Painter{
-        .scale_x = fb_width / header.width,
-        .scale_y = fb_height / header.height,
+        .scale_x = fb_width / @intToFloat(f32, header.width),
+        .scale_y = fb_height / @intToFloat(f32, header.height),
     };
 
     switch (cmd) {
@@ -234,19 +233,18 @@ pub fn renderEllipse(
     turn_left: bool,
 ) !void {
     const ratio = radius_x / radius_y;
-    const rot = rotationMat(toRadians(rotation-90));
+    const rot = rotationMat(toRadians(rotation - 90));
     const transform = [2][2]f32{
         rot[0],
-        .{ rot[1][0] * ratio, rot[1][1] * ratio }
+        .{ rot[1][0] * ratio, rot[1][1] * ratio },
     };
     const transform_back = [2][2]f32{
-        .{  rot[1][1], -rot[0][1] / ratio },
-        .{ -rot[1][0],  rot[0][0] / ratio },
+        .{ rot[1][1], -rot[0][1] / ratio },
+        .{ -rot[1][0], rot[0][0] / ratio },
     };
 
     var tmp = FixedBufferList(Point, circle_divs){};
-    renderCircle(&tmp, applyMat(transform, p0), applyMat(transform, p1), radius_x, large_arc, turn_left)
-        catch unreachable; // buffer is correctly sized
+    renderCircle(&tmp, applyMat(transform, p0), applyMat(transform, p1), radius_x, large_arc, turn_left) catch unreachable; // buffer is correctly sized
 
     for (tmp.buffer) |p| {
         try point_list.append(applyMat(transform_back, p));
@@ -268,12 +266,11 @@ fn renderCircle(
     const midpoint = add(p0, delta);
 
     // Vector from midpoint to center, but incorrect length
-    const radius_vec = if (left_side) Point{ .x = -delta.y, .y = delta.x }
-        else Point{ .x = delta.y, .y = -delta.x };
+    const radius_vec = if (left_side) Point{ .x = -delta.y, .y = delta.x } else Point{ .x = delta.y, .y = -delta.x };
     const len_squared = length2(radius_vec);
-    if (len_squared > r*r or r < 0) return error.InvalidRadius;
+    if (len_squared > r * r or r < 0) return error.InvalidRadius;
 
-    const to_center = scale(radius_vec, sqrt(r*r / len_squared - 1));
+    const to_center = scale(radius_vec, sqrt(r * r / len_squared - 1));
     const center = add(midpoint, to_center);
 
     const angle = std.math.asin(sqrt(len_squared) / r) * 2;
@@ -297,7 +294,7 @@ fn rotationMat(angle: f32) [2][2]f32 {
     const c = cos(angle);
     return .{
         .{ c, -s },
-        .{ s, c }
+        .{ s, c },
     };
 }
 
@@ -360,7 +357,7 @@ test "point conversion" {
 }
 
 fn add(a: Point, b: Point) Point {
-    return .{ .x = a.x+b.x, .y = a.y+b.y };
+    return .{ .x = a.x + b.x, .y = a.y + b.y };
 }
 
 fn sub(p1: Point, p2: Point) Point {
@@ -372,7 +369,7 @@ fn dot(p1: Point, p2: Point) f32 {
 }
 
 fn scale(a: Point, s: f32) Point {
-    return .{ .x = a.x*s, .y = a.y*s };
+    return .{ .x = a.x * s, .y = a.y * s };
 }
 
 fn length2(p: Point) f32 {
@@ -386,7 +383,6 @@ fn length(p: Point) f32 {
 fn distance(p1: Point, p2: Point) f32 {
     return length(sub(p1, p2));
 }
-
 
 fn getProjectedPointOnLine(v1: Point, v2: Point, p: Point) Point {
     var l1 = sub(v2, v1);
