@@ -45,13 +45,6 @@ pub const StyleSpec = enum(u2) {
     flat = 0,
     linear = 1,
     radial = 2,
-
-    fn byteSize(self: @This()) usize {
-        return switch (self) {
-            .flat => 1,
-            .linear, .radial => 10,
-        };
-    }
 };
 
 fn StyleType(comptime spec: StyleSpec) type {
@@ -68,13 +61,38 @@ fn uint16(v: u16) [2]u8 {
     return buf;
 }
 
+pub const Range = enum {
+    /// unit takes only 8 bit
+    reduced,
+    /// unit uses 16 bit,
+    default,
+    // unit uses 32 bit,
+    //enhanced,
+};
+
 // TODO: Add 8 or 16 bit precision option
-pub fn create(comptime scale: tvg.Scale) type {
+pub fn create(comptime scale: tvg.Scale, comptime range: Range) type {
+    const sUNIT = switch (range) {
+        .reduced => 1,
+        .default => 2,
+    };
+    const sPOINT = 2 * sUNIT;
+    const sGRADIENT = 2 * sPOINT + 2;
+
     return struct {
-        pub fn unit(value: f32) [2]u8 {
-            var buf: [2]u8 = undefined;
-            writeU16(&buf, @bitCast(u16, scale.map(value).raw()));
-            return buf;
+        pub fn unit(value: f32) [sUNIT]u8 {
+            const val = @bitCast(u16, scale.map(value).raw());
+            switch (range) {
+                .reduced => {
+                    if (val >= 0x100) unreachable;
+                    return [1]u8{@truncate(u8, val)};
+                },
+                .default => {
+                    var buf: [2]u8 = undefined;
+                    writeU16(&buf, val);
+                    return buf;
+                },
+            }
         }
 
         pub fn byte(val: u8) [1]u8 {
@@ -85,17 +103,17 @@ pub fn create(comptime scale: tvg.Scale) type {
             return [1]u8{@enumToInt(cmd)};
         }
 
-        pub fn point(x: f32, y: f32) [4]u8 {
+        pub fn point(x: f32, y: f32) [sPOINT]u8 {
             return join(.{ unit(x), unit(y) });
         }
 
-        pub fn header(width: u16, height: u16) [8]u8 {
+        pub fn header(width: u16, height: u16) [4 + 2 * sUNIT]u8 {
             return join(.{
                 tvg.magic_number,
                 byte(tvg.current_version),
-                byte(@enumToInt(scale)),
-                uint16(width),
-                uint16(height),
+                byte(@enumToInt(scale) | (if (range == .reduced) @as(u8, 0x20) else 0)),
+                if (range == .default) uint16(width) else byte(if (width == 256) @as(u8, 0) else @intCast(u8, width)),
+                if (range == .default) uint16(height) else byte(if (height == 256) @as(u8, 0) else @intCast(u8, height)),
             });
         }
 
@@ -121,7 +139,7 @@ pub fn create(comptime scale: tvg.Scale) type {
             return .{(@as(u8, style) << 6) | if (items == 64) @as(u6, 0) else @truncate(u6, items)};
         }
 
-        fn gradient(grad: Gradient) [10]u8 {
+        fn gradient(grad: Gradient) [sGRADIENT]u8 {
             return join(.{
                 point(grad.point_0.x, grad.point_0.y),
                 point(grad.point_1.x, grad.point_1.y),
@@ -130,38 +148,45 @@ pub fn create(comptime scale: tvg.Scale) type {
             });
         }
 
-        fn encodeStyle(comptime style_type: StyleSpec, value: StyleType(style_type)) [style_type.byteSize()]u8 {
+        fn byteSize(self: StyleSpec) usize {
+            return switch (self) {
+                .flat => 1,
+                .linear, .radial => sGRADIENT,
+            };
+        }
+
+        fn encodeStyle(comptime style_type: StyleSpec, value: StyleType(style_type)) [byteSize(style_type)]u8 {
             return switch (style_type) {
                 .flat => byte(value),
                 .linear, .radial => gradient(value),
             };
         }
 
-        pub fn fillPolygon(num_items: usize, comptime style_type: StyleSpec, style: StyleType(style_type)) [2 + style_type.byteSize()]u8 {
+        pub fn fillPolygon(num_items: usize, comptime style_type: StyleSpec, style: StyleType(style_type)) [2 + byteSize(style_type)]u8 {
             return join(.{ command(.fill_polygon), countAndStyle(num_items, style_type), encodeStyle(style_type, style) });
         }
 
-        pub fn fillRectangles(num_items: usize, comptime style_type: StyleSpec, style: StyleType(style_type)) [2 + style_type.byteSize()]u8 {
+        pub fn fillRectangles(num_items: usize, comptime style_type: StyleSpec, style: StyleType(style_type)) [2 + byteSize(style_type)]u8 {
             return join(.{ command(.fill_rectangles), countAndStyle(num_items, style_type), encodeStyle(style_type, style) });
         }
 
-        pub fn fillPath(num_items: usize, comptime style_type: StyleSpec, style: StyleType(style_type)) [2 + style_type.byteSize()]u8 {
+        pub fn fillPath(num_items: usize, comptime style_type: StyleSpec, style: StyleType(style_type)) [2 + byteSize(style_type)]u8 {
             return join(.{ command(.fill_path), countAndStyle(num_items, style_type), encodeStyle(style_type, style) });
         }
 
-        pub fn drawLines(num_items: usize, line_width: f32, comptime style_type: StyleSpec, style: StyleType(style_type)) [4 + style_type.byteSize()]u8 {
+        pub fn drawLines(num_items: usize, line_width: f32, comptime style_type: StyleSpec, style: StyleType(style_type)) [4 + byteSize(style_type)]u8 {
             return join(.{ command(.draw_lines), countAndStyle(num_items, style_type), encodeStyle(style_type, style), unit(line_width) });
         }
 
-        pub fn drawLineLoop(num_items: usize, line_width: f32, comptime style_type: StyleSpec, style: StyleType(style_type)) [4 + style_type.byteSize()]u8 {
+        pub fn drawLineLoop(num_items: usize, line_width: f32, comptime style_type: StyleSpec, style: StyleType(style_type)) [4 + byteSize(style_type)]u8 {
             return join(.{ command(.draw_line_loop), countAndStyle(num_items - 1, style_type), encodeStyle(style_type, style), unit(line_width) });
         }
 
-        pub fn drawLineStrip(num_items: usize, line_width: f32, comptime style_type: StyleSpec, style: StyleType(style_type)) [4 + style_type.byteSize()]u8 {
+        pub fn drawLineStrip(num_items: usize, line_width: f32, comptime style_type: StyleSpec, style: StyleType(style_type)) [4 + byteSize(style_type)]u8 {
             return join(.{ command(.draw_line_strip), countAndStyle(num_items - 1, style_type), encodeStyle(style_type, style), unit(line_width) });
         }
 
-        pub fn drawPath(num_items: usize, line_width: f32, comptime style_type: StyleSpec, style: StyleType(style_type)) [4 + style_type.byteSize()]u8 {
+        pub fn drawPath(num_items: usize, line_width: f32, comptime style_type: StyleSpec, style: StyleType(style_type)) [4 + byteSize(style_type)]u8 {
             return join(.{ command(.draw_line_path), countAndStyle(num_items, style_type), encodeStyle(style_type, style), unit(line_width) });
         }
 
@@ -172,7 +197,7 @@ pub fn create(comptime scale: tvg.Scale) type {
             fill_style: StyleType(fill_style_type),
             comptime line_style_type: StyleSpec,
             line_style: StyleType(line_style_type),
-        ) [5 + fill_style_type.byteSize() + line_style_type.byteSize()]u8 {
+        ) [5 + byteSize(fill_style_type) + byteSize(line_style_type)]u8 {
             return join(.{ command(.outline_fill_polygon), countAndStyle(num_items, fill_style_type), byte(@enumToInt(line_style_type)), encodeStyle(line_style_type, line_style), encodeStyle(fill_style_type, fill_style), unit(line_width) });
         }
 
@@ -183,7 +208,7 @@ pub fn create(comptime scale: tvg.Scale) type {
             fill_style: StyleType(fill_style_type),
             comptime line_style_type: StyleSpec,
             line_style: StyleType(line_style_type),
-        ) [5 + fill_style_type.byteSize() + line_style_type.byteSize()]u8 {
+        ) [5 + byteSize(fill_style_type) + byteSize(line_style_type)]u8 {
             return join(.{ command(.outline_fill_rectangles), countAndStyle(num_items, fill_style_type), byte(@enumToInt(line_style_type)), encodeStyle(line_style_type, line_style), encodeStyle(fill_style_type, fill_style), unit(line_width) });
         }
 
@@ -194,37 +219,37 @@ pub fn create(comptime scale: tvg.Scale) type {
             fill_style: StyleType(fill_style_type),
             comptime line_style_type: StyleSpec,
             line_style: StyleType(line_style_type),
-        ) [5 + fill_style_type.byteSize() + line_style_type.byteSize()]u8 {
+        ) [5 + byteSize(fill_style_type) + byteSize(line_style_type)]u8 {
             return join(.{ command(.outline_fill_path), countAndStyle(num_items, fill_style_type), byte(@enumToInt(line_style_type)), encodeStyle(line_style_type, line_style), encodeStyle(fill_style_type, fill_style), unit(line_width) });
         }
 
-        pub fn rectangle(x: f32, y: f32, w: f32, h: f32) [8]u8 {
+        pub fn rectangle(x: f32, y: f32, w: f32, h: f32) [4 * sUNIT]u8 {
             return join(.{ unit(x), unit(y), unit(w), unit(h) });
         }
 
         pub const path = struct {
-            pub fn line(x: f32, y: f32) [5]u8 {
+            pub fn line(x: f32, y: f32) [1 + sPOINT]u8 {
                 return join(.{ byte(0), point(x, y) });
             }
 
-            pub fn horiz(x: f32) [3]u8 {
+            pub fn horiz(x: f32) [1 + sUNIT]u8 {
                 return join(.{ byte(1), unit(x) });
             }
 
-            pub fn vert(y: f32) [3]u8 {
+            pub fn vert(y: f32) [1 + sUNIT]u8 {
                 return join(.{ byte(2), unit(y) });
             }
 
-            pub fn bezier(c0x: f32, c0y: f32, c1x: f32, c1y: f32, p1x: f32, p1y: f32) [13]u8 {
+            pub fn bezier(c0x: f32, c0y: f32, c1x: f32, c1y: f32, p1x: f32, p1y: f32) [1 + 3 * sPOINT]u8 {
                 return join(.{ byte(3), point(c0x, c0y), point(c1x, c1y), point(p1x, p1y) });
             }
 
-            pub fn arc_circle(radius: f32, large_arc: bool, sweep: bool, p1x: f32, p1y: f32) [8]u8 {
+            pub fn arc_circle(radius: f32, large_arc: bool, sweep: bool, p1x: f32, p1y: f32) [2 + sUNIT + sPOINT]u8 {
                 const flag: u8 = (if (large_arc) @as(u8, 1) else 0) | (if (sweep) @as(u8, 2) else 0);
                 return join(.{ byte(4), byte(flag), unit(radius), point(p1x, p1y) });
             }
 
-            pub fn arc_ellipse(radius_x: f32, radius_y: f32, rotation: f32, large_arc: bool, sweep: bool, p1x: f32, p1y: f32) [12]u8 {
+            pub fn arc_ellipse(radius_x: f32, radius_y: f32, rotation: f32, large_arc: bool, sweep: bool, p1x: f32, p1y: f32) [2 + 3 * sUNIT + sPOINT]u8 {
                 const flag: u8 = (if (large_arc) @as(u8, 1) else 0) | (if (sweep) @as(u8, 2) else 0);
                 return join(.{ byte(5), byte(flag), unit(radius_x), unit(radius_y), unit(rotation), point(p1x, p1y) });
             }
@@ -238,7 +263,7 @@ pub fn create(comptime scale: tvg.Scale) type {
     };
 }
 
-const test_builder = create(.@"1/256");
+const test_builder = create(.@"1/256", .default);
 
 test "join" {
     std.testing.expectEqualSlices(
@@ -249,10 +274,10 @@ test "join" {
 }
 
 test "Builder.unit" {
-    std.testing.expectEqualSlices(u8, &[_]u8{ 0, 1 }, &create(.@"1/256").unit(1));
-    std.testing.expectEqualSlices(u8, &[_]u8{ 0, 1 }, &create(.@"1/16").unit(16));
-    std.testing.expectEqualSlices(u8, &[_]u8{ 0, 2 }, &create(.@"1/16").unit(32));
-    std.testing.expectEqualSlices(u8, &[_]u8{ 1, 0 }, &create(.@"1/1").unit(1));
+    std.testing.expectEqualSlices(u8, &[_]u8{ 0, 1 }, &create(.@"1/256", .default).unit(1));
+    std.testing.expectEqualSlices(u8, &[_]u8{ 0, 1 }, &create(.@"1/16", .default).unit(16));
+    std.testing.expectEqualSlices(u8, &[_]u8{ 0, 2 }, &create(.@"1/16", .default).unit(32));
+    std.testing.expectEqualSlices(u8, &[_]u8{ 1, 0 }, &create(.@"1/1", .default).unit(1));
 }
 
 test "Builder.byte" {

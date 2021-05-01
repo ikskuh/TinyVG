@@ -1,10 +1,13 @@
 const std = @import("std");
 const tvg = @import("tvg.zig");
 
+pub const CoordinateRange = enum { default, reduced };
+
 pub const Header = struct {
     version: u8,
     scale: tvg.Scale,
     custom_color_space: bool,
+    coordinate_range: CoordinateRange,
     width: u16,
     height: u16,
 };
@@ -141,73 +144,6 @@ pub const PathNode = union(enum) {
         close = 6,
         reserved = 7,
     };
-
-    const Tag = packed struct {
-        type: Type,
-        padding0: u1 = 0,
-        has_line_width: bool,
-        padding1: u3 = 0,
-    };
-
-    fn read(scale: tvg.Scale, reader: anytype) !Self {
-        const tag = @bitCast(Tag, try readByte(reader));
-
-        var line_width: ?f32 = if (tag.has_line_width)
-            try readUnit(scale, reader)
-        else
-            null;
-
-        return switch (tag.type) {
-            .line => Self{ .line = NodeData(Point).init(line_width, .{
-                .x = try readUnit(scale, reader),
-                .y = try readUnit(scale, reader),
-            }) },
-            .horiz => Self{ .horiz = NodeData(f32).init(line_width, try readUnit(scale, reader)) },
-            .vert => Self{ .vert = NodeData(f32).init(line_width, try readUnit(scale, reader)) },
-            .bezier => Self{ .bezier = NodeData(Bezier).init(line_width, Bezier{
-                .c0 = Point{
-                    .x = try readUnit(scale, reader),
-                    .y = try readUnit(scale, reader),
-                },
-                .c1 = Point{
-                    .x = try readUnit(scale, reader),
-                    .y = try readUnit(scale, reader),
-                },
-                .p1 = Point{
-                    .x = try readUnit(scale, reader),
-                    .y = try readUnit(scale, reader),
-                },
-            }) },
-            .arc_circ => blk: {
-                var flags = try readByte(reader);
-                break :blk Self{ .arc_circle = NodeData(ArcCircle).init(line_width, ArcCircle{
-                    .radius = try readUnit(scale, reader),
-                    .large_arc = (flags & 1) != 0,
-                    .sweep = (flags & 2) != 0,
-                    .target = Point{
-                        .x = try readUnit(scale, reader),
-                        .y = try readUnit(scale, reader),
-                    },
-                }) };
-            },
-            .arc_ellipse => blk: {
-                var flags = try readByte(reader);
-                break :blk Self{ .arc_ellipse = NodeData(ArcEllipse).init(line_width, ArcEllipse{
-                    .radius_x = try readUnit(scale, reader),
-                    .radius_y = try readUnit(scale, reader),
-                    .rotation = try readUnit(scale, reader),
-                    .large_arc = (flags & 1) != 0,
-                    .sweep = (flags & 2) != 0,
-                    .target = Point{
-                        .x = try readUnit(scale, reader),
-                        .y = try readUnit(scale, reader),
-                    },
-                }) };
-            },
-            .close => Self{ .close = NodeData(void).init(line_width, {}) },
-            .reserved => return error.InvalidData,
-        };
-    }
 };
 
 const StyleType = enum(u2) {
@@ -222,14 +158,6 @@ pub const Style = union(StyleType) {
     flat: u32, // color index
     linear: Gradient,
     radial: Gradient,
-
-    fn read(reader: anytype, scale: tvg.Scale, kind: StyleType) !Self {
-        return switch (kind) {
-            .flat => Style{ .flat = try readUInt(reader) },
-            .linear => Style{ .linear = try Gradient.loadFromStream(scale, reader) },
-            .radial => Style{ .radial = try Gradient.loadFromStream(scale, reader) },
-        };
-    }
 };
 
 const Gradient = struct {
@@ -239,21 +167,6 @@ const Gradient = struct {
     point_1: Point,
     color_0: u32,
     color_1: u32,
-
-    fn loadFromStream(scale: tvg.Scale, reader: anytype) !Self {
-        var grad: Gradient = undefined;
-        grad.point_0 = Point{
-            .x = try readUnit(scale, reader),
-            .y = try readUnit(scale, reader),
-        };
-        grad.point_1 = Point{
-            .x = try readUnit(scale, reader),
-            .y = try readUnit(scale, reader),
-        };
-        grad.color_0 = try readUInt(reader);
-        grad.color_1 = try readUInt(reader);
-        return grad;
-    }
 };
 
 pub fn Parser(comptime Reader: type) type {
@@ -283,17 +196,26 @@ pub fn Parser(comptime Reader: type) type {
                     const ScaleAndFlags = packed struct {
                         scale: u4,
                         custom_color_space: bool,
-                        padding: u3,
+                        reduced_coordinate_space: bool,
+                        padding: u2,
                     };
 
-                    const scale_and_flags = @bitCast(ScaleAndFlags, try readByte(reader));
+                    const scale_and_flags = @bitCast(ScaleAndFlags, try reader.readByte());
                     if (scale_and_flags.scale > 8)
+                        return error.InvalidData;
+                    if (scale_and_flags.padding != 0)
                         return error.InvalidData;
 
                     const scale = @intToEnum(tvg.Scale, scale_and_flags.scale);
 
-                    const width = try readU16(reader);
-                    const height = try readU16(reader);
+                    const width: u16 = if (scale_and_flags.reduced_coordinate_space)
+                        mapZeroToMax(try reader.readByte())
+                    else
+                        try reader.readIntLittle(u16);
+                    const height: u16 = if (scale_and_flags.reduced_coordinate_space)
+                        mapZeroToMax(try reader.readByte())
+                    else
+                        try reader.readIntLittle(u16);
 
                     const color_count = reader.readIntLittle(u16) catch return error.InvalidData;
 
@@ -315,6 +237,10 @@ pub fn Parser(comptime Reader: type) type {
                         .width = width,
                         .height = height,
                         .custom_color_space = scale_and_flags.custom_color_space,
+                        .coordinate_range = if (scale_and_flags.reduced_coordinate_space)
+                            CoordinateRange.reduced
+                        else
+                            CoordinateRange.default,
                     };
                 },
                 else => return error.UnsupportedVersion,
@@ -354,17 +280,17 @@ pub fn Parser(comptime Reader: type) type {
                     return null;
                 },
                 .fill_polygon => blk: {
-                    const count_and_grad = @bitCast(CountAndStyleTag, try readByte(self.reader));
+                    const count_and_grad = @bitCast(CountAndStyleTag, try self.readByte());
 
                     const vertex_count = count_and_grad.getCount();
                     if (vertex_count < 2) return error.InvalidData;
 
-                    const style = try Style.read(self.reader, self.header.scale, try count_and_grad.getStyleType());
+                    const style = try self.readStyle(try count_and_grad.getStyleType());
 
                     var vertices = try self.setTempStorage(Point, vertex_count);
                     for (vertices) |*pt| {
-                        pt.x = try readUnit(self.header.scale, self.reader);
-                        pt.y = try readUnit(self.header.scale, self.reader);
+                        pt.x = try self.readUnit();
+                        pt.y = try self.readUnit();
                     }
 
                     break :blk DrawCommand{
@@ -375,16 +301,16 @@ pub fn Parser(comptime Reader: type) type {
                     };
                 },
                 .fill_rectangles => blk: {
-                    const count_and_grad = @bitCast(CountAndStyleTag, try readByte(self.reader));
-                    const style = try Style.read(self.reader, self.header.scale, try count_and_grad.getStyleType());
+                    const count_and_grad = @bitCast(CountAndStyleTag, try self.readByte());
+                    const style = try self.readStyle(try count_and_grad.getStyleType());
                     const rectangle_count = count_and_grad.getCount();
 
                     var rectangles = try self.setTempStorage(Rectangle, rectangle_count);
                     for (rectangles) |*rect| {
-                        rect.x = try readUnit(self.header.scale, self.reader);
-                        rect.y = try readUnit(self.header.scale, self.reader);
-                        rect.width = try readUnit(self.header.scale, self.reader);
-                        rect.height = try readUnit(self.header.scale, self.reader);
+                        rect.x = try self.readUnit();
+                        rect.y = try self.readUnit();
+                        rect.width = try self.readUnit();
+                        rect.height = try self.readUnit();
                         if (rect.width <= 0 or rect.height <= 0)
                             return error.InvalidFormat;
                     }
@@ -397,16 +323,16 @@ pub fn Parser(comptime Reader: type) type {
                     };
                 },
                 .fill_path => blk: {
-                    const count_and_grad = @bitCast(CountAndStyleTag, try readByte(self.reader));
-                    const style = try Style.read(self.reader, self.header.scale, try count_and_grad.getStyleType());
+                    const count_and_grad = @bitCast(CountAndStyleTag, try self.readByte());
+                    const style = try self.readStyle(try count_and_grad.getStyleType());
                     const path_length = count_and_grad.getCount();
 
-                    const start_x = try readUnit(self.header.scale, self.reader);
-                    const start_y = try readUnit(self.header.scale, self.reader);
+                    const start_x = try self.readUnit();
+                    const start_y = try self.readUnit();
 
                     var path = try self.setTempStorage(PathNode, path_length);
                     for (path) |*node| {
-                        node.* = try PathNode.read(self.header.scale, self.reader);
+                        node.* = try self.readNode();
                     }
 
                     break :blk DrawCommand{
@@ -421,18 +347,18 @@ pub fn Parser(comptime Reader: type) type {
                     };
                 },
                 .draw_lines => blk: {
-                    const count_and_grad = @bitCast(CountAndStyleTag, try readByte(self.reader));
-                    const style = try Style.read(self.reader, self.header.scale, try count_and_grad.getStyleType());
+                    const count_and_grad = @bitCast(CountAndStyleTag, try self.readByte());
+                    const style = try self.readStyle(try count_and_grad.getStyleType());
                     const line_count = count_and_grad.getCount();
 
-                    const line_width = try readUnit(self.header.scale, self.reader);
+                    const line_width = try self.readUnit();
 
                     var lines = try self.setTempStorage(Line, line_count);
                     for (lines) |*line| {
-                        line.start.x = try readUnit(self.header.scale, self.reader);
-                        line.start.y = try readUnit(self.header.scale, self.reader);
-                        line.end.x = try readUnit(self.header.scale, self.reader);
-                        line.end.y = try readUnit(self.header.scale, self.reader);
+                        line.start.x = try self.readUnit();
+                        line.start.y = try self.readUnit();
+                        line.end.x = try self.readUnit();
+                        line.end.y = try self.readUnit();
                     }
 
                     break :blk DrawCommand{
@@ -444,16 +370,16 @@ pub fn Parser(comptime Reader: type) type {
                     };
                 },
                 .draw_line_loop => blk: {
-                    const count_and_grad = @bitCast(CountAndStyleTag, try readByte(self.reader));
-                    const style = try Style.read(self.reader, self.header.scale, try count_and_grad.getStyleType());
+                    const count_and_grad = @bitCast(CountAndStyleTag, try self.readByte());
+                    const style = try self.readStyle(try count_and_grad.getStyleType());
                     const point_count = count_and_grad.getCount() + 1;
 
-                    const line_width = try readUnit(self.header.scale, self.reader);
+                    const line_width = try self.readUnit();
 
                     var points = try self.setTempStorage(Point, point_count);
                     for (points) |*point| {
-                        point.x = try readUnit(self.header.scale, self.reader);
-                        point.y = try readUnit(self.header.scale, self.reader);
+                        point.x = try self.readUnit();
+                        point.y = try self.readUnit();
                     }
 
                     break :blk DrawCommand{
@@ -465,16 +391,16 @@ pub fn Parser(comptime Reader: type) type {
                     };
                 },
                 .draw_line_strip => blk: {
-                    const count_and_grad = @bitCast(CountAndStyleTag, try readByte(self.reader));
-                    const style = try Style.read(self.reader, self.header.scale, try count_and_grad.getStyleType());
+                    const count_and_grad = @bitCast(CountAndStyleTag, try self.readByte());
+                    const style = try self.readStyle(try count_and_grad.getStyleType());
                     const point_count = count_and_grad.getCount() + 1;
 
-                    const line_width = try readUnit(self.header.scale, self.reader);
+                    const line_width = try self.readUnit();
 
                     var points = try self.setTempStorage(Point, point_count);
                     for (points) |*point| {
-                        point.x = try readUnit(self.header.scale, self.reader);
-                        point.y = try readUnit(self.header.scale, self.reader);
+                        point.x = try self.readUnit();
+                        point.y = try self.readUnit();
                     }
 
                     break :blk DrawCommand{
@@ -486,18 +412,18 @@ pub fn Parser(comptime Reader: type) type {
                     };
                 },
                 .draw_line_path => blk: {
-                    const count_and_grad = @bitCast(CountAndStyleTag, try readByte(self.reader));
-                    const style = try Style.read(self.reader, self.header.scale, try count_and_grad.getStyleType());
+                    const count_and_grad = @bitCast(CountAndStyleTag, try self.readByte());
+                    const style = try self.readStyle(try count_and_grad.getStyleType());
                     const path_length = count_and_grad.getCount();
 
-                    const line_width = try readUnit(self.header.scale, self.reader);
+                    const line_width = try self.readUnit();
 
-                    const start_x = try readUnit(self.header.scale, self.reader);
-                    const start_y = try readUnit(self.header.scale, self.reader);
+                    const start_x = try self.readUnit();
+                    const start_y = try self.readUnit();
 
                     var path = try self.setTempStorage(PathNode, path_length);
                     for (path) |*node| {
-                        node.* = try PathNode.read(self.header.scale, self.reader);
+                        node.* = try self.readNode();
                     }
 
                     break :blk DrawCommand{
@@ -514,22 +440,22 @@ pub fn Parser(comptime Reader: type) type {
                 },
                 .outline_fill_polygon => @panic("parsing outline_fill_polygon not implemented yet!"),
                 .outline_fill_rectangles => blk: {
-                    const count_and_grad = @bitCast(CountAndStyleTag, try readByte(self.reader));
-                    const line_style_dat = try readByte(self.reader);
+                    const count_and_grad = @bitCast(CountAndStyleTag, try self.readByte());
+                    const line_style_dat = try self.readByte();
 
-                    const line_style = try Style.read(self.reader, self.header.scale, try convertStyleType(@truncate(u2, line_style_dat)));
-                    const fill_style = try Style.read(self.reader, self.header.scale, try count_and_grad.getStyleType());
+                    const line_style = try self.readStyle(try convertStyleType(@truncate(u2, line_style_dat)));
+                    const fill_style = try self.readStyle(try count_and_grad.getStyleType());
 
-                    const line_width = try readUnit(self.header.scale, self.reader);
+                    const line_width = try self.readUnit();
 
                     const rectangle_count = count_and_grad.getCount();
 
                     var rectangles = try self.setTempStorage(Rectangle, rectangle_count);
                     for (rectangles) |*rect| {
-                        rect.x = try readUnit(self.header.scale, self.reader);
-                        rect.y = try readUnit(self.header.scale, self.reader);
-                        rect.width = try readUnit(self.header.scale, self.reader);
-                        rect.height = try readUnit(self.header.scale, self.reader);
+                        rect.x = try self.readUnit();
+                        rect.y = try self.readUnit();
+                        rect.width = try self.readUnit();
+                        rect.height = try self.readUnit();
                         if (rect.width <= 0 or rect.height <= 0)
                             return error.InvalidFormat;
                     }
@@ -546,6 +472,127 @@ pub fn Parser(comptime Reader: type) type {
                 .outline_fill_path => @panic("parsing outline_fill_path not implemented yet!"),
                 _ => return error.InvalidData,
             };
+        }
+        fn readNode(self: Self) !PathNode {
+            const Tag = packed struct {
+                type: PathNode.Type,
+                padding0: u1 = 0,
+                has_line_width: bool,
+                padding1: u3 = 0,
+            };
+            const tag = @bitCast(Tag, try self.readByte());
+
+            var line_width: ?f32 = if (tag.has_line_width)
+                try self.readUnit()
+            else
+                null;
+
+            return switch (tag.type) {
+                .line => PathNode{ .line = PathNode.NodeData(Point).init(line_width, .{
+                    .x = try self.readUnit(),
+                    .y = try self.readUnit(),
+                }) },
+                .horiz => PathNode{ .horiz = PathNode.NodeData(f32).init(line_width, try self.readUnit()) },
+                .vert => PathNode{ .vert = PathNode.NodeData(f32).init(line_width, try self.readUnit()) },
+                .bezier => PathNode{ .bezier = PathNode.NodeData(PathNode.Bezier).init(line_width, PathNode.Bezier{
+                    .c0 = Point{
+                        .x = try self.readUnit(),
+                        .y = try self.readUnit(),
+                    },
+                    .c1 = Point{
+                        .x = try self.readUnit(),
+                        .y = try self.readUnit(),
+                    },
+                    .p1 = Point{
+                        .x = try self.readUnit(),
+                        .y = try self.readUnit(),
+                    },
+                }) },
+                .arc_circ => blk: {
+                    var flags = try self.readByte();
+                    break :blk PathNode{ .arc_circle = PathNode.NodeData(PathNode.ArcCircle).init(line_width, PathNode.ArcCircle{
+                        .radius = try self.readUnit(),
+                        .large_arc = (flags & 1) != 0,
+                        .sweep = (flags & 2) != 0,
+                        .target = Point{
+                            .x = try self.readUnit(),
+                            .y = try self.readUnit(),
+                        },
+                    }) };
+                },
+                .arc_ellipse => blk: {
+                    var flags = try self.readByte();
+                    break :blk PathNode{ .arc_ellipse = PathNode.NodeData(PathNode.ArcEllipse).init(line_width, PathNode.ArcEllipse{
+                        .radius_x = try self.readUnit(),
+                        .radius_y = try self.readUnit(),
+                        .rotation = try self.readUnit(),
+                        .large_arc = (flags & 1) != 0,
+                        .sweep = (flags & 2) != 0,
+                        .target = Point{
+                            .x = try self.readUnit(),
+                            .y = try self.readUnit(),
+                        },
+                    }) };
+                },
+                .close => PathNode{ .close = PathNode.NodeData(void).init(line_width, {}) },
+                .reserved => return error.InvalidData,
+            };
+        }
+
+        fn readStyle(self: Self, kind: StyleType) !Style {
+            return switch (kind) {
+                .flat => Style{ .flat = try self.readUInt() },
+                .linear => Style{ .linear = try self.readGradient() },
+                .radial => Style{ .radial = try self.readGradient() },
+            };
+        }
+
+        fn readGradient(self: Self) !Gradient {
+            var grad: Gradient = undefined;
+            grad.point_0 = Point{
+                .x = try self.readUnit(),
+                .y = try self.readUnit(),
+            };
+            grad.point_1 = Point{
+                .x = try self.readUnit(),
+                .y = try self.readUnit(),
+            };
+            grad.color_0 = try self.readUInt();
+            grad.color_1 = try self.readUInt();
+            return grad;
+        }
+
+        fn readUInt(self: Self) error{InvalidData}!u32 {
+            var byte_count: u8 = 0;
+            var result: u32 = 0;
+            while (true) {
+                const byte = self.reader.readByte() catch return error.InvalidData;
+                // check for too long *and* out of range in a single check
+                if (byte_count == 4 and (byte & 0xF0) != 0)
+                    return error.InvalidData;
+                const val = @as(u32, (byte & 0x7F)) << @intCast(u5, (7 * byte_count));
+                result |= val;
+                if ((byte & 0x80) == 0)
+                    break;
+                byte_count += 1;
+                std.debug.assert(byte_count <= 5);
+            }
+            return result;
+        }
+
+        fn readUnit(self: Self) !f32 {
+            switch (self.header.coordinate_range) {
+                .reduced => return @intToEnum(tvg.Unit, try self.reader.readIntLittle(i8)).toFloat(self.header.scale),
+                .default => return @intToEnum(tvg.Unit, try self.reader.readIntLittle(i16)).toFloat(self.header.scale),
+            }
+        }
+
+        fn readByte(self: Self) !u8 {
+            return try self.reader.readByte();
+        }
+
+        fn readU16(self: Self) !u16 {
+            return try self.reader.readIntLittle(u16);
         }
     };
 }
@@ -575,52 +622,38 @@ fn convertStyleType(value: u2) !StyleType {
     };
 }
 
-fn readUInt(reader: anytype) error{InvalidData}!u32 {
-    var byte_count: u8 = 0;
-    var result: u32 = 0;
-    while (true) {
-        const byte = reader.readByte() catch return error.InvalidData;
-        // check for too long *and* out of range in a single check
-        if (byte_count == 4 and (byte & 0xF0) != 0)
-            return error.InvalidData;
-        const val = @as(u32, (byte & 0x7F)) << @intCast(u5, (7 * byte_count));
-        result |= val;
-        if ((byte & 0x80) == 0)
-            break;
-        byte_count += 1;
-        std.debug.assert(byte_count <= 5);
-    }
-    return result;
+fn MapZeroToMax(comptime T: type) type {
+    const info = @typeInfo(T).Int;
+    return std.meta.Int(.unsigned, info.bits + 1);
+}
+fn mapZeroToMax(value: anytype) MapZeroToMax(@TypeOf(value)) {
+    return if (value == 0)
+        std.math.maxInt(@TypeOf(value)) + 1
+    else
+        value;
 }
 
-fn readUnit(scale: tvg.Scale, reader: anytype) !f32 {
-    return @intToEnum(tvg.Unit, try reader.readIntLittle(i16)).toFloat(scale);
+test "mapZeroToMax" {
+    std.testing.expectEqual(@as(u9, 256), mapZeroToMax(@as(u8, 0)));
+    std.testing.expectEqual(@as(u17, 65536), mapZeroToMax(@as(u16, 0)));
 }
 
-fn readByte(reader: anytype) !u8 {
-    return reader.readByte();
-}
+// test "readUInt" {
+//     const T = struct {
+//         fn run(seq: []const u8) !u32 {
+//             var stream = std.io.fixedBufferStream(seq);
+//             return try readUInt(stream.reader());
+//         }
+//     };
 
-fn readU16(reader: anytype) !u16 {
-    return try reader.readIntLittle(u16);
-}
-
-test "readUInt" {
-    const T = struct {
-        fn run(seq: []const u8) !u32 {
-            var stream = std.io.fixedBufferStream(seq);
-            return try readUInt(stream.reader());
-        }
-    };
-
-    std.testing.expectEqual(@as(u32, 0x00), try T.run(&[_]u8{0x00}));
-    std.testing.expectEqual(@as(u32, 0x40), try T.run(&[_]u8{0x40}));
-    std.testing.expectEqual(@as(u32, 0x80), try T.run(&[_]u8{ 0x80, 0x01 }));
-    std.testing.expectEqual(@as(u32, 0x100000), try T.run(&[_]u8{ 0x80, 0x80, 0x40 }));
-    std.testing.expectEqual(@as(u32, 0x8000_0000), try T.run(&[_]u8{ 0x80, 0x80, 0x80, 0x80, 0x08 }));
-    std.testing.expectError(error.InvalidData, T.run(&[_]u8{ 0x80, 0x80, 0x80, 0x80, 0x10 })); // out of range
-    std.testing.expectError(error.InvalidData, T.run(&[_]u8{ 0x80, 0x80, 0x80, 0x80, 0x80, 0x10 })); // too long
-}
+//     std.testing.expectEqual(@as(u32, 0x00), try T.run(&[_]u8{0x00}));
+//     std.testing.expectEqual(@as(u32, 0x40), try T.run(&[_]u8{0x40}));
+//     std.testing.expectEqual(@as(u32, 0x80), try T.run(&[_]u8{ 0x80, 0x01 }));
+//     std.testing.expectEqual(@as(u32, 0x100000), try T.run(&[_]u8{ 0x80, 0x80, 0x40 }));
+//     std.testing.expectEqual(@as(u32, 0x8000_0000), try T.run(&[_]u8{ 0x80, 0x80, 0x80, 0x80, 0x08 }));
+//     std.testing.expectError(error.InvalidData, T.run(&[_]u8{ 0x80, 0x80, 0x80, 0x80, 0x10 })); // out of range
+//     std.testing.expectError(error.InvalidData, T.run(&[_]u8{ 0x80, 0x80, 0x80, 0x80, 0x80, 0x10 })); // too long
+// }
 
 test "coverage test" {
     const source = &@import("ground-truth").feature_showcase;

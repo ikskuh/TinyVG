@@ -6,11 +6,12 @@ pub fn main() !void {
     try std.fs.cwd().writeFile("examples/workspace.tvg", &workspace);
     try std.fs.cwd().writeFile("examples/workspace_add.tvg", &workspace_add);
     try std.fs.cwd().writeFile("examples/shield.tvg", &shield);
+    try std.fs.cwd().writeFile("examples/shield-8.tvg", &shield_8);
     try std.fs.cwd().writeFile("examples/feature-showcase.tvg", &feature_showcase);
 }
 
-const builder = tvg.builder(.@"1/256");
-const builder_16 = tvg.builder(.@"1/16");
+const builder = tvg.builder(.@"1/256", .default);
+const builder_16 = tvg.builder(.@"1/16", .default);
 
 pub const app_menu = blk: {
     @setEvalBranchQuota(10_000);
@@ -73,36 +74,44 @@ pub const workspace_add = blk: {
         builder.end_of_document;
 };
 
-pub const shield = blk: {
+fn makeShield(comptime b: type) type {
     @setEvalBranchQuota(10_000);
-    break :blk builder.header(24, 24) ++
-        builder.colorTable(&[_]tvg.Color{
+
+    const icon = b.header(24, 24) ++
+        b.colorTable(&[_]tvg.Color{
         tvg.Color.fromString("29adff") catch unreachable,
         tvg.Color.fromString("fff1e8") catch unreachable,
     }) ++
-        builder.fillPath(5, .flat, 0) ++
-        builder.point(12, 1) ++ // M 12 1
-        builder.path.line(3, 5) ++ // L 3 5
-        builder.path.vert(11) ++ // V 11
-        builder.path.bezier(3, 16.55, 6.84, 21.74, 12, 23) ++ // C 3     16.55 6.84 21.74 12 23
-        builder.path.bezier(17.16, 21.74, 21, 16.55, 21, 11) ++ // C 17.16 21.74 21   16.55 21 11
-        builder.path.vert(5) ++ // V 5
-        builder.fillPath(6, .flat, 1) ++
-        builder.point(17.13, 17) ++ // M 12 1
-        builder.path.bezier(15.92, 18.85, 14.11, 20.24, 12, 20.92) ++
-        builder.path.bezier(9.89, 20.24, 8.08, 18.85, 6.87, 17) ++
-        builder.path.bezier(6.53, 16.5, 6.24, 16, 6, 15.47) ++
-        builder.path.bezier(6, 13.82, 8.71, 12.47, 12, 12.47) ++
-        builder.path.bezier(15.29, 12.47, 18, 13.79, 18, 15.47) ++
-        builder.path.bezier(17.76, 16, 17.47, 16.5, 17.13, 17) ++
-        builder.fillPath(4, .flat, 1) ++
-        builder.point(12, 5) ++
-        builder.path.bezier(13.5, 5, 15, 6.2, 15, 8) ++
-        builder.path.bezier(15, 9.5, 13.8, 10.998, 12, 11) ++
-        builder.path.bezier(10.5, 11, 9, 9.8, 9, 8) ++
-        builder.path.bezier(9, 6.4, 10.2, 5, 12, 5) ++
-        builder.end_of_document;
-};
+        b.fillPath(5, .flat, 0) ++
+        b.point(12, 1) ++ // M 12 1
+        b.path.line(3, 5) ++ // L 3 5
+        b.path.vert(11) ++ // V 11
+        b.path.bezier(3, 16.55, 6.84, 21.74, 12, 23) ++ // C 3     16.55 6.84 21.74 12 23
+        b.path.bezier(17.16, 21.74, 21, 16.55, 21, 11) ++ // C 17.16 21.74 21   16.55 21 11
+        b.path.vert(5) ++ // V 5
+        b.fillPath(6, .flat, 1) ++
+        b.point(17.13, 17) ++ // M 12 1
+        b.path.bezier(15.92, 18.85, 14.11, 20.24, 12, 20.92) ++
+        b.path.bezier(9.89, 20.24, 8.08, 18.85, 6.87, 17) ++
+        b.path.bezier(6.53, 16.5, 6.24, 16, 6, 15.47) ++
+        b.path.bezier(6, 13.82, 8.71, 12.47, 12, 12.47) ++
+        b.path.bezier(15.29, 12.47, 18, 13.79, 18, 15.47) ++
+        b.path.bezier(17.76, 16, 17.47, 16.5, 17.13, 17) ++
+        b.fillPath(4, .flat, 1) ++
+        b.point(12, 5) ++
+        b.path.bezier(13.5, 5, 15, 6.2, 15, 8) ++
+        b.path.bezier(15, 9.5, 13.8, 10.998, 12, 11) ++
+        b.path.bezier(10.5, 11, 9, 9.8, 9, 8) ++
+        b.path.bezier(9, 6.4, 10.2, 5, 12, 5) ++
+        b.end_of_document;
+    return struct {
+        const data = icon;
+    };
+}
+
+pub const shield = makeShield(builder).data;
+
+pub const shield_8 = makeShield(tvg.builder(.@"1/4", .reduced)).data;
 
 pub const feature_showcase = blk: {
     @setEvalBranchQuota(20_000);

@@ -56,7 +56,7 @@ pub fn decode(u: u32) i32 {
 ```
 
 ### `unit`
-A graphics-dependent fixed-point decimal number, encoded as a 16 bit signed two's complement integer with the last N bits being the decimal places.
+A graphics-dependent fixed-point decimal number, encoded as either a  16 bit (*default*) or 8 bit (*reduced*) signed two's complement integer with the last N bits being the decimal places.
 A `scale` value for the graphic will determine the number of decimal places.
 
 ### `Point`
@@ -121,19 +121,24 @@ struct {
     version: u8  = 1,
     scale: u4, 
     custom_color_space: bool,
-    padding: u3 = 0,
-    width: u16,
-    height: u16,
+    coordinate_range: enum { default = 0, reduced = 1 },
+    padding: u2 = 0,
+    width: if(coordinate_range == .default) u16 else u8,
+    height: if(coordinate_range == .default) u16 else u8,
     color_count: u16,
 }
 ```
 
 `scale` is a value between 0 and 8 defining the number of bits used as decimal places.
-It defines how to convert units (16 bit integers) to pixels in the final image, allowing
+It defines how to convert units (8 or 16 bit integers) to pixels in the final image, allowing
 sub-pixel precision of vector data. 0 means that no bits are used (thus 1 unit is 1 pixel),
 and 8 means that 8 bits are used as decimal places (thus 256 units is 1 pixel).
 
-`width` and `height` must both be larger than 0 and define the size of the vector graphic.
+`coordinate_range` defines if a unit is 16 bit (for `default`) or 8 bit (for `reduced`) large.
+Images with `reduced` range have a maximum size of 256×256, images with `default` range have a size up to 65535×65535 pixels.
+
+`width` and `height` encode the size of the size of the vector graphic.
+When the `coordinate_range` is `reduced` and either of these values is `0`, it is interpreted as a `256`.
 
 After this header, there are `color_count` entries into a color table, each entry consists of four byte.
 
@@ -424,3 +429,11 @@ struct {
     nodes: [node_count]Node,
 }
 ```
+
+## Rationale
+
+### Providing both `reduced` and `default` coordinate space.
+This decision greatly reduces the size of TVG files while affecting the decoding work not that much. A jump that is always taken won't affect the branch predictor much, but using only half of the bytes for coordinates will greatly reduce the number of cache misses. When using a `readUnit` function, the implementation complexity isn't increased much as well either.
+
+### Using `0` for max. value instead of actual zero
+In a lot of values, TVG encodes data as `x=1…N` as `x` and `x=0` as `N+1`. This allows to use the full value range when `0` isn't a semantically meaningful value in the context. Saves bits.
