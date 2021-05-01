@@ -58,7 +58,7 @@ pub fn build(b: *std.build.Builder) !void {
         const tvg_conversion = render.run();
         tvg_conversion.addArg(file);
         tvg_conversion.addArg("--output");
-        tvg_conversion.addArg(file[0 .. file.len - 3] ++ "ppm");
+        tvg_conversion.addArg(file[0 .. file.len - 3] ++ "tga");
         tvg_conversion.cwd = "examples";
 
         const tvgt_conversion = text.run();
@@ -70,7 +70,7 @@ pub fn build(b: *std.build.Builder) !void {
         const png_conversion = b.addSystemCommand(&[_][]const u8{
             "convert",
             "-strip",
-            file[0 .. file.len - 3] ++ "ppm",
+            file[0 .. file.len - 3] ++ "tga",
             file[0 .. file.len - 3] ++ "png",
         });
         png_conversion.cwd = "examples";

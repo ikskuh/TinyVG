@@ -55,22 +55,15 @@ pub fn main() !u8 {
 
     const pixel_count = @as(usize, geometry.width) * @as(usize, geometry.height);
 
-    var backing_buffer = try allocator.alloc(u8, ImgFormat.bytesRequired(pixel_count));
-    defer allocator.free(backing_buffer);
+    var image_buffer = try allocator.alloc(Color, pixel_count);
+    defer allocator.free(image_buffer);
 
-    var slice = ImgFormat.init(backing_buffer, pixel_count);
-    {
-        const color: u24 = cli.options.background.toInt();
-
-        var i: usize = 0;
-        while (i < slice.int_count) : (i += 1) {
-            slice.set(i, color);
-        }
+    for (image_buffer) |*c| {
+        c.* = cli.options.background;
     }
 
-    var fb =
-        Framebuffer{
-        .slice = slice,
+    var fb = Framebuffer{
+        .slice = image_buffer,
         .stride = geometry.width,
         .width = geometry.width,
         .height = geometry.height,
@@ -85,7 +78,7 @@ pub fn main() !u8 {
         else blk: {
             var out_name = cli.options.output orelse try std.mem.concat(allocator, u8, &[_][]const u8{
                 cli.positionals[0][0..(cli.positionals[0].len - std.fs.path.extension(cli.positionals[0]).len)],
-                ".ppm",
+                ".tga",
             });
 
             break :blk try std.fs.cwd().createFile(out_name, .{});
@@ -94,11 +87,40 @@ pub fn main() !u8 {
             dest_file.close();
 
         var writer = dest_file.writer();
-        try writer.print("P6 {} {} 255\n", .{ geometry.width, geometry.height });
-        try writer.writeAll(backing_buffer[0 .. 3 * pixel_count]);
+        try dumpTga(writer, geometry.width, geometry.height, image_buffer);
     }
 
     return 0;
+}
+
+fn dumpTga(src_writer: anytype, width: u16, height: u16, pixels: []const Color) !void {
+    var buffered_writer = std.io.bufferedWriter(src_writer);
+    var writer = buffered_writer.writer();
+
+    std.debug.assert(pixels.len == @as(u32, width) * height);
+
+    const image_id = "Hello, TGA!";
+
+    try writer.writeIntLittle(u8, @intCast(u8, image_id.len));
+    try writer.writeIntLittle(u8, 0); // color map type = no color map
+    try writer.writeIntLittle(u8, 2); // image type = uncompressed true-color image
+    // color map spec
+    try writer.writeIntLittle(u16, 0); // first index
+    try writer.writeIntLittle(u16, 0); // length
+    try writer.writeIntLittle(u8, 0); // number of bits per pixel
+    // image spec
+    try writer.writeIntLittle(u16, 0); // x origin
+    try writer.writeIntLittle(u16, 0); // y origin
+    try writer.writeIntLittle(u16, width); // width
+    try writer.writeIntLittle(u16, height); // height
+    try writer.writeIntLittle(u8, 32); // bits per pixel
+    try writer.writeIntLittle(u8, 8 | 0x20); // 0…3 => alpha channel depth = 8, 4…7 => direction=top left
+
+    try writer.writeAll(image_id);
+    try writer.writeAll(""); // color map data \o/
+    try writer.writeAll(std.mem.sliceAsBytes(pixels));
+
+    try buffered_writer.flush();
 }
 
 const Framebuffer = struct {
@@ -106,7 +128,7 @@ const Framebuffer = struct {
 
     // private API
 
-    slice: ImgFormat,
+    slice: []Color,
     stride: usize,
 
     // public API
@@ -116,17 +138,16 @@ const Framebuffer = struct {
 
     pub fn setPixel(self: *Self, x: isize, y: isize, color: [4]u8) void {
         const offset = (std.math.cast(usize, y) catch return) * self.stride + (std.math.cast(usize, x) catch return);
-        // std.debug.print("{} {} => {any}\n", .{ x, y, color });
-        self.slice.set(offset, (Color{ .r = color[0], .g = color[1], .b = color[2] }).toInt());
+
+        self.slice[offset] = Color{ .r = color[0], .g = color[1], .b = color[2], .a = color[3] };
     }
 };
 
-const ImgFormat = std.PackedIntSliceEndian(u24, .Little);
-
-const Color = struct {
-    r: u8,
-    g: u8,
+const Color = extern struct {
     b: u8,
+    g: u8,
+    r: u8,
+    a: u8 = 0xFF,
 
     pub fn parse(str: []const u8) !Color {
         switch (str.len) {
@@ -153,10 +174,6 @@ const Color = struct {
             },
             else => return error.InvalidColor,
         }
-    }
-
-    pub fn toInt(self: Color) u24 {
-        return @as(u24, self.r) | (@as(u24, self.g) << 8) | (@as(u24, self.b) << 16);
     }
 };
 
