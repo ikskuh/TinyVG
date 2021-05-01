@@ -408,5 +408,26 @@ pub const feature_showcase = blk: {
         builder_16.path.line(256 + 16, 464 + 16) ++
         builder_16.path.arc_ellipse(25, 45, -35, true, false, 256 + 48, 464 + 48) ++
         builder_16.path.line(256 + 64, 464 + 64) ++
+        // PATH WITH ARC (CIRCLE)
+        builder_16.drawPath(3, 2.0, .flat, 1) ++
+        builder_16.point(16 + 0, 560 + 0) ++
+        builder_16.path.line(16 + 16, 560 + 16) ++
+        builder_16.path.arc_circle(30, false, false, 16 + 48, 560 + 48) ++
+        builder_16.path.line(16 + 64, 560 + 64) ++
+        builder_16.drawPath(3, 2.0, .flat, 1) ++
+        builder_16.point(96 + 0, 560 + 0) ++
+        builder_16.path.line(96 + 16, 560 + 16) ++
+        builder_16.path.arc_circle(30, false, true, 96 + 48, 560 + 48) ++
+        builder_16.path.line(96 + 64, 560 + 64) ++
+        builder_16.drawPath(3, 2.0, .flat, 1) ++
+        builder_16.point(176 + 0, 560 + 0) ++
+        builder_16.path.line(176 + 16, 560 + 16) ++
+        builder_16.path.arc_circle(30, true, true, 176 + 48, 560 + 48) ++
+        builder_16.path.line(176 + 64, 560 + 64) ++
+        builder_16.drawPath(3, 2.0, .flat, 1) ++
+        builder_16.point(256 + 0, 560 + 0) ++
+        builder_16.path.line(256 + 16, 560 + 16) ++
+        builder_16.path.arc_circle(30, true, false, 256 + 48, 560 + 48) ++
+        builder_16.path.line(256 + 64, 560 + 64) ++
         builder_16.end_of_document;
 };

@@ -361,5 +361,45 @@
          (line 320 528)
        )
      )
+     (
+       draw_line_path
+       (flat 1)
+       2
+       (
+         (line 32 576)
+         (arc-circle)
+         (line 80 624)
+       )
+     )
+     (
+       draw_line_path
+       (flat 1)
+       2
+       (
+         (line 112 576)
+         (arc-circle)
+         (line 160 624)
+       )
+     )
+     (
+       draw_line_path
+       (flat 1)
+       2
+       (
+         (line 192 576)
+         (arc-circle)
+         (line 240 624)
+       )
+     )
+     (
+       draw_line_path
+       (flat 1)
+       2
+       (
+         (line 272 576)
+         (arc-circle)
+         (line 320 624)
+       )
+     )
   )
 )
