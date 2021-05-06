@@ -109,20 +109,25 @@ pub fn render(
             }
         },
         .draw_line_path => |data| {
-            std.log.err("reimplement draw_line_path", .{});
-            // var point_store = FixedBufferList(Point, temp_buffer_size){};
+            var point_store = FixedBufferList(Point, temp_buffer_size){};
+            var slice_store = FixedBufferList(IndexSlice, 64){}; // known upper bound
 
-            // try renderPath(&point_store, data.path);
+            try renderPath(&point_store, &slice_store, data.path);
 
-            // const vertices = point_store.items();
+            var slices: [64][]const Point = undefined;
+            for (slice_store.items()) |src, i| {
+                slices[i] = point_store.items()[src.offset..][0..src.len];
+            }
 
-            // for (vertices[1..]) |end, i| {
-            //     const start = vertices[i]; // is actually [i-1], but we access the slice off-by-one!
-            //     painter.drawLine(framebuffer, color_table, data.style, data.line_width, data.line_width, .{
-            //         .start = start,
-            //         .end = end,
-            //     });
-            // }
+            for (slices[0..slice_store.length]) |vertices| {
+                for (vertices[1..]) |end, i| {
+                    const start = vertices[i]; // is actually [i-1], but we access the slice off-by-one!
+                    painter.drawLine(framebuffer, color_table, data.style, data.line_width, data.line_width, .{
+                        .start = start,
+                        .end = end,
+                    });
+                }
+            }
         },
         .outline_fill_polygon => |data| {
             @panic("outline_fill_polygon not implemented yet!");

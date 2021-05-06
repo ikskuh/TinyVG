@@ -497,11 +497,11 @@ pub fn Parser(comptime Reader: type) type {
                 while (i < segment_count) : (i += 1) {
                     segment_lengths[i] = try self.readUInt();
                     total_node_count += segment_lengths[i];
-                    std.log.debug("node[{}]: {}", .{ i, segment_lengths[i] });
+                    // std.log.debug("node[{}]: {}", .{ i, segment_lengths[i] });
                 }
             }
 
-            std.log.debug("total: {}", .{total_node_count});
+            // std.log.debug("total: {}", .{total_node_count});
 
             const buffers = try self.setDualTempStorage(
                 Path.Segment,
