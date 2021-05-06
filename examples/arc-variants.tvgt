@@ -1,0 +1,22 @@
+(tvg
+  (1 256 92 92)
+  (
+    (64 255 0)
+  )
+  (
+     (
+       fill_path
+       (flat 0)
+       (
+         (horiz 64)
+         (arc-ellipse)
+         (vert 64)
+         (arc-ellipse)
+         (horiz 48)
+         (arc-ellipse)
+         (vert 64)
+         (arc-ellipse)
+       )
+     )
+  )
+)

@@ -151,7 +151,7 @@ struct {
     transparency: u8,
 }   
 ```
-`transparency` is also often `alpha`. 
+`transparency` is also often called `alpha`. 
 
 If `custom_color_space` is one, these four bytes have a implementation defined meaning and might use any kind of color encoding. When this flag is set, the file is explicitly marked as non-standard and should be rejected by any conforming renderer that doesn't provide means to have configurable color parsing.
 
@@ -231,6 +231,7 @@ struct {
         arc_circ = 4,
         arc_ellipse = 5,
         close = 6,
+        quad_bezier = 7,
     },
     padding0: u1 = 0,
     has_line_width: bool,
@@ -329,6 +330,17 @@ Draws a segment of an ellipse from the current location to `point`. The size of 
 
 This command will close the path by drawing a straight line to `start`. This command **must** be the last one in a node sequence
 and will be ignored in case of a *Fill path* command.
+
+#### `quad_bezier=7` Quadratic bezier
+
+```zig
+struct {
+    c: Point,
+    p1: Point,
+}
+```
+
+Draws a quadratic bezier curve from the current point to `p1`. `c` is the control point.
 
 ### `command=4` Draw lines
 

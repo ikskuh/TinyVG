@@ -97,6 +97,7 @@ pub const PathNode = union(enum) {
     arc_circle: NodeData(ArcCircle),
     arc_ellipse: NodeData(ArcEllipse),
     close: NodeData(void),
+    quadratic_bezier: NodeData(QuadraticBezier),
 
     fn NodeData(comptime Payload: type) type {
         return struct {
@@ -134,6 +135,11 @@ pub const PathNode = union(enum) {
         p1: Point,
     };
 
+    pub const QuadraticBezier = struct {
+        c: Point,
+        p1: Point,
+    };
+
     const Type = packed enum(u3) {
         line = 0, // x,y
         horiz = 1, // x
@@ -142,7 +148,7 @@ pub const PathNode = union(enum) {
         arc_circ = 4, //r,x,y
         arc_ellipse = 5, // rx,ry,x,y
         close = 6,
-        reserved = 7,
+        quad_bezier = 7,
     };
 };
 
@@ -201,8 +207,8 @@ pub fn Parser(comptime Reader: type) type {
                     };
 
                     const scale_and_flags = @bitCast(ScaleAndFlags, try reader.readByte());
-                    if (scale_and_flags.scale > 8)
-                        return error.InvalidData;
+                    // if (scale_and_flags.scale > 8)
+                    //     return error.InvalidData;
                     if (scale_and_flags.padding != 0)
                         return error.InvalidData;
 
@@ -535,7 +541,16 @@ pub fn Parser(comptime Reader: type) type {
                     }) };
                 },
                 .close => PathNode{ .close = PathNode.NodeData(void).init(line_width, {}) },
-                .reserved => return error.InvalidData,
+                .quad_bezier => PathNode{ .quadratic_bezier = PathNode.NodeData(PathNode.QuadraticBezier).init(line_width, PathNode.QuadraticBezier{
+                    .c = Point{
+                        .x = try self.readUnit(),
+                        .y = try self.readUnit(),
+                    },
+                    .p1 = Point{
+                        .x = try self.readUnit(),
+                        .y = try self.readUnit(),
+                    },
+                }) },
             };
         }
 

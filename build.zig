@@ -21,6 +21,7 @@ pub fn build(b: *std.build.Builder) !void {
         const svg2cs = b.addSystemCommand(&[_][]const u8{
             "mcs",
             "/out:zig-cache/bin/svg2tvg.exe",
+            "/r:System.Drawing.dll",
             "src/tools/svg2tvg.cs",
         });
         b.getInstallStep().dependOn(&svg2cs.step);
@@ -52,7 +53,7 @@ pub fn build(b: *std.build.Builder) !void {
     gen_gt_step.dependOn(&generate_ground_truth.step);
 
     const files = [_][]const u8{
-        "app_menu.tvg", "shield.tvg", "shield-8.tvg", "workspace.tvg", "workspace_add.tvg", "feature-showcase.tvg",
+        "app_menu.tvg", "shield.tvg", "shield-8.tvg", "workspace.tvg", "workspace_add.tvg", "feature-showcase.tvg", "arc-variants.tvg",
     };
     inline for (files) |file| {
         const tvg_conversion = render.run();

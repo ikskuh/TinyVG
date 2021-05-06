@@ -139,7 +139,19 @@ const Framebuffer = struct {
     pub fn setPixel(self: *Self, x: isize, y: isize, color: [4]u8) void {
         const offset = (std.math.cast(usize, y) catch return) * self.stride + (std.math.cast(usize, x) catch return);
 
-        self.slice[offset] = Color{ .r = color[0], .g = color[1], .b = color[2], .a = color[3] };
+        const dst = self.slice[offset];
+        self.slice[offset] = Color{
+            .r = lerp(dst.r, color[0], color[3]),
+            .g = lerp(dst.g, color[1], color[3]),
+            .b = lerp(dst.b, color[2], color[3]),
+            .a = lerp(dst.a, color[3], color[3]),
+        };
+    }
+
+    fn lerp(c0: u8, c1: u8, a: u8) u8 {
+        const f0 = @intToFloat(f32, c0);
+        const f1 = @intToFloat(f32, c1);
+        return @floatToInt(u8, f0 + (f1 - f0) * @intToFloat(f32, a) / 255.0);
     }
 };
 
@@ -184,7 +196,7 @@ const CliOptions = struct {
 
     geometry: ?Geometry = null,
 
-    background: Color = Color{ .r = 0xAA, .g = 0xAA, .b = 0xAA },
+    background: Color = Color{ .r = 0xFF, .g = 0xFF, .b = 0xFF, .a = 0x00 },
 
     pub const shorthands = .{
         .o = "output",

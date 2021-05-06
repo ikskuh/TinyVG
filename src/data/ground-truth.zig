@@ -7,6 +7,7 @@ pub fn main() !void {
     try std.fs.cwd().writeFile("examples/workspace_add.tvg", &workspace_add);
     try std.fs.cwd().writeFile("examples/shield.tvg", &shield);
     try std.fs.cwd().writeFile("examples/shield-8.tvg", &shield_8);
+    try std.fs.cwd().writeFile("examples/arc-variants.tvg", &arc_variants);
     try std.fs.cwd().writeFile("examples/feature-showcase.tvg", &feature_showcase);
 }
 
@@ -112,6 +113,20 @@ fn makeShield(comptime b: type) type {
 pub const shield = makeShield(builder).data;
 
 pub const shield_8 = makeShield(tvg.builder(.@"1/4", .reduced)).data;
+
+pub const arc_variants = builder.header(92, 92) ++
+    builder.colorTable(&[_]tvg.Color{tvg.Color.fromString("40ff00") catch unreachable}) ++
+    builder.fillPath(8, .flat, 0) ++
+    builder.point(48, 32) ++
+    builder.path.horiz(64) ++
+    builder.path.arc_ellipse(18.5, 18.5, 0, false, true, 80, 48) ++
+    builder.path.vert(64) ++
+    builder.path.arc_ellipse(18.5, 18.5, 0, false, false, 64, 80) ++
+    builder.path.horiz(48) ++
+    builder.path.arc_ellipse(18.5, 18.5, 0, true, true, 32, 64) ++
+    builder.path.vert(64) ++
+    builder.path.arc_ellipse(18.5, 18.5, 0, true, false, 48, 32) ++
+    builder.end_of_document;
 
 pub const feature_showcase = blk: {
     @setEvalBranchQuota(20_000);

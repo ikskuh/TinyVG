@@ -39,6 +39,8 @@ pub fn render(
     /// The command that should be executed.
     cmd: parsing.DrawCommand,
 ) !void {
+    const temp_buffer_size = 1024;
+
     if (!comptime isFramebuffer(@TypeOf(framebuffer)))
         @compileError("framebuffer needs fields width, height and function setPixel!");
     const fb_width = @intToFloat(f32, framebuffer.width);
@@ -60,7 +62,7 @@ pub fn render(
             }
         },
         .fill_path => |data| {
-            var point_store = FixedBufferList(Point, 256){};
+            var point_store = FixedBufferList(Point, temp_buffer_size){};
 
             try renderPath(&point_store, data.start, data.path);
 
@@ -93,7 +95,7 @@ pub fn render(
             }
         },
         .draw_line_path => |data| {
-            var point_store = FixedBufferList(Point, 256){};
+            var point_store = FixedBufferList(Point, temp_buffer_size){};
 
             try renderPath(&point_store, data.start, data.path);
 
@@ -179,6 +181,24 @@ pub fn renderPath(point_list: anytype, start: Point, nodes: []const tvg.parsing.
 
                 try point_store.append(bezier.data.p1);
             },
+            .quadratic_bezier => |bezier| {
+                var previous = point_store.back();
+
+                const oct0_x = [3]f32{ previous.x, bezier.data.c.x, bezier.data.p1.x };
+                const oct0_y = [3]f32{ previous.y, bezier.data.c.y, bezier.data.p1.y };
+
+                var i: usize = 1;
+                while (i < bezier_divs) : (i += 1) {
+                    const f = @intToFloat(f32, i) / @intToFloat(f32, bezier_divs);
+
+                    const x = lerpAndReduceToOne(3, oct0_x, f);
+                    const y = lerpAndReduceToOne(3, oct0_y, f);
+
+                    try point_store.append(Point{ .x = x, .y = y });
+                }
+
+                try point_store.append(bezier.data.p1);
+            },
             // /home/felix/projects/forks/svg-curve-lib/src/js/svg-curve-lib.js
             .arc_circle => |circle| {
                 try renderCircle(
@@ -203,10 +223,10 @@ pub fn renderPath(point_list: anytype, start: Point, nodes: []const tvg.parsing.
                 );
             },
             .close => {
-                if (node_index != (nodes.len - 1)) {
-                    // .close must be last!
-                    return error.InvalidData;
-                }
+                // if (node_index != (nodes.len - 1)) {
+                //     // .close must be last!
+                //     return error.InvalidData;
+                // }
                 try point_store.append(start);
             },
         }
@@ -268,7 +288,10 @@ fn renderCircle(
     // Vector from midpoint to center, but incorrect length
     const radius_vec = if (left_side) Point{ .x = -delta.y, .y = delta.x } else Point{ .x = delta.y, .y = -delta.x };
     const len_squared = length2(radius_vec);
-    if (len_squared > r * r or r < 0) return error.InvalidRadius;
+    if (len_squared > r * r or r < 0) {
+        std.log.err("{d} > {d}", .{ len_squared, r * r });
+        return error.InvalidRadius;
+    }
 
     const to_center = scale(radius_vec, sqrt(r * r / len_squared - 1));
     const center = add(midpoint, to_center);

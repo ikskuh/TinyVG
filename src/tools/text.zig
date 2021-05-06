@@ -200,6 +200,12 @@ fn renderPathNode(writer: anytype, node: tvg.parsing.PathNode) !void {
             bezier.data.p1.x,
             bezier.data.p1.y,
         }),
+        .quadratic_bezier => |bezier| try writer.print("(quad-bezier ({d} {d}) ({d} {d}))", .{
+            bezier.data.c.x,
+            bezier.data.c.y,
+            bezier.data.p1.x,
+            bezier.data.p1.y,
+        }),
         .arc_circle => |arc_circle| try writer.print("(arc-circle)", .{}),
         .arc_ellipse => |arc_ellipse| try writer.print("(arc-ellipse)", .{}),
         .close => try writer.writeAll("(close)"),
