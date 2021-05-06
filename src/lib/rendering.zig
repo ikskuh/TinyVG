@@ -28,6 +28,8 @@ pub fn isFramebuffer(comptime T: type) bool {
         std.meta.trait.hasField("height")(Framebuffer);
 }
 
+const IndexSlice = struct { offset: usize, len: usize };
+
 /// Renders a command for TVG icon.
 pub fn render(
     /// A struct that exports a single function `setPixel(x: isize, y: isize, color: [4]u8) void` as well as two fields width and height
@@ -63,10 +65,22 @@ pub fn render(
         },
         .fill_path => |data| {
             var point_store = FixedBufferList(Point, temp_buffer_size){};
+            var slice_store = FixedBufferList(IndexSlice, 64){}; // known upper bound
 
-            try renderPath(&point_store, data.start, data.path);
+            try renderPath(&point_store, &slice_store, data.path);
 
-            painter.fillPolygon(framebuffer, color_table, data.style, point_store.items());
+            var slices: [64][]const Point = undefined;
+            for (slice_store.items()) |src, i| {
+                slices[i] = point_store.items()[src.offset..][0..src.len];
+            }
+
+            painter.fillPolygonList(
+                framebuffer,
+                color_table,
+                data.style,
+                slices[0..slice_store.length],
+                .even_odd,
+            );
         },
         .draw_lines => |data| {
             for (data.lines) |line| {
@@ -95,19 +109,20 @@ pub fn render(
             }
         },
         .draw_line_path => |data| {
-            var point_store = FixedBufferList(Point, temp_buffer_size){};
+            std.log.err("reimplement draw_line_path", .{});
+            // var point_store = FixedBufferList(Point, temp_buffer_size){};
 
-            try renderPath(&point_store, data.start, data.path);
+            // try renderPath(&point_store, data.path);
 
-            const vertices = point_store.items();
+            // const vertices = point_store.items();
 
-            for (vertices[1..]) |end, i| {
-                const start = vertices[i]; // is actually [i-1], but we access the slice off-by-one!
-                painter.drawLine(framebuffer, color_table, data.style, data.line_width, data.line_width, .{
-                    .start = start,
-                    .end = end,
-                });
-            }
+            // for (vertices[1..]) |end, i| {
+            //     const start = vertices[i]; // is actually [i-1], but we access the slice off-by-one!
+            //     painter.drawLine(framebuffer, color_table, data.style, data.line_width, data.line_width, .{
+            //         .start = start,
+            //         .end = end,
+            //     });
+            // }
         },
         .outline_fill_polygon => |data| {
             @panic("outline_fill_polygon not implemented yet!");
@@ -131,10 +146,11 @@ pub fn render(
     }
 }
 
-pub fn renderPath(point_list: anytype, start: Point, nodes: []const tvg.parsing.PathNode) !void {
+pub fn renderPath(point_list: anytype, slice_list: anytype, path: tvg.parsing.Path) !void {
     const Helper = struct {
         list: @TypeOf(point_list),
         last: Point,
+        count: usize,
 
         fn append(self: *@This(), pt: Point) !void {
             // Discard when point is in the vicinity of the last point (same pixel)
@@ -144,6 +160,7 @@ pub fn renderPath(point_list: anytype, start: Point, nodes: []const tvg.parsing.
 
             try self.list.append(pt);
             self.last = pt;
+            self.count += 1;
         }
 
         fn back(self: @This()) Point {
@@ -154,81 +171,94 @@ pub fn renderPath(point_list: anytype, start: Point, nodes: []const tvg.parsing.
     var point_store = Helper{
         .list = point_list,
         .last = undefined,
+        .count = 0,
     };
 
-    try point_store.append(start);
+    for (path.segments) |segment| {
+        const start_index = point_store.count;
 
-    for (nodes) |node, node_index| {
-        switch (node) {
-            .line => |pt| try point_store.append(pt.data),
-            .horiz => |x| try point_store.append(Point{ .x = x.data, .y = point_store.back().y }),
-            .vert => |y| try point_store.append(Point{ .x = point_store.back().x, .y = y.data }),
-            .bezier => |bezier| {
-                var previous = point_store.back();
+        try point_store.append(segment.start);
 
-                const oct0_x = [4]f32{ previous.x, bezier.data.c0.x, bezier.data.c1.x, bezier.data.p1.x };
-                const oct0_y = [4]f32{ previous.y, bezier.data.c0.y, bezier.data.c1.y, bezier.data.p1.y };
+        for (segment.commands) |node, node_index| {
+            switch (node) {
+                .line => |pt| try point_store.append(pt.data),
+                .horiz => |x| try point_store.append(Point{ .x = x.data, .y = point_store.back().y }),
+                .vert => |y| try point_store.append(Point{ .x = point_store.back().x, .y = y.data }),
+                .bezier => |bezier| {
+                    var previous = point_store.back();
 
-                var i: usize = 1;
-                while (i < bezier_divs) : (i += 1) {
-                    const f = @intToFloat(f32, i) / @intToFloat(f32, bezier_divs);
+                    const oct0_x = [4]f32{ previous.x, bezier.data.c0.x, bezier.data.c1.x, bezier.data.p1.x };
+                    const oct0_y = [4]f32{ previous.y, bezier.data.c0.y, bezier.data.c1.y, bezier.data.p1.y };
 
-                    const x = lerpAndReduceToOne(4, oct0_x, f);
-                    const y = lerpAndReduceToOne(4, oct0_y, f);
+                    var i: usize = 1;
+                    while (i < bezier_divs) : (i += 1) {
+                        const f = @intToFloat(f32, i) / @intToFloat(f32, bezier_divs);
 
-                    try point_store.append(Point{ .x = x, .y = y });
-                }
+                        const x = lerpAndReduceToOne(4, oct0_x, f);
+                        const y = lerpAndReduceToOne(4, oct0_y, f);
 
-                try point_store.append(bezier.data.p1);
-            },
-            .quadratic_bezier => |bezier| {
-                var previous = point_store.back();
+                        try point_store.append(Point{ .x = x, .y = y });
+                    }
 
-                const oct0_x = [3]f32{ previous.x, bezier.data.c.x, bezier.data.p1.x };
-                const oct0_y = [3]f32{ previous.y, bezier.data.c.y, bezier.data.p1.y };
+                    try point_store.append(bezier.data.p1);
+                },
+                .quadratic_bezier => |bezier| {
+                    var previous = point_store.back();
 
-                var i: usize = 1;
-                while (i < bezier_divs) : (i += 1) {
-                    const f = @intToFloat(f32, i) / @intToFloat(f32, bezier_divs);
+                    const oct0_x = [3]f32{ previous.x, bezier.data.c.x, bezier.data.p1.x };
+                    const oct0_y = [3]f32{ previous.y, bezier.data.c.y, bezier.data.p1.y };
 
-                    const x = lerpAndReduceToOne(3, oct0_x, f);
-                    const y = lerpAndReduceToOne(3, oct0_y, f);
+                    var i: usize = 1;
+                    while (i < bezier_divs) : (i += 1) {
+                        const f = @intToFloat(f32, i) / @intToFloat(f32, bezier_divs);
 
-                    try point_store.append(Point{ .x = x, .y = y });
-                }
+                        const x = lerpAndReduceToOne(3, oct0_x, f);
+                        const y = lerpAndReduceToOne(3, oct0_y, f);
 
-                try point_store.append(bezier.data.p1);
-            },
-            // /home/felix/projects/forks/svg-curve-lib/src/js/svg-curve-lib.js
-            .arc_circle => |circle| {
-                try renderCircle(
-                    &point_store,
-                    point_store.back(),
-                    circle.data.target,
-                    circle.data.radius,
-                    circle.data.large_arc,
-                    circle.data.sweep,
-                );
-            },
-            .arc_ellipse => |ellipse| {
-                try renderEllipse(
-                    &point_store,
-                    point_store.back(),
-                    ellipse.data.target,
-                    ellipse.data.radius_x,
-                    ellipse.data.radius_y,
-                    ellipse.data.rotation,
-                    ellipse.data.large_arc,
-                    ellipse.data.sweep,
-                );
-            },
-            .close => {
-                // if (node_index != (nodes.len - 1)) {
-                //     // .close must be last!
-                //     return error.InvalidData;
-                // }
-                try point_store.append(start);
-            },
+                        try point_store.append(Point{ .x = x, .y = y });
+                    }
+
+                    try point_store.append(bezier.data.p1);
+                },
+                // /home/felix/projects/forks/svg-curve-lib/src/js/svg-curve-lib.js
+                .arc_circle => |circle| {
+                    try renderCircle(
+                        &point_store,
+                        point_store.back(),
+                        circle.data.target,
+                        circle.data.radius,
+                        circle.data.large_arc,
+                        circle.data.sweep,
+                    );
+                },
+                .arc_ellipse => |ellipse| {
+                    try renderEllipse(
+                        &point_store,
+                        point_store.back(),
+                        ellipse.data.target,
+                        ellipse.data.radius_x,
+                        ellipse.data.radius_y,
+                        ellipse.data.rotation,
+                        ellipse.data.large_arc,
+                        ellipse.data.sweep,
+                    );
+                },
+                .close => {
+                    // if (node_index != (nodes.len - 1)) {
+                    //     // .close must be last!
+                    //     return error.InvalidData;
+                    // }
+                    try point_store.append(segment.start);
+                },
+            }
+        }
+        const end_index = point_store.count;
+
+        if (end_index > start_index) {
+            try slice_list.append(IndexSlice{
+                .offset = start_index,
+                .len = end_index - start_index,
+            });
         }
     }
 }
@@ -464,18 +494,26 @@ const Painter = struct {
     scale_y: f32,
 
     fn fillPolygon(self: Painter, framebuffer: anytype, color_table: []const Color, style: Style, points: []const Point) void {
-        std.debug.assert(points.len >= 3);
+        fillPolygonList(self, framebuffer, color_table, style, &[_][]const Point{points}, .nonzero);
+    }
+
+    const FillRule = enum { even_odd, nonzero };
+    fn fillPolygonList(self: Painter, framebuffer: anytype, color_table: []const Color, style: Style, points_lists: []const []const Point, rule: FillRule) void {
+        std.debug.assert(points_lists.len > 0);
 
         var min_x: i16 = std.math.maxInt(i16);
         var min_y: i16 = std.math.maxInt(i16);
         var max_x: i16 = std.math.minInt(i16);
         var max_y: i16 = std.math.minInt(i16);
 
-        for (points) |pt| {
-            min_x = std.math.min(min_x, @floatToInt(i16, std.math.floor(self.scale_x * pt.x)));
-            min_y = std.math.min(min_y, @floatToInt(i16, std.math.floor(self.scale_y * pt.y)));
-            max_x = std.math.max(max_x, @floatToInt(i16, std.math.ceil(self.scale_x * pt.x)));
-            max_y = std.math.max(max_y, @floatToInt(i16, std.math.ceil(self.scale_y * pt.y)));
+        for (points_lists) |points| {
+            std.debug.assert(points.len >= 3);
+            for (points) |pt| {
+                min_x = std.math.min(min_x, @floatToInt(i16, std.math.floor(self.scale_x * pt.x)));
+                min_y = std.math.min(min_y, @floatToInt(i16, std.math.floor(self.scale_y * pt.y)));
+                max_x = std.math.max(max_x, @floatToInt(i16, std.math.ceil(self.scale_x * pt.x)));
+                max_y = std.math.max(max_y, @floatToInt(i16, std.math.ceil(self.scale_y * pt.y)));
+            }
         }
 
         // limit to valid screen area
@@ -489,25 +527,36 @@ const Painter = struct {
         while (y <= max_y) : (y += 1) {
             var x: i16 = min_x;
             while (x <= max_x) : (x += 1) {
-                var inside = false;
 
                 // compute "center" of the pixel
                 var p = pointFromInts(x, y);
                 p.x /= self.scale_x;
                 p.y /= self.scale_y;
 
-                // free after https://stackoverflow.com/a/17490923
+                var inside_count: usize = 0;
+                for (points_lists) |points| {
+                    var inside = false;
 
-                var j = points.len - 1;
-                for (points) |p0, i| {
-                    defer j = i;
-                    const p1 = points[j];
+                    // free after https://stackoverflow.com/a/17490923
 
-                    if ((p0.y > p.y) != (p1.y > p.y) and p.x < (p1.x - p0.x) * (p.y - p0.y) / (p1.y - p0.y) + p0.x) {
-                        inside = !inside;
+                    var j = points.len - 1;
+                    for (points) |p0, i| {
+                        defer j = i;
+                        const p1 = points[j];
+
+                        if ((p0.y > p.y) != (p1.y > p.y) and p.x < (p1.x - p0.x) * (p.y - p0.y) / (p1.y - p0.y) + p0.x) {
+                            inside = !inside;
+                        }
+                    }
+                    if (inside) {
+                        inside_count += 1;
                     }
                 }
-                if (inside) {
+                const set = switch (rule) {
+                    .nonzero => (inside_count > 0),
+                    .even_odd => (inside_count % 2) == 1,
+                };
+                if (set) {
                     framebuffer.setPixel(x, y, sampleStlye(color_table, style, x, y).toArray());
                 }
             }

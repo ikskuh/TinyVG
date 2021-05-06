@@ -109,6 +109,148 @@ struct(type: u2) {
 
 A style with `type=0` is just a flat color defined by the index into the color table, `type=2` is a linear gradient, `type=3` is a radial gradient.
 
+### `Path`
+
+```zig
+struct(segment_count: uint) {
+    segment_sizes: [segment_count]uint,
+    segments: [segment_count]PathSegment, // Each path has segment_sizes[i] length
+}
+```
+
+### `PathSegment`
+
+```zig
+struct(node_count: uint) {
+    start: Point,
+    nodes: [node_count]Node,
+}
+```
+
+### `PathNode`
+
+Each path node will start with a single byte defining the type and some flags for each node:
+
+```zig
+struct Node {
+    type: enum(u3) {
+        line = 0,
+        horiz = 1,
+        vert = 2,
+        bezier = 3,
+        arc_circ = 4,
+        arc_ellipse = 5,
+        close = 6,
+        quad_bezier = 7,
+    },
+    padding0: u1 = 0,
+    has_line_width: bool,
+    padding1: u3 = 0,
+}
+```
+
+`type` defines what data the rest of the node contains and how to render it. `has_line_width` is only relevant for drawing line paths, not filled paths. When `has_line_width` is set, the header is followed by a `unit` that defines the positive line width that is used for rendering.
+
+Drawing the path starts at `start` and each node uses the end of the previous node to start drawing.
+
+#### `line=0` Line
+
+```zig
+struct {
+    x: unit,
+    y: unit,
+}
+```
+
+Draws a line to (`x`,`y`).
+
+#### `horiz=1` Horizontal Line
+
+```zig
+struct {
+    x: unit,
+}
+```
+
+Draws a horizontal line to the `x` coordinate. `y` will stay the same.
+
+#### `vert=2` Vertical line
+
+```zig
+struct {
+    y: unit,
+}
+```
+
+Draws a vertical line to the `y` coordinate. `x` will stay the same.
+
+#### `bezier=3` Cubic bezier curve
+
+```zig
+struct {
+    c0: Point,
+    c1: Point,
+    p1: Point,
+}
+```
+
+Draws a cubic bezier curve from the current point to `p1`. `c0` and `c1` will be the control points for the starting point and `p1`.
+
+#### `arc_circ=4` Arc segment (circle)
+
+> TODO: Properly specify arc drawing
+
+```zig
+struct {
+    big_segment: bool,
+    turn_left: bool,
+    padding: u6 = 0,
+    radius: unit,
+    point: Point,
+}
+```
+
+Draws a circle segment from the current location to `point`. The radius of the circle is given by (positive) `radius`.
+
+When `big_segment` is 1, the arc segment will use the variant that is longer, otherwise, the shorter arc segment will be drawn.
+
+By default, the arc segment will take a right turn when going from the current location to `point`: `current ⌢ point`
+
+If `turn_left` is set, the turn direction is switched and the arc will take a left turn: `current ⌣ point`
+
+#### `arc_ellipse=5` Arc segment (ellipse)
+
+```zig
+struct {
+    big_segment: bool,
+    turn_left: bool,
+    padding: u6 = 0,
+    radius_x: unit,
+    radius_y: unit,
+    point: Point,
+}
+```
+
+Draws a segment of an ellipse from the current location to `point`. The size of the ellipse is given by (positive) `radius_x` for radius on the major axis and (positive) `radius_y` for the radius on the minor axis.
+
+`big_segment` and `turn_left` have the same meaning as for *Arc segment (circle)*
+
+#### `close=6` Close the path
+
+This command will close the path by drawing a straight line to `start`. This command **must** be the last one in a node sequence
+and will be ignored in case of a *Fill path* command.
+
+#### `quad_bezier=7` Quadratic bezier
+
+```zig
+struct {
+    c: Point,
+    p1: Point,
+}
+```
+
+Draws a quadratic bezier curve from the current point to `p1`. `c` is the control point.
+
 ## Version 1
 
 ### Full Header
@@ -207,140 +349,17 @@ This command will fill a complex path structure with the given style.
 
 ```zig
 struct {
-    node_count: u6,
+    segment_count: u6,
     style_type: u2,
     style: Style(style_type),
     start: Point,
-    nodes: [node_count]Node,
+    segments: [segment_count]PathSegment,
 }
 ```
 
 `style` defines how the area enclosed by the path is filled. `start` is the first vertex of the path.
 
-After the *Fill path* header, `node_count` path elements will follow. These have the following semantics and encoding:
-
-Each path node will start with a single byte defining the type and some flags for each node:
-
-```zig
-struct {
-    type: enum(u3) {
-        line = 0,
-        horiz = 1,
-        vert = 2,
-        bezier = 3,
-        arc_circ = 4,
-        arc_ellipse = 5,
-        close = 6,
-        quad_bezier = 7,
-    },
-    padding0: u1 = 0,
-    has_line_width: bool,
-    padding1: u3 = 0,
-}
-```
-
-`type` defines what data the rest of the node contains and how to render it. `has_line_width` is only relevant for drawing line paths, not filled paths. When `has_line_width` is set, the header is followed by a `unit` that defines the positive line width that is used for rendering.
-
-Drawing the path starts at `start` and each node uses the end of the previous node to start drawing.
-
-#### `line=0` Line
-
-```zig
-struct {
-    x: unit,
-    y: unit,
-}
-```
-
-Draws a line to (`x`,`y`).
-
-#### `horiz=1` Horizontal Line
-
-```zig
-struct {
-    x: unit,
-}
-```
-
-Draws a horizontal line to the `x` coordinate. `y` will stay the same.
-
-#### `vert=2` Vertical line
-
-```zig
-struct {
-    y: unit,
-}
-```
-
-Draws a vertical line to the `y` coordinate. `x` will stay the same.
-
-#### `bezier=3` Cubic bezier curve
-
-```zig
-struct {
-    c0: Point,
-    c1: Point,
-    p1: Point,
-}
-```
-
-Draws a cubic bezier curve from the current point to `p1`. `c0` and `c1` will be the control points for the starting point and `p1`.
-
-#### `arc_circ=4` Arc segment (circle)
-
-> TODO: Properly specify arc drawing
-
-```zig
-struct {
-    big_segment: bool,
-    turn_left: bool,
-    padding: u6 = 0,
-    radius: unit,
-    point: Point,
-}
-```
-
-Draws a circle segment from the current location to `point`. The radius of the circle is given by (positive) `radius`.
-
-When `big_segment` is 1, the arc segment will use the variant that is longer, otherwise, the shorter arc segment will be drawn.
-
-By default, the arc segment will take a right turn when going from the current location to `point`: `current ⌢ point`
-
-If `turn_left` is set, the turn direction is switched and the arc will take a left turn: `current ⌣ point`
-
-
-#### `arc_ellipse=5` Arc segment (ellipse)
-
-```zig
-struct {
-    big_segment: bool,
-    turn_left: bool,
-    padding: u6 = 0,
-    radius_x: unit,
-    radius_y: unit,
-    point: Point,
-}
-```
-
-Draws a segment of an ellipse from the current location to `point`. The size of the ellipse is given by (positive) `radius_x` for radius on the major axis and (positive) `radius_y` for the radius on the minor axis.
-
-`big_segment` and `turn_left` have the same meaning as for *Arc segment (circle)*
-
-#### `close=6` Close the path
-
-This command will close the path by drawing a straight line to `start`. This command **must** be the last one in a node sequence
-and will be ignored in case of a *Fill path* command.
-
-#### `quad_bezier=7` Quadratic bezier
-
-```zig
-struct {
-    c: Point,
-    p1: Point,
-}
-```
-
-Draws a quadratic bezier curve from the current point to `p1`. `c` is the control point.
+After the *Fill path* header, `node_count` path `Node`s will follow.
 
 ### `command=4` Draw lines
 
@@ -382,12 +401,12 @@ struct {
 
 ```zig
 struct {
-    node_count: u6,
+    segment_count: u6,
     style_type: u2,
     style: Style(style_type),
     line_width: unit,
     start: Point,
-    nodes: [node_count]Node,
+    segments: [segment_count]PathSegment,
 }
 ```
 
@@ -430,15 +449,14 @@ struct {
 
 ```zig
 struct {
-    node_count: u6,
+    segment_count: u6,
     fill_style_type: u2,
     line_style_type: u2,
     padding: u6,
     line_style: Style(line_style_type),
     fill_style: Style(fill_style_type),
     line_width: unit,
-    start: Point,
-    nodes: [node_count]Node,
+    segments: [segment_count]PathSegment,
 }
 ```
 

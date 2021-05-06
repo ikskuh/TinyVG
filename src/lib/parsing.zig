@@ -16,6 +16,80 @@ const Point = tvg.Point;
 const Rectangle = tvg.Rectangle;
 const Line = tvg.Line;
 
+pub const Path = struct {
+    segments: []Segment,
+
+    pub const Segment = struct {
+        start: Point,
+        commands: []Node,
+    };
+
+    pub const Node = union(enum) {
+        const Self = @This();
+
+        line: NodeData(Point),
+        horiz: NodeData(f32),
+        vert: NodeData(f32),
+        bezier: NodeData(Bezier),
+        arc_circle: NodeData(ArcCircle),
+        arc_ellipse: NodeData(ArcEllipse),
+        close: NodeData(void),
+        quadratic_bezier: NodeData(QuadraticBezier),
+
+        fn NodeData(comptime Payload: type) type {
+            return struct {
+                line_width: ?f32,
+                data: Payload,
+
+                fn init(
+                    line_width: ?f32,
+                    data: Payload,
+                ) @This() {
+                    return .{ .line_width = line_width, .data = data };
+                }
+            };
+        }
+
+        pub const ArcCircle = struct {
+            radius: f32,
+            large_arc: bool,
+            sweep: bool,
+            target: Point,
+        };
+
+        pub const ArcEllipse = struct {
+            radius_x: f32,
+            radius_y: f32,
+            rotation: f32,
+            large_arc: bool,
+            sweep: bool,
+            target: Point,
+        };
+
+        pub const Bezier = struct {
+            c0: Point,
+            c1: Point,
+            p1: Point,
+        };
+
+        pub const QuadraticBezier = struct {
+            c: Point,
+            p1: Point,
+        };
+
+        const Type = packed enum(u3) {
+            line = 0, // x,y
+            horiz = 1, // x
+            vert = 2, // y
+            bezier = 3, // c0x,c0y,c1x,c1y,x,y
+            arc_circ = 4, //r,x,y
+            arc_ellipse = 5, // rx,ry,x,y
+            close = 6,
+            quad_bezier = 7,
+        };
+    };
+};
+
 pub const DrawCommand = union(enum) {
     fill_polygon: FillPolygon,
     fill_rectangles: FillRectangles,
@@ -41,8 +115,7 @@ pub const DrawCommand = union(enum) {
 
     pub const FillPath = struct {
         style: Style,
-        start: Point,
-        path: []PathNode,
+        path: Path,
     };
 
     pub const OutlineFillPolygon = struct {
@@ -63,8 +136,7 @@ pub const DrawCommand = union(enum) {
         fill_style: Style,
         line_style: Style,
         line_width: f32,
-        start: Point,
-        path: []PathNode,
+        path: Path,
     };
 
     pub const DrawLines = struct {
@@ -82,73 +154,7 @@ pub const DrawCommand = union(enum) {
     pub const DrawPath = struct {
         style: Style,
         line_width: f32,
-        start: Point,
-        path: []PathNode,
-    };
-};
-
-pub const PathNode = union(enum) {
-    const Self = @This();
-
-    line: NodeData(Point),
-    horiz: NodeData(f32),
-    vert: NodeData(f32),
-    bezier: NodeData(Bezier),
-    arc_circle: NodeData(ArcCircle),
-    arc_ellipse: NodeData(ArcEllipse),
-    close: NodeData(void),
-    quadratic_bezier: NodeData(QuadraticBezier),
-
-    fn NodeData(comptime Payload: type) type {
-        return struct {
-            line_width: ?f32,
-            data: Payload,
-
-            fn init(
-                line_width: ?f32,
-                data: Payload,
-            ) @This() {
-                return .{ .line_width = line_width, .data = data };
-            }
-        };
-    }
-
-    pub const ArcCircle = struct {
-        radius: f32,
-        large_arc: bool,
-        sweep: bool,
-        target: Point,
-    };
-
-    pub const ArcEllipse = struct {
-        radius_x: f32,
-        radius_y: f32,
-        rotation: f32,
-        large_arc: bool,
-        sweep: bool,
-        target: Point,
-    };
-
-    pub const Bezier = struct {
-        c0: Point,
-        c1: Point,
-        p1: Point,
-    };
-
-    pub const QuadraticBezier = struct {
-        c: Point,
-        p1: Point,
-    };
-
-    const Type = packed enum(u3) {
-        line = 0, // x,y
-        horiz = 1, // x
-        vert = 2, // y
-        bezier = 3, // c0x,c0y,c1x,c1y,x,y
-        arc_circ = 4, //r,x,y
-        arc_ellipse = 5, // rx,ry,x,y
-        close = 6,
-        quad_bezier = 7,
+        path: Path,
     };
 };
 
@@ -276,6 +282,26 @@ pub fn Parser(comptime Reader: type) type {
             return items;
         }
 
+        fn setDualTempStorage(
+            self: *Self,
+            comptime T1: type,
+            length1: usize,
+            comptime T2: type,
+            length2: usize,
+        ) !struct { first: []T1, second: []T2 } {
+            const offset_second_buffer = std.mem.alignForward(@sizeOf(T1) * length1, @alignOf(T2));
+            try self.temp_buffer.resize(offset_second_buffer + @sizeOf(T2) * length2);
+
+            var result = .{
+                .first = @alignCast(@alignOf(T1), std.mem.bytesAsSlice(T1, self.temp_buffer.items[0..offset_second_buffer])),
+                .second = @alignCast(@alignOf(T2), std.mem.bytesAsSlice(T2, self.temp_buffer.items[offset_second_buffer..])),
+            };
+
+            std.debug.assert(result.first.len == length1);
+            std.debug.assert(result.second.len == length2);
+            return result;
+        }
+
         pub fn next(self: *Self) !?DrawCommand {
             if (self.end_of_document)
                 return null;
@@ -331,23 +357,13 @@ pub fn Parser(comptime Reader: type) type {
                 .fill_path => blk: {
                     const count_and_grad = @bitCast(CountAndStyleTag, try self.readByte());
                     const style = try self.readStyle(try count_and_grad.getStyleType());
-                    const path_length = count_and_grad.getCount();
+                    const segment_count = count_and_grad.getCount();
 
-                    const start_x = try self.readUnit();
-                    const start_y = try self.readUnit();
-
-                    var path = try self.setTempStorage(PathNode, path_length);
-                    for (path) |*node| {
-                        node.* = try self.readNode();
-                    }
+                    var path = try self.readPath(segment_count);
 
                     break :blk DrawCommand{
                         .fill_path = DrawCommand.FillPath{
                             .style = style,
-                            .start = Point{
-                                .x = start_x,
-                                .y = start_y,
-                            },
                             .path = path,
                         },
                     };
@@ -420,26 +436,16 @@ pub fn Parser(comptime Reader: type) type {
                 .draw_line_path => blk: {
                     const count_and_grad = @bitCast(CountAndStyleTag, try self.readByte());
                     const style = try self.readStyle(try count_and_grad.getStyleType());
-                    const path_length = count_and_grad.getCount();
+                    const segment_count = count_and_grad.getCount();
 
                     const line_width = try self.readUnit();
 
-                    const start_x = try self.readUnit();
-                    const start_y = try self.readUnit();
-
-                    var path = try self.setTempStorage(PathNode, path_length);
-                    for (path) |*node| {
-                        node.* = try self.readNode();
-                    }
+                    const path = try self.readPath(segment_count);
 
                     break :blk DrawCommand{
                         .draw_line_path = DrawCommand.DrawPath{
                             .style = style,
                             .line_width = line_width,
-                            .start = Point{
-                                .x = start_x,
-                                .y = start_y,
-                            },
                             .path = path,
                         },
                     };
@@ -479,9 +485,56 @@ pub fn Parser(comptime Reader: type) type {
                 _ => return error.InvalidData,
             };
         }
-        fn readNode(self: Self) !PathNode {
+
+        fn readPath(self: *Self, segment_count: usize) !Path {
+            var segment_lengths: [64]usize = undefined;
+            std.debug.assert(segment_count <= segment_lengths.len);
+
+            var total_node_count: usize = 0;
+
+            {
+                var i: usize = 0;
+                while (i < segment_count) : (i += 1) {
+                    segment_lengths[i] = try self.readUInt();
+                    total_node_count += segment_lengths[i];
+                    std.log.debug("node[{}]: {}", .{ i, segment_lengths[i] });
+                }
+            }
+
+            std.log.debug("total: {}", .{total_node_count});
+
+            const buffers = try self.setDualTempStorage(
+                Path.Segment,
+                segment_count,
+                Path.Node,
+                total_node_count,
+            );
+
+            var segment_start: usize = 0;
+            for (buffers.first) |*segment, i| {
+                const segment_len = segment_lengths[i];
+
+                segment.start.x = try self.readUnit();
+                segment.start.y = try self.readUnit();
+
+                segment.commands = buffers.second[segment_start..][0..segment_len];
+                for (segment.commands) |*node| {
+                    node.* = try self.readNode();
+                }
+
+                segment_start += segment_len;
+            }
+            std.debug.assert(buffers.first.len == segment_count);
+            std.debug.assert(segment_start == total_node_count);
+
+            return Path{
+                .segments = buffers.first,
+            };
+        }
+
+        fn readNode(self: Self) !Path.Node {
             const Tag = packed struct {
-                type: PathNode.Type,
+                type: Path.Node.Type,
                 padding0: u1 = 0,
                 has_line_width: bool,
                 padding1: u3 = 0,
@@ -492,6 +545,8 @@ pub fn Parser(comptime Reader: type) type {
                 try self.readUnit()
             else
                 null;
+
+            const PathNode = Path.Node;
 
             return switch (tag.type) {
                 .line => PathNode{ .line = PathNode.NodeData(Point).init(line_width, .{

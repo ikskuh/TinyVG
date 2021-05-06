@@ -76,48 +76,18 @@
        fill_path
        (flat 5)
        (
-         (vert 32)
-         (bezier (288 24) (288 16) (304 16))
-         (horiz 336)
-         (bezier (352 16) (352 24) (352 32))
-         (vert 64)
-         (line 336 48)
-         (line 320 32)
-         (line 312 48)
-         (line 304 64)
-         (close)
        )
      )
      (
        fill_path
        (linear (320 80) (320 128) 3 4 )
        (
-         (vert 96)
-         (bezier (288 88) (288 80) (304 80))
-         (horiz 336)
-         (bezier (352 80) (352 88) (352 96))
-         (vert 128)
-         (line 336 112)
-         (line 320 96)
-         (line 312 112)
-         (line 304 128)
-         (close)
        )
      )
      (
        fill_path
        (radial (320 144) (320 192) 3 4 )
        (
-         (vert 160)
-         (bezier (288 152) (288 144) (304 144))
-         (horiz 336)
-         (bezier (352 144) (352 152) (352 160))
-         (vert 192)
-         (line 336 176)
-         (line 320 160)
-         (line 312 176)
-         (line 304 192)
-         (close)
        )
      )
      (
@@ -248,16 +218,6 @@
        (flat 1)
        0
        (
-         (horiz 304)
-         (bezier (320 224) (320 240) (304 240))
-         (horiz 288)
-         (line 272 248)
-         (line 288 256)
-         (line 320 256)
-         (line 304 272)
-         (horiz 272)
-         (line 256 256)
-         (close)
        )
      )
      (
@@ -265,16 +225,6 @@
        (linear (288 408) (288 432) 3 4 )
        6
        (
-         (horiz 304)
-         (bezier (320 304) (320 320) (304 320))
-         (horiz 288)
-         (line 272 328)
-         (line 288 336)
-         (line 320 336)
-         (line 304 352)
-         (horiz 272)
-         (line 256 336)
-         (close)
        )
      )
      (
@@ -282,16 +232,6 @@
        (radial (288 408) (288 432) 3 4 )
        3
        (
-         (horiz 304)
-         (bezier (320 384) (320 400) (304 400))
-         (horiz 288)
-         (line 272 408)
-         (line 288 416)
-         (line 320 416)
-         (line 304 432)
-         (horiz 272)
-         (line 256 416)
-         (close)
        )
      )
      (
@@ -326,9 +266,6 @@
        (flat 1)
        2
        (
-         (line 32 480)
-         (arc-ellipse)
-         (line 80 528)
        )
      )
      (
@@ -336,9 +273,6 @@
        (flat 1)
        2
        (
-         (line 112 480)
-         (arc-ellipse)
-         (line 160 528)
        )
      )
      (
@@ -346,9 +280,6 @@
        (flat 1)
        2
        (
-         (line 192 480)
-         (arc-ellipse)
-         (line 240 528)
        )
      )
      (
@@ -356,9 +287,6 @@
        (flat 1)
        2
        (
-         (line 272 480)
-         (arc-ellipse)
-         (line 320 528)
        )
      )
      (
@@ -366,9 +294,6 @@
        (flat 1)
        2
        (
-         (line 32 576)
-         (arc-circle)
-         (line 80 624)
        )
      )
      (
@@ -376,9 +301,6 @@
        (flat 1)
        2
        (
-         (line 112 576)
-         (arc-circle)
-         (line 160 624)
        )
      )
      (
@@ -386,9 +308,6 @@
        (flat 1)
        2
        (
-         (line 192 576)
-         (arc-circle)
-         (line 240 624)
        )
      )
      (
@@ -396,9 +315,6 @@
        (flat 1)
        2
        (
-         (line 272 576)
-         (arc-circle)
-         (line 320 624)
        )
      )
   )

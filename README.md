@@ -84,3 +84,4 @@ See also this image to have a preview of what is already implemented:
 - [CSS Gradients](https://css-tricks.com/css3-gradients/)
   - Radial and conic gradients can be used for nice 3D shading
 - Previous Work: [TurtleFont](https://github.com/MasterQ32/turtlefont) is a pure line-drawing vector format
+- [SVG Path Editor](https://yqnn.github.io/svg-path-editor/), a tool to easily design or inspect SVG paths 

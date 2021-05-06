@@ -98,10 +98,10 @@ pub fn main() !u8 {
                 try writer.writeAll("     (\n       fill_path\n       ");
                 try renderStyle(writer, path.style);
                 try writer.writeAll("\n       (");
-                for (path.path) |node| {
-                    try writer.writeAll("\n         ");
-                    try renderPathNode(writer, node);
-                }
+                // for (path.path) |node| {
+                //     try writer.writeAll("\n         ");
+                //     try renderPathNode(writer, node);
+                // }
                 try writer.writeAll("\n       )\n     )\n");
             },
             .fill_polygon => |polygon| {
@@ -163,10 +163,10 @@ pub fn main() !u8 {
                 try writer.writeAll("     (\n       draw_line_path\n       ");
                 try renderStyle(writer, data.style);
                 try writer.print("\n       {d}\n       (", .{data.line_width});
-                for (data.path) |node| {
-                    try writer.writeAll("\n         ");
-                    try renderPathNode(writer, node);
-                }
+                // for (data.path) |node| {
+                //     try writer.writeAll("\n         ");
+                //     try renderPathNode(writer, node);
+                // }
                 try writer.writeAll("\n       )\n     )\n");
             },
             .outline_fill_polygon => |data| {

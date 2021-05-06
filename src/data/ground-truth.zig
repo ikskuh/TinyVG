@@ -59,7 +59,8 @@ pub const workspace_add = blk: {
         builder.rectangle(6, 6, 16, 36) ++
         builder.fillRectangles(1, .flat, 1) ++
         builder.rectangle(26, 6, 16, 16) ++
-        builder.fillPath(11, .flat, 2) ++
+        builder.fillPath(1, .flat, 2) ++
+        builder.uint(11) ++
         builder.point(26, 32) ++
         builder.path.horiz(32) ++
         builder.path.vert(26) ++
@@ -83,14 +84,19 @@ fn makeShield(comptime b: type) type {
         tvg.Color.fromString("29adff") catch unreachable,
         tvg.Color.fromString("fff1e8") catch unreachable,
     }) ++
-        b.fillPath(5, .flat, 0) ++
+        // tests even_odd rule
+        b.fillPath(3, .flat, 0) ++
+        b.uint(5) ++ // 0
+        b.uint(6) ++ // 1
+        b.uint(4) ++ // 2
         b.point(12, 1) ++ // M 12 1
         b.path.line(3, 5) ++ // L 3 5
         b.path.vert(11) ++ // V 11
         b.path.bezier(3, 16.55, 6.84, 21.74, 12, 23) ++ // C 3     16.55 6.84 21.74 12 23
         b.path.bezier(17.16, 21.74, 21, 16.55, 21, 11) ++ // C 17.16 21.74 21   16.55 21 11
         b.path.vert(5) ++ // V 5
-        b.fillPath(6, .flat, 1) ++
+        // b.fillPath(1, .flat, 1) ++
+        // b.uint(6) ++
         b.point(17.13, 17) ++ // M 12 1
         b.path.bezier(15.92, 18.85, 14.11, 20.24, 12, 20.92) ++
         b.path.bezier(9.89, 20.24, 8.08, 18.85, 6.87, 17) ++
@@ -98,7 +104,8 @@ fn makeShield(comptime b: type) type {
         b.path.bezier(6, 13.82, 8.71, 12.47, 12, 12.47) ++
         b.path.bezier(15.29, 12.47, 18, 13.79, 18, 15.47) ++
         b.path.bezier(17.76, 16, 17.47, 16.5, 17.13, 17) ++
-        b.fillPath(4, .flat, 1) ++
+        // b.fillPath(1, .flat, 1) ++
+        // b.uint(4) ++
         b.point(12, 5) ++
         b.path.bezier(13.5, 5, 15, 6.2, 15, 8) ++
         b.path.bezier(15, 9.5, 13.8, 10.998, 12, 11) ++
@@ -116,7 +123,8 @@ pub const shield_8 = makeShield(tvg.builder(.@"1/4", .reduced)).data;
 
 pub const arc_variants = builder.header(92, 92) ++
     builder.colorTable(&[_]tvg.Color{tvg.Color.fromString("40ff00") catch unreachable}) ++
-    builder.fillPath(8, .flat, 0) ++
+    builder.fillPath(1, .flat, 0) ++
+    builder.uint(8) ++
     builder.point(48, 32) ++
     builder.path.horiz(64) ++
     builder.path.arc_ellipse(18.5, 18.5, 0, false, true, 80, 48) ++
@@ -195,7 +203,8 @@ pub const feature_showcase = blk: {
         builder_16.point(224, 176) ++
         builder_16.point(192, 192) ++
         // FILL PATH
-        builder_16.fillPath(10, .flat, 5) ++
+        builder_16.fillPath(1, .flat, 5) ++
+        builder.uint(10) ++
         builder_16.point(288, 64) ++
         builder_16.path.vert(32) ++
         builder_16.path.bezier(288, 24, 288, 16, 304, 16) ++
@@ -207,12 +216,13 @@ pub const feature_showcase = blk: {
         builder_16.path.line(312, 48) ++
         builder_16.path.line(304, 64) ++ // this should be an arc segment
         builder_16.path.close() ++
-        builder_16.fillPath(10, .linear, .{
+        builder_16.fillPath(1, .linear, .{
         .point_0 = .{ .x = 320, .y = 80 },
         .point_1 = .{ .x = 320, .y = 128 },
         .color_0 = 3,
         .color_1 = 4,
     }) ++
+        builder.uint(10) ++
         builder_16.point(288, 64 + 64) ++
         builder_16.path.vert(64 + 32) ++
         builder_16.path.bezier(288, 64 + 24, 288, 64 + 16, 304, 64 + 16) ++
@@ -224,12 +234,13 @@ pub const feature_showcase = blk: {
         builder_16.path.line(312, 64 + 48) ++
         builder_16.path.line(304, 64 + 64) ++ // this should be an arc segment
         builder_16.path.close() ++
-        builder_16.fillPath(10, .radial, .{
+        builder_16.fillPath(1, .radial, .{
         .point_0 = .{ .x = 320, .y = 144 },
         .point_1 = .{ .x = 320, .y = 192 },
         .color_0 = 3,
         .color_1 = 4,
     }) ++
+        builder.uint(10) ++
         builder_16.point(288, 128 + 64) ++
         builder_16.path.vert(128 + 32) ++
         builder_16.path.bezier(288, 128 + 24, 288, 128 + 16, 304, 128 + 16) ++
@@ -344,7 +355,8 @@ pub const feature_showcase = blk: {
         builder_16.point(176 + 64, 384 + 48) ++
         builder_16.point(176 + 0, 384 + 48) ++
         // DRAW LINE PATH
-        builder_16.drawPath(10, 0.0, .flat, 1) ++
+        builder_16.drawPath(1, 0.0, .flat, 1) ++
+        builder.uint(10) ++
         builder_16.point(256 + 0, 224 + 0) ++
         builder_16.path.horiz(256 + 48) ++
         builder_16.path.bezier(256 + 64, 224 + 0, 256 + 64, 224 + 16, 256 + 48, 224 + 16) ++
@@ -356,12 +368,13 @@ pub const feature_showcase = blk: {
         builder_16.path.horiz(256 + 16) ++
         builder_16.path.line(256 + 0, 224 + 32) ++ // this is arc-circle later
         builder_16.path.close() ++
-        builder_16.drawPath(10, 6.0, .linear, .{
+        builder_16.drawPath(1, 6.0, .linear, .{
         .point_0 = .{ .x = 288, .y = 408 },
         .point_1 = .{ .x = 288, .y = 432 },
         .color_0 = 3,
         .color_1 = 4,
     }) ++
+        builder.uint(10) ++
         builder_16.point(256 + 0, 304 + 0) ++
         builder_16.path.horiz(256 + 48) ++
         builder_16.path.bezier(256 + 64, 304 + 0, 256 + 64, 304 + 16, 256 + 48, 304 + 16) ++
@@ -373,12 +386,13 @@ pub const feature_showcase = blk: {
         builder_16.path.horiz(256 + 16) ++
         builder_16.path.line(256 + 0, 304 + 32) ++ // this is arc-circle later
         builder_16.path.close() ++
-        builder_16.drawPath(10, 3.0, .radial, .{
+        builder_16.drawPath(1, 3.0, .radial, .{
         .point_0 = .{ .x = 288, .y = 408 },
         .point_1 = .{ .x = 288, .y = 432 },
         .color_0 = 3,
         .color_1 = 4,
     }) ++
+        builder.uint(10) ++
         builder_16.point(256 + 0, 384 + 0) ++
         builder_16.path.horiz(256 + 48) ++
         builder_16.path.bezier(256 + 64, 384 + 0, 256 + 64, 384 + 16, 256 + 48, 384 + 16) ++
@@ -412,43 +426,51 @@ pub const feature_showcase = blk: {
         // Outline Fill Polygon
         // TODO
         // PATH WITH ARC (ELLIPSE)
-        builder_16.drawPath(3, 2.0, .flat, 1) ++
+        builder_16.drawPath(1, 2.0, .flat, 1) ++
+        builder.uint(3) ++
         builder_16.point(16 + 0, 464 + 0) ++
         builder_16.path.line(16 + 16, 464 + 16) ++
         builder_16.path.arc_ellipse(25, 45, 15, false, false, 16 + 48, 464 + 48) ++
         builder_16.path.line(16 + 64, 464 + 64) ++
-        builder_16.drawPath(3, 2.0, .flat, 1) ++
+        builder_16.drawPath(1, 2.0, .flat, 1) ++
+        builder.uint(3) ++
         builder_16.point(96 + 0, 464 + 0) ++
         builder_16.path.line(96 + 16, 464 + 16) ++
         builder_16.path.arc_ellipse(25, 45, 15, false, true, 96 + 48, 464 + 48) ++
         builder_16.path.line(96 + 64, 464 + 64) ++
-        builder_16.drawPath(3, 2.0, .flat, 1) ++
+        builder_16.drawPath(1, 2.0, .flat, 1) ++
+        builder.uint(3) ++
         builder_16.point(176 + 0, 464 + 0) ++
         builder_16.path.line(176 + 16, 464 + 16) ++
         builder_16.path.arc_ellipse(25, 45, -35, true, true, 176 + 48, 464 + 48) ++
         builder_16.path.line(176 + 64, 464 + 64) ++
-        builder_16.drawPath(3, 2.0, .flat, 1) ++
+        builder_16.drawPath(1, 2.0, .flat, 1) ++
+        builder.uint(3) ++
         builder_16.point(256 + 0, 464 + 0) ++
         builder_16.path.line(256 + 16, 464 + 16) ++
         builder_16.path.arc_ellipse(25, 45, -35, true, false, 256 + 48, 464 + 48) ++
         builder_16.path.line(256 + 64, 464 + 64) ++
         // PATH WITH ARC (CIRCLE)
-        builder_16.drawPath(3, 2.0, .flat, 1) ++
+        builder_16.drawPath(1, 2.0, .flat, 1) ++
+        builder.uint(3) ++
         builder_16.point(16 + 0, 560 + 0) ++
         builder_16.path.line(16 + 16, 560 + 16) ++
         builder_16.path.arc_circle(30, false, false, 16 + 48, 560 + 48) ++
         builder_16.path.line(16 + 64, 560 + 64) ++
-        builder_16.drawPath(3, 2.0, .flat, 1) ++
+        builder_16.drawPath(1, 2.0, .flat, 1) ++
+        builder.uint(3) ++
         builder_16.point(96 + 0, 560 + 0) ++
         builder_16.path.line(96 + 16, 560 + 16) ++
         builder_16.path.arc_circle(30, false, true, 96 + 48, 560 + 48) ++
         builder_16.path.line(96 + 64, 560 + 64) ++
-        builder_16.drawPath(3, 2.0, .flat, 1) ++
+        builder_16.drawPath(1, 2.0, .flat, 1) ++
+        builder.uint(3) ++
         builder_16.point(176 + 0, 560 + 0) ++
         builder_16.path.line(176 + 16, 560 + 16) ++
         builder_16.path.arc_circle(30, true, true, 176 + 48, 560 + 48) ++
         builder_16.path.line(176 + 64, 560 + 64) ++
-        builder_16.drawPath(3, 2.0, .flat, 1) ++
+        builder_16.drawPath(1, 2.0, .flat, 1) ++
+        builder.uint(3) ++
         builder_16.point(256 + 0, 560 + 0) ++
         builder_16.path.line(256 + 16, 560 + 16) ++
         builder_16.path.arc_circle(30, true, false, 256 + 48, 560 + 48) ++

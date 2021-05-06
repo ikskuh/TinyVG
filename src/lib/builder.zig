@@ -103,6 +103,10 @@ pub fn create(comptime scale: tvg.Scale, comptime range: Range) type {
             return [1]u8{@enumToInt(cmd)};
         }
 
+        pub fn uint(num: u7) [1]u8 {
+            return byte(num);
+        }
+
         pub fn point(x: f32, y: f32) [sPOINT]u8 {
             return join(.{ unit(x), unit(y) });
         }
@@ -170,8 +174,8 @@ pub fn create(comptime scale: tvg.Scale, comptime range: Range) type {
             return join(.{ command(.fill_rectangles), countAndStyle(num_items, style_type), encodeStyle(style_type, style) });
         }
 
-        pub fn fillPath(num_items: usize, comptime style_type: StyleSpec, style: StyleType(style_type)) [2 + byteSize(style_type)]u8 {
-            return join(.{ command(.fill_path), countAndStyle(num_items, style_type), encodeStyle(style_type, style) });
+        pub fn fillPath(segment_count: usize, comptime style_type: StyleSpec, style: StyleType(style_type)) [2 + byteSize(style_type)]u8 {
+            return join(.{ command(.fill_path), countAndStyle(segment_count, style_type), encodeStyle(style_type, style) });
         }
 
         pub fn drawLines(num_items: usize, line_width: f32, comptime style_type: StyleSpec, style: StyleType(style_type)) [4 + byteSize(style_type)]u8 {
@@ -186,8 +190,8 @@ pub fn create(comptime scale: tvg.Scale, comptime range: Range) type {
             return join(.{ command(.draw_line_strip), countAndStyle(num_items - 1, style_type), encodeStyle(style_type, style), unit(line_width) });
         }
 
-        pub fn drawPath(num_items: usize, line_width: f32, comptime style_type: StyleSpec, style: StyleType(style_type)) [4 + byteSize(style_type)]u8 {
-            return join(.{ command(.draw_line_path), countAndStyle(num_items, style_type), encodeStyle(style_type, style), unit(line_width) });
+        pub fn drawPath(segment_count: usize, line_width: f32, comptime style_type: StyleSpec, style: StyleType(style_type)) [4 + byteSize(style_type)]u8 {
+            return join(.{ command(.draw_line_path), countAndStyle(segment_count, style_type), encodeStyle(style_type, style), unit(line_width) });
         }
 
         pub fn outlineFillPolygon(
@@ -213,14 +217,14 @@ pub fn create(comptime scale: tvg.Scale, comptime range: Range) type {
         }
 
         pub fn outlineFillPath(
-            num_items: usize,
+            segment_count: usize,
             line_width: f32,
             comptime fill_style_type: StyleSpec,
             fill_style: StyleType(fill_style_type),
             comptime line_style_type: StyleSpec,
             line_style: StyleType(line_style_type),
         ) [5 + byteSize(fill_style_type) + byteSize(line_style_type)]u8 {
-            return join(.{ command(.outline_fill_path), countAndStyle(num_items, fill_style_type), byte(@enumToInt(line_style_type)), encodeStyle(line_style_type, line_style), encodeStyle(fill_style_type, fill_style), unit(line_width) });
+            return join(.{ command(.outline_fill_path), countAndStyle(segment_count, fill_style_type), byte(@enumToInt(line_style_type)), encodeStyle(line_style_type, line_style), encodeStyle(fill_style_type, fill_style), unit(line_width) });
         }
 
         pub fn rectangle(x: f32, y: f32, w: f32, h: f32) [4 * sUNIT]u8 {

@@ -24,17 +24,6 @@
        fill_path
        (flat 2)
        (
-         (horiz 32)
-         (vert 26)
-         (horiz 36)
-         (vert 32)
-         (horiz 42)
-         (vert 36)
-         (horiz 36)
-         (vert 42)
-         (horiz 32)
-         (vert 36)
-         (horiz 26)
        )
      )
   )

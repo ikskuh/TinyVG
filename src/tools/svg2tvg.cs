@@ -961,6 +961,7 @@ public class TvgLinearGradient : TvgGradient
   public override byte GetStyleType() => 1;
   public override string ToString() => "[Linear Gradient]";
 }
+
 public class TvgRadialGradient : TvgGradient
 {
   public override byte GetStyleType() => 2;
