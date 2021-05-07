@@ -17,7 +17,7 @@ class Program
     CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
     var serializer = new XmlSerializer(typeof(SvgDocument));
 
-    var render_png = true;
+    var render_png = false;
     var render_tga = true;
 
     var unsupported_attribs = new HashSet<string>{
@@ -33,6 +33,14 @@ class Program
     var unsupported_elements = new HashSet<string>{
       "defs", // no support for predefined styles
       "use",
+    };
+
+    var banned_files = new HashSet<string>
+    {
+      // Banned for: using exponent floats.
+      // "distributor-logo-midnightbsd.svg",
+      // "twitter.svg",
+      // "cadence.svg",
     };
 
     int count = 0;
@@ -52,16 +60,18 @@ class Program
         // src_root + "/MaterialDesign/svg",
         src_root + "/papirus-icon-theme/Papirus/48x48/actions",
         src_root + "/papirus-icon-theme/Papirus/48x48/apps",
-        src_root + "/papirus-icon-theme/Papirus/48x48/devices",
-        src_root + "/papirus-icon-theme/Papirus/48x48/emblems",
-        src_root + "/papirus-icon-theme/Papirus/48x48/emotes",
-        src_root + "/papirus-icon-theme/Papirus/48x48/mimetypes",
-        src_root + "/papirus-icon-theme/Papirus/48x48/places",
-        src_root + "/papirus-icon-theme/Papirus/48x48/status",
+        // src_root + "/papirus-icon-theme/Papirus/48x48/devices",
+        // src_root + "/papirus-icon-theme/Papirus/48x48/emblems",
+        // src_root + "/papirus-icon-theme/Papirus/48x48/emotes",
+        // src_root + "/papirus-icon-theme/Papirus/48x48/mimetypes",
+        // src_root + "/papirus-icon-theme/Papirus/48x48/places",
+        // src_root + "/papirus-icon-theme/Papirus/48x48/status",
        })
       {
         foreach (var file in Directory.GetFiles(folder, "*.svg"))
         {
+          if (banned_files.Contains(Path.GetFileName(file)))
+            continue;
           try
           {
             var dst_file = dst_root + Path.GetFileName(Path.GetDirectoryName(file)) + "/" + Path.GetFileNameWithoutExtension(file) + ".tvg";
@@ -124,17 +134,33 @@ class Program
 
             if (!fully_supported) continue;
 
+            byte[] tvg_data;
+            try
+            {
+              tvg_data = ConvertToTvg(doc);
+            }
+            catch (UnitRangeException exception)
+            {
+              Console.WriteLine("Failed to parse {0}", file);
+              var pad = "";
+              Exception e = exception;
+              while (e != null)
+              {
+                Console.Error.WriteLine("{0}{1}", pad, e.Message);
+                pad = pad + " ";
+                e = e.InnerException;
+              }
+              continue;
+            }
+
             Directory.CreateDirectory(Path.GetDirectoryName(dst_file));
-
-            var tvg_data = ConvertToTvg(doc);
-
             File.WriteAllBytes(dst_file, tvg_data);
 
             if (render_png) Process.Start("convert", file + " " + Path.ChangeExtension(dst_file, ".original.png")).WaitForExit();
 
             if (render_tga)
             {
-              Process.Start("zig-cache/bin/tvg-render", dst_file).WaitForExit();
+              Process.Start("zig-out/bin/tvg-render", dst_file).WaitForExit();
               Process.Start("convert", Path.ChangeExtension(dst_file, ".tga") + " " + Path.ChangeExtension(dst_file, ".render.png")).WaitForExit();
             }
 
@@ -159,7 +185,7 @@ class Program
             {
               Process.Start("timg", file).WaitForExit();
               Console.WriteLine(ex);
-              // return 1;
+              return 1;
               crash_count += 1;
             }
           }
@@ -210,45 +236,60 @@ class Program
       Color = Color.Magenta,
     };
 
-    // Console.WriteLine("Use scale factor {0} for size limit {1}", 1 << scale_bits, coordinate_limit);
-    var ms = new MemoryStream();
-
-    ms.Write(new byte[] { 0x72, 0x56 }); // magic
-    ms.Write(new byte[] { 0x01 }); // version
-
-    ms.Write(new byte[] {
-      (byte)(result. scale_bits & 0x0F),
-    });
-
-    ms.Write(BitConverter.GetBytes((ushort)result.image_width));
-    ms.Write(BitConverter.GetBytes((ushort)result.image_height));
-    ms.Write(BitConverter.GetBytes((ushort)result.color_table.Length));
-    foreach (var col in result.color_table)
+    // this loop will only execute when a coordinate won't fit the target range.
+    // The next lower scale is then selected and it's retried.
+    while (true)
     {
-      ms.Write(new byte[4]
+      try
       {
-        (byte)col.R,
-        (byte)col.G,
-        (byte)col.B,
-        (byte)col.A,
-      });
+        // Console.WriteLine("Use scale factor {0} for size limit {1}", 1 << scale_bits, coordinate_limit);
+        var ms = new MemoryStream();
+
+        ms.Write(new byte[] { 0x72, 0x56 }); // magic
+        ms.Write(new byte[] { 0x01 }); // version
+
+        ms.Write(new byte[] {
+          (byte)(result. scale_bits & 0x0F),
+        });
+
+        ms.Write(BitConverter.GetBytes((ushort)result.image_width));
+        ms.Write(BitConverter.GetBytes((ushort)result.image_height));
+        ms.Write(BitConverter.GetBytes((ushort)result.color_table.Length));
+        foreach (var col in result.color_table)
+        {
+          ms.Write(new byte[4]
+          {
+            (byte)col.R,
+            (byte)col.G,
+            (byte)col.B,
+            (byte)col.A,
+          });
+        }
+
+        // Console.WriteLine("Found {0} colors in {1} nodes!", result.color_table.Length, intermediate_buffer.node_count);
+
+        var pos_pre = ms.Position;
+        {
+          var stream = new TvgStream { stream = ms, ar = result };
+          TranslateNodes(result, stream, document);
+        }
+        if (pos_pre == ms.Position)
+        {
+          throw new NotSupportedException("This SVG does not contain any supported elements!");
+        }
+
+        ms.Write(new byte[] { 0x00 }); // end of document
+
+        return ms.ToArray();
+      }
+      catch (UnitRangeException ex)
+      {
+        if (result.scale_bits == 0)
+          throw;
+        Console.WriteLine("Reducing bit range trying to fit {0}", ex.Value);
+        result.scale_bits -= 1;
+      }
     }
-
-    Console.WriteLine("Found {0} colors in {1} nodes!", result.color_table.Length, intermediate_buffer.node_count);
-
-    var pos_pre = ms.Position;
-    {
-      var stream = new TvgStream { stream = ms, ar = result };
-      TranslateNodes(result, stream, document);
-    }
-    if (pos_pre == ms.Position)
-    {
-      throw new NotSupportedException("This SVG does not contain any supported elements!");
-    }
-
-    ms.Write(new byte[] { 0x00 }); // end of document
-
-    return ms.ToArray();
   }
 
   public static float ToFloat(string s)
@@ -288,13 +329,34 @@ class Program
     else if (node is SvgPath path)
     {
       var renderer = new TvgPathRenderer(stream, node.TvgFillStyle);
-      Poupou.SvgPathConverter.SvgPathParser.Parse(path.Data, renderer);
+      // SvgPathParser.Parse(path.Data, new SvgDebugRenderer());
+      SvgPathParser.Parse(path.Data, renderer);
       renderer.Finish();
     }
     else if (node is SvgRectangle rect)
     {
       if (rect.RadiusX != 0 || rect.RadiusY == 0)
+      {
+        if (rect.Width >= 2 * rect.RadiusX && rect.Height >= 2 * rect.RadiusY)
+        {
+          var dx = rect.Width - 2 * rect.RadiusX;
+          var dy = rect.Height - 2 * rect.RadiusY;
+
+          var rx = rect.RadiusX;
+          var ry = rect.RadiusY;
+          var rx5 = 0.5f * rx;
+          var ry5 = 0.5f * ry;
+
+          var renderer = new TvgPathRenderer(stream, node.TvgFillStyle);
+          // SvgPathParser.Parse(path.Data, new SvgDebugRenderer());
+          SvgPathParser.Parse($"M {rect.X} {rect.Y} m {rx} 0 h {dx} c {rx5} 0 {rx} 0 {rx} {ry} v {dy} c 0 {ry} -{rx} {ry} -{rx} {ry} h -{dx} c -{rx5} 0 -{rx} 0 -{rx} -{ry} v -{dy} c 0 -{ry} {rx5} -{ry} {rx} -{ry}", renderer);
+          renderer.Finish();
+          return;
+        }
+
         Console.WriteLine("Rounded rectangles not supported yet!");
+
+      }
 
 
       stream.WriteCommand(TvgCommand.fill_rectangles);
@@ -312,73 +374,79 @@ class Program
     }
   }
 
-  class TvgPathRenderer : Poupou.SvgPathConverter.ISourceFormatter
+  class TvgPathRenderer : IPathRenderer
   {
     TvgStream out_stream;
 
     TvgStream temp_stream;
     TvgStyle fill_style;
 
-    int primitives = 0;
+    List<int> segments = new List<int>();
+
+    int CurrentSegmentPrimitives
+    {
+      get => segments[segments.Count - 1];
+      set => segments[segments.Count - 1] = value;
+    }
 
     public TvgPathRenderer(TvgStream target, TvgStyle fill_style)
     {
       this.out_stream = target ?? throw new ArgumentNullException();
+      this.temp_stream = new TvgStream { stream = new MemoryStream(), ar = target.ar };
       this.fill_style = fill_style ?? throw new ArgumentNullException();
+      this.segments.Add(0);
     }
 
     public void Finish()
     {
-      if (temp_stream != null && primitives > 0)
+      var filled_segments = segments.Where(l => l > 0).ToArray();
+      if (filled_segments.Length > 0)
       {
         out_stream.WriteCommand(TvgCommand.fill_path);
-        out_stream.WriteCountAndStyleType(primitives, fill_style);
+        out_stream.WriteCountAndStyleType(filled_segments.Length, fill_style);
         out_stream.WriteStyle(fill_style);
+
+        foreach (var seg_len in filled_segments)
+        {
+          out_stream.WriteUnsignedInt((uint)seg_len);
+        }
+
         out_stream.Write(((MemoryStream)temp_stream.stream).ToArray());
       }
-      temp_stream = null;
-      primitives = 0;
     }
 
     public void MoveTo(PointF pt)
     {
       //  Console.WriteLine("MoveTo({0},{1})", pt.X, pt.Y);
-      Finish();
-      if (temp_stream == null)
-      {
-        temp_stream = new TvgStream { stream = new MemoryStream(), ar = out_stream.ar };
-        temp_stream.WritePoint(pt);
-      }
-      else
-      {
-        LineTo(pt);
-      }
+      if (CurrentSegmentPrimitives > 0)
+        segments.Add(0);
+      temp_stream.WritePoint(pt);
     }
     public void LineTo(PointF pt)
     {
       // Console.WriteLine("LineTo({0},{1})", pt.X, pt.Y);
-      primitives += 1;
+      CurrentSegmentPrimitives += 1;
       temp_stream.WriteByte(0);
       temp_stream.WritePoint(pt);
     }
     public void VerticalTo(float y)
     {
       // Console.WriteLine("VerticalTo({0})", y);
-      primitives += 1;
+      CurrentSegmentPrimitives += 1;
       temp_stream.WriteByte(2);
       temp_stream.WriteCoordY(y);
     }
     public void HorizontalTo(float x)
     {
       // Console.WriteLine("HorizontalTo({0})", x);
-      primitives += 1;
+      CurrentSegmentPrimitives += 1;
       temp_stream.WriteByte(1);
       temp_stream.WriteCoordX(x);
     }
     public void QuadCurveTo(PointF pt1, PointF pt2)
     {
       // Console.WriteLine("QuadCurveTo({0},{1},{2},{3})", pt1.X, pt1.Y, pt2.X, pt2.Y);
-      primitives += 1;
+      CurrentSegmentPrimitives += 1;
       temp_stream.WriteByte(7);
       temp_stream.WritePoint(pt1);
       temp_stream.WritePoint(pt1);
@@ -386,13 +454,13 @@ class Program
     public void CurveTo(PointF pt1, PointF pt2, PointF pt3)
     {
       // Console.WriteLine("CurveTo({0},{1},{2},{3},{4},{5})", pt1.X, pt1.Y, pt2.X, pt2.Y, pt3.X, pt3.Y);
-      primitives += 1;
+      CurrentSegmentPrimitives += 1;
       temp_stream.WriteByte(3);
       temp_stream.WritePoint(pt1);
       temp_stream.WritePoint(pt2);
       temp_stream.WritePoint(pt3);
     }
-    public void ArcTo(PointF size, float angle, bool isLarge, bool sweep, PointF ep, PointF sp)
+    public void ArcTo(PointF size, float angle, bool isLarge, bool sweep, PointF ep)
     {
       // Console.WriteLine("ArcTo()");
       if (size.X == 0 || size.Y == 0)
@@ -400,7 +468,7 @@ class Program
         LineTo(ep);
         return;
       }
-      primitives += 1;
+      CurrentSegmentPrimitives += 1;
       temp_stream.WriteByte(5);
       temp_stream.WriteByte((byte)(0 |
         (isLarge ? 1 : 0) |
@@ -414,7 +482,7 @@ class Program
 
     public void ClosePath()
     {
-      primitives += 1;
+      CurrentSegmentPrimitives += 1;
       // Console.WriteLine("ClosePath()");
       temp_stream.WriteByte(6);
     }
@@ -463,6 +531,8 @@ class Program
         case "fill":
         case "opacity":
         case "stroke":
+        case "fill-opacity":
+        case "stroke-opacity":
           break;
         default:
           if (!unknown_styles.TryGetValue(key, out var set))
@@ -475,7 +545,8 @@ class Program
     var fill = style["fill"];
     if (fill != null)
     {
-      var color = AnalyzeStyleDef(buf, fill, opacity);
+      float fill_opacity = opacity * ToFloat(style["fill-opacity"] ?? "1");
+      var color = AnalyzeStyleDef(buf, fill, fill_opacity);
       if (color != null)
       {
         node.TvgFillStyle = new TvgFlatColor { Color = color.Value };
@@ -485,7 +556,8 @@ class Program
     var stroke = style["stroke"];
     if (stroke != null)
     {
-      var color = AnalyzeStyleDef(buf, stroke, opacity);
+      float stroke_opacity = opacity * ToFloat(style["stroke-opacity"] ?? "1");
+      var color = AnalyzeStyleDef(buf, stroke, stroke_opacity);
       if (color != null)
       {
         node.TvgLineStyle = new TvgFlatColor { Color = color.Value };
@@ -508,12 +580,12 @@ class Program
       }
     }
 
-    Console.WriteLine(
-      "{5}Analyzed {0} with {1} ({2}) and {3} ({4})",
-      node.GetType().Name,
-      node.TvgFillStyle?.ToString() ?? "<null>", fill ?? "<null>",
-      node.TvgLineStyle?.ToString() ?? "<null>", stroke ?? "<null>",
-      indent);
+    // Console.WriteLine(
+    //   "{5}Analyzed {0} with {1} ({2}) and {3} ({4})",
+    //   node.GetType().Name,
+    //   node.TvgFillStyle?.ToString() ?? "<null>", fill ?? "<null>",
+    //   node.TvgLineStyle?.ToString() ?? "<null>", stroke ?? "<null>",
+    //   indent);
   }
 
   public static Color AdjustColor(Color c, float a)
@@ -854,22 +926,31 @@ public class TvgStream
 
   public void WriteUnit(float value)
   {
-
     int scale = (1 << ar.scale_bits);
     int unit = (int)(value * scale + 0.5);
     if (unit < short.MinValue || unit > short.MaxValue)
-      throw new ArgumentOutOfRangeException(string.Format("{0} is out of range when encoded as {1} with scale {2}", value, unit, scale));
+      throw new UnitRangeException(value, unit, scale);
     stream.Write(BitConverter.GetBytes((short)unit));
+  }
+
+  public void WriteSizeX(float x)
+  {
+    WriteUnit(x / (ar.viewport_width / ar.image_width));
   }
 
   public void WriteCoordX(float x)
   {
-    WriteUnit((x - ar.viewport_x) / (ar.viewport_width / ar.image_width)); ;
+    WriteSizeX(x - ar.viewport_x);
+  }
+
+  public void WriteSizeY(float y)
+  {
+    WriteUnit(y / (ar.viewport_height / ar.image_height));
   }
 
   public void WriteCoordY(float y)
   {
-    WriteUnit((y - ar.viewport_y) / (ar.viewport_height / ar.image_height)); ;
+    WriteSizeY(y - ar.viewport_y);
   }
 
   public void WritePoint(float x, float y)
@@ -968,3 +1049,689 @@ public class TvgRadialGradient : TvgGradient
   public override string ToString() => "[Radial Gradient]";
 }
 
+public interface IPathRenderer
+{
+  void MoveTo(PointF pt);
+  void LineTo(PointF pt);
+  void VerticalTo(float y);
+  void HorizontalTo(float x);
+  void QuadCurveTo(PointF pt1, PointF pt2);
+  void CurveTo(PointF pt1, PointF pt2, PointF pt3);
+  void ArcTo(PointF size, float angle, bool isLarge, bool sweep, PointF ep);
+  void ClosePath();
+}
+
+// Free after
+// https://www.w3.org/TR/SVG2/paths.html#PathDataBNF
+public class SvgPathParser
+{
+  public static void Parse(string str, IPathRenderer renderer)
+  {
+    var parser = new SvgPathParser(str, renderer);
+    try
+    {
+      parser.ParsePath();
+    }
+    catch
+    {
+      parser.PrintContext("Error Context");
+      throw;
+    }
+  }
+
+  readonly string path_text;
+  readonly IPathRenderer renderer;
+
+  int char_offset = 0;
+
+  PointF current_position = new PointF(0, 0);
+  PointF? stored_control_point = null;
+
+  private SvgPathParser(string str, IPathRenderer renderer)
+  {
+    this.path_text = str;
+    this.renderer = renderer;
+  }
+
+
+  bool EndOfString => (char_offset >= path_text.Length);
+
+  void PrintContext(string prefix)
+  {
+    var len = path_text.Length - char_offset;
+    var rest = (len > 40) ? path_text.Substring(char_offset, 40) + "…" : path_text.Substring(char_offset);
+    Console.WriteLine("{0}: '{1}\u0332{2}'", prefix, path_text.Substring(0, char_offset), rest);
+  }
+
+  char? PeekChar()
+  {
+    if (EndOfString)
+      return null;
+    return path_text[char_offset];
+  }
+
+  char GetChar()
+  {
+    if (EndOfString)
+      throw new EndOfStreamException("No more characters!");
+    var c = path_text[char_offset];
+    char_offset += 1;
+    return c;
+  }
+
+  struct ParserState
+  {
+    public SvgPathParser self;
+    public int offset;
+    public void Restore()
+    {
+      self.char_offset = offset;
+    }
+    public string Slice()
+    {
+      return self.path_text.Substring(offset, self.char_offset - offset);
+    }
+  }
+
+  ParserState Save()
+  {
+    return new ParserState { self = this, offset = char_offset };
+  }
+
+  char AcceptChar(string list) => AcceptChar(list.ToCharArray());
+
+  char AcceptChar(params char[] list)
+  {
+    var c = GetChar();
+    if (!list.Contains(c))
+      throw new Exception("Unexpected char '" + c + "', expected one of " + string.Join(", ", list));
+    return c;
+  }
+
+  char? PeekAny(string list) => PeekAny(list.ToCharArray());
+
+  char? PeekAny(params char[] list)
+  {
+    var c = PeekChar();
+    if (c == null)
+      return null;
+    if (list.Contains(c.Value))
+      return c;
+    return null;
+  }
+
+  static PointF Add(PointF a, PointF b) => new PointF(a.X + b.X, a.Y + b.Y);
+
+  PointF MoveCursor(float dx, float dy, bool relative) => MoveCursor(new PointF(dx, dy), relative);
+  float MoveCursorX(float dx, bool relative) => MoveCursor(new PointF(dx, relative ? 0.0f : current_position.Y), relative).X;
+  float MoveCursorY(float dy, bool relative) => MoveCursor(new PointF(relative ? 0.0f : current_position.X, dy), relative).Y;
+
+  PointF MoveCursor(PointF pt, bool relative)
+  {
+    current_position = MakeAbsolute(pt, relative);
+    return current_position;
+  }
+
+  PointF MakeAbsolute(PointF pt, bool relative)
+  {
+    if (relative)
+      return Add(current_position, pt);
+    else
+      return pt;
+  }
+
+  // svg_path::= wsp* moveto? (moveto drawto_command*)?
+  void ParsePath()
+  {
+    SkipWhitespace();
+
+    ParseMoveTo();
+
+    while (!EndOfString)
+    {
+      SkipWhitespace();
+      if (EndOfString)
+        break;
+      ParseDrawToCommand();
+    }
+  }
+
+  // drawto_command::=
+  //     moveto
+  //     | closepath
+  //     | lineto
+  //     | horizontal_lineto
+  //     | vertical_lineto
+  //     | curveto
+  //     | smooth_curveto
+  //     | quadratic_bezier_curveto
+  //     | smooth_quadratic_bezier_curveto
+  //     | elliptical_arc
+  void ParseDrawToCommand()
+  {
+    var c = PeekChar();
+    if (c == null) throw new InvalidOperationException();
+    switch (c.Value)
+    {
+      case 'Z':
+      case 'z':
+        ParseClosePath();
+        break;
+      case 'M':
+      case 'm':
+        ParseMoveTo();
+        break;
+      case 'L':
+      case 'l':
+        ParseLineTo();
+        break;
+      case 'H':
+      case 'h':
+        ParseHorizontalLineTo();
+        break;
+      case 'V':
+      case 'v':
+        ParseVerticalLineTo();
+        break;
+      case 'C':
+      case 'c':
+        ParseCurveTo();
+        break;
+      case 'S':
+      case 's':
+        ParseSmoothCurveTo();
+        break;
+      case 'Q':
+      case 'q':
+        ParseQuadraticBezierTo();
+        break;
+      case 'T':
+      case 't':
+        ParseSmoothQuadraticBezierTo();
+        break;
+      case 'A':
+      case 'a':
+        ParseArcTo();
+        break;
+
+      default:
+        throw new ArgumentException("Unexpected character: " + c.Value);
+    }
+  }
+
+  // closepath::=
+  //     ("Z" | "z")
+  void ParseClosePath()
+  {
+    AcceptChar('Z', 'z');
+    SkipWhitespace();
+  }
+
+  // moveto::=
+  //     ( "M" | "m" ) wsp* coordinate_pair_sequence
+  void ParseMoveTo()
+  {
+    bool relative = (AcceptChar('M', 'm') == 'm');
+    SkipWhitespace();
+    foreach (var pair in ParseCoordinatePairSequence())
+    {
+      renderer.MoveTo(MoveCursor(pair, relative));
+    }
+  }
+
+  // lineto::=
+  //     ("L"|"l") wsp* coordinate_pair_sequence
+  void ParseLineTo()
+  {
+    var relative = (AcceptChar('L', 'l') == 'l');
+    SkipWhitespace();
+    foreach (var pair in ParseCoordinatePairSequence())
+    {
+      renderer.LineTo(MoveCursor(pair, relative));
+    }
+  }
+
+  // horizontal_lineto::=
+  //     ("H"|"h") wsp* coordinate_sequence
+  void ParseHorizontalLineTo()
+  {
+    var relative = (AcceptChar('H', 'h') == 'h');
+    SkipWhitespace();
+    foreach (var x in ParseCoordinateSequence())
+    {
+      renderer.HorizontalTo(MoveCursorX(x, relative));
+    }
+  }
+
+  // vertical_lineto::=
+  //     ("V"|"v") wsp* coordinate_sequence
+  void ParseVerticalLineTo()
+  {
+    var relative = (AcceptChar('V', 'v') == 'v');
+    SkipWhitespace();
+    foreach (var y in ParseCoordinateSequence())
+    {
+      renderer.VerticalTo(MoveCursorY(y, relative));
+    }
+  }
+
+  // curveto::=
+  //     ("C"|"c") wsp* curveto_coordinate_sequence
+
+  // curveto_coordinate_sequence::=
+  //     coordinate_pair_triplet
+  //     | (coordinate_pair_triplet comma_wsp? curveto_coordinate_sequence)
+
+  void ParseCurveTo()
+  {
+    var relative = (AcceptChar('C', 'c') == 'c');
+    SkipWhitespace();
+    foreach (var tup in ParseCoordinatePairTupleSequence(3))
+    {
+      var cp0 = MakeAbsolute(tup[0], relative);
+      var cp1 = MakeAbsolute(tup[1], relative);
+      var dest = MoveCursor(tup[2], relative);
+      renderer.CurveTo(cp0, cp1, dest);
+      stored_control_point = Add(current_position, new PointF(cp1.X - dest.X, cp1.Y - dest.Y));
+    }
+  }
+
+  // smooth_curveto::=
+  //     ("S"|"s") wsp* smooth_curveto_coordinate_sequence
+
+  // smooth_curveto_coordinate_sequence::=
+  //     coordinate_pair_double
+  //     | (coordinate_pair_double comma_wsp? smooth_curveto_coordinate_sequence)
+
+  void ParseSmoothCurveTo()
+  {
+    var relative = (AcceptChar('S', 's') == 's');
+    SkipWhitespace();
+    foreach (var tup in ParseCoordinatePairTupleSequence(2))
+    {
+      var cp1 = MakeAbsolute(tup[0], relative);
+      var dest = MoveCursor(tup[1], relative);
+      renderer.CurveTo(stored_control_point ?? current_position, cp1, dest);
+      stored_control_point = Add(current_position, new PointF(cp1.X - dest.X, cp1.Y - dest.Y));
+    }
+  }
+
+  // quadratic_bezier_curveto::=
+  //     ("Q"|"q") wsp* quadratic_bezier_curveto_coordinate_sequence
+
+  // quadratic_bezier_curveto_coordinate_sequence::=
+  //     coordinate_pair_double
+  //     | (coordinate_pair_double comma_wsp? quadratic_bezier_curveto_coordinate_sequence)
+
+  void ParseQuadraticBezierTo()
+  {
+    var relative = (AcceptChar('Q', 'q') == 'q');
+    SkipWhitespace();
+    foreach (var tup in ParseCoordinatePairTupleSequence(2))
+    {
+      var cp = MakeAbsolute(tup[0], relative);
+      var dest = MoveCursor(tup[1], relative);
+      renderer.QuadCurveTo(cp, dest);
+      stored_control_point = Add(current_position, new PointF(cp.X - dest.X, cp.Y - dest.Y));
+    }
+  }
+
+  // smooth_quadratic_bezier_curveto::=
+  //     ("T"|"t") wsp* coordinate_pair_sequence
+  void ParseSmoothQuadraticBezierTo()
+  {
+    var relative = (AcceptChar('T', 't') == 't');
+    SkipWhitespace();
+    foreach (var dest_loc in ParseCoordinatePairSequence())
+    {
+      var cp = stored_control_point ?? current_position;
+      var dest = MoveCursor(dest_loc, relative);
+      renderer.QuadCurveTo(cp, dest);
+      stored_control_point = Add(current_position, new PointF(cp.X - dest.X, cp.Y - dest.Y));
+    }
+  }
+
+  struct EllipseArg
+  {
+    public float radius_x;
+    public float radius_y;
+    public float angle;
+    public bool large_arc;
+    public bool sweep;
+    public PointF target;
+  }
+
+  // elliptical_arc::=
+  //     ( "A" | "a" ) wsp* elliptical_arc_argument_sequence
+
+  void ParseArcTo()
+  {
+    var relative = (AcceptChar('A', 'a') == 'a');
+    SkipWhitespace();
+    foreach (var args in ParseEllipseArgSequence())
+    {
+      renderer.ArcTo(
+        new PointF(args.radius_x, args.radius_y),
+        args.angle,
+        args.large_arc,
+        args.sweep,
+        MoveCursor(args.target, relative)
+      );
+    }
+  }
+
+  // elliptical_arc_argument_sequence::=
+  //     elliptical_arc_argument
+  //     | (elliptical_arc_argument comma_wsp? elliptical_arc_argument_sequence)
+
+  IEnumerable<EllipseArg> ParseEllipseArgSequence()
+  {
+    yield return ParseEllipseArgument();
+    while (true)
+    {
+      var loc = Save();
+      EllipseArg p;
+      try
+      {
+        SkipCommaWhitespace();
+        p = ParseEllipseArgument();
+      }
+      catch
+      {
+        loc.Restore();
+        yield break;
+      }
+      yield return p;
+    }
+  }
+
+
+  // elliptical_arc_argument::=
+  //     number comma_wsp? number comma_wsp? number comma_wsp
+  //     flag comma_wsp? flag comma_wsp? coordinate_pair
+  EllipseArg ParseEllipseArgument()
+  {
+    var loc = Save();
+
+    try
+    {
+      var result = new EllipseArg();
+      result.radius_x = ParseCoordinate();
+      SkipCommaWhitespace();
+      result.radius_y = ParseCoordinate();
+      SkipCommaWhitespace();
+      result.angle = ParseCoordinate();
+      SkipCommaWhitespace(false);
+      result.large_arc = ParseFlag();
+      SkipCommaWhitespace();
+      result.sweep = ParseFlag();
+      SkipCommaWhitespace();
+      result.target = ParseCoordinatePair();
+      return result;
+    }
+    catch
+    {
+      loc.Restore();
+      throw;
+    }
+  }
+
+  // coordinate_pair_double::=
+  //     coordinate_pair comma_wsp? coordinate_pair
+  // coordinate_pair_triplet::=
+  //     coordinate_pair comma_wsp? coordinate_pair comma_wsp? coordinate_pair
+
+  IEnumerable<PointF[]> ParseCoordinatePairTupleSequence(int tuple_size)
+  {
+    yield return ParseCoordinatePairTuple(tuple_size);
+    while (true)
+    {
+      var loc = Save();
+      PointF[] p;
+      try
+      {
+        SkipCommaWhitespace();
+        p = ParseCoordinatePairTuple(tuple_size);
+      }
+      catch
+      {
+        loc.Restore();
+        yield break;
+      }
+      yield return p;
+    }
+  }
+
+  PointF[] ParseCoordinatePairTuple(int tuple_size)
+  {
+    var tuple = new PointF[tuple_size];
+    var loc = Save();
+    tuple[0] = ParseCoordinatePair();
+    try
+    {
+      for (int i = 1; i < tuple_size; i++)
+      {
+        SkipCommaWhitespace();
+        tuple[i] = ParseCoordinatePair();
+      }
+      return tuple;
+    }
+    catch
+    {
+      loc.Restore();
+      throw;
+    }
+  }
+
+  // coordinate_pair_sequence::=
+  //     coordinate_pair | (coordinate_pair comma_wsp? coordinate_pair_sequence)
+  IEnumerable<PointF> ParseCoordinatePairSequence()
+  {
+    yield return ParseCoordinatePair();
+    while (true)
+    {
+      var loc = Save();
+      PointF p;
+      try
+      {
+        SkipWhitespace();
+        p = ParseCoordinatePair();
+      }
+      catch
+      {
+        loc.Restore();
+        yield break;
+      }
+      yield return p;
+    }
+  }
+
+  // coordinate_sequence::=
+  //     coordinate | (coordinate comma_wsp? coordinate_sequence)
+  IEnumerable<float> ParseCoordinateSequence()
+  {
+    yield return ParseCoordinate();
+    while (true)
+    {
+      var loc = Save();
+      float v;
+      try
+      {
+        SkipWhitespace();
+        v = ParseCoordinate();
+      }
+      catch
+      {
+        loc.Restore();
+        yield break;
+      }
+      yield return v;
+    }
+  }
+
+  // coordinate_pair::= coordinate comma_wsp? coordinate
+  PointF ParseCoordinatePair()
+  {
+    var loc = Save();
+    try
+    {
+      float x = ParseCoordinate();
+      SkipCommaWhitespace();
+      float y = ParseCoordinate();
+      return new PointF(x, y);
+    }
+    catch
+    {
+      loc.Restore();
+      throw;
+    }
+  }
+
+  // coordinate::= sign? number
+  // sign::= "+"|"-"
+  float ParseCoordinate()
+  {
+    return ParseNumberGeneric(true);
+  }
+
+  // number ::= ([0-9])+
+  float ParseNumber()
+  {
+    return ParseNumberGeneric(false);
+  }
+
+  float ParseNumberGeneric(bool allow_sign)
+  {
+    var begin = Save();
+    char? c = AcceptChar("0123456789." + (allow_sign ? "+-" : ""));
+    if (c != '.')
+    {
+      while (true)
+      {
+        c = PeekAny("0123456789.");
+        if (c == null)
+          return ParseFloat(begin.Slice());
+        AcceptChar("0123456789.");
+        if (c.Value == '.')
+          break;
+      }
+    }
+    while (true)
+    {
+      c = PeekAny("0123456789");
+      if (c == null)
+        return ParseFloat(begin.Slice());
+      AcceptChar("0123456789");
+    }
+  }
+
+  static float ParseFloat(string str)
+  {
+    try
+    {
+      return float.Parse(str, CultureInfo.InvariantCulture);
+    }
+    catch
+    {
+      Console.WriteLine("Float Context: '{0}'", str);
+      throw;
+    }
+  }
+
+  // flag::=("0"|"1")
+  bool ParseFlag()
+  {
+    return (AcceptChar("01") == '1');
+  }
+
+  // wsp ::= (#x9 | #x20 | #xA | #xC | #xD)
+  // comma_wsp ::= (wsp+ ","? wsp*) | ("," wsp*)
+
+  const string valid_whitespace = "\x09\x20\x0A\x0C\x0D";
+
+  void SkipCommaWhitespace() => SkipCommaWhitespace(true);
+
+  void SkipCommaWhitespace(bool allow_empty)
+  {
+    var first = true;
+    while (true)
+    {
+      var c = PeekAny(valid_whitespace + ",");
+
+      if (c == null)
+      {
+        if (!allow_empty && first)
+          throw new InvalidOperationException("Expected whitespace or comma!");
+        return;
+      }
+      first = false;
+      GetChar();
+      if (c.Value == ',')
+        break;
+    }
+    SkipWhitespace();
+  }
+
+  void SkipWhitespace()
+  {
+    while (true)
+    {
+      if (PeekAny(valid_whitespace + ",") == null)
+        return;
+      GetChar();
+    }
+  }
+}
+
+
+class SvgDebugRenderer : IPathRenderer
+{
+  public void MoveTo(PointF pt)
+  {
+    Console.WriteLine("MoveTo({0},{1})", pt.X, pt.Y);
+  }
+  public void LineTo(PointF pt)
+  {
+    Console.WriteLine("LineTo({0},{1})", pt.X, pt.Y);
+  }
+  public void VerticalTo(float y)
+  {
+    Console.WriteLine("VerticalTo({0})", y);
+  }
+  public void HorizontalTo(float x)
+  {
+    Console.WriteLine("HorizontalTo({0})", x);
+  }
+  public void QuadCurveTo(PointF pt1, PointF pt2)
+  {
+    Console.WriteLine("QuadCurveTo({0},{1},{2},{3})", pt1.X, pt1.Y, pt2.X, pt2.Y);
+  }
+  public void CurveTo(PointF pt1, PointF pt2, PointF pt3)
+  {
+    Console.WriteLine("CurveTo({0},{1},{2},{3},{4},{5})", pt1.X, pt1.Y, pt2.X, pt2.Y, pt3.X, pt3.Y);
+  }
+  public void ArcTo(PointF size, float angle, bool isLarge, bool sweep, PointF ep)
+  {
+    Console.WriteLine("ArcTo({0},{1},{2},{3},{4},{5},{6})", size.X, size.Y, angle, isLarge, sweep, ep.X, ep.Y);
+  }
+  public void ClosePath()
+  {
+    Console.WriteLine("ClosePath()");
+  }
+}
+
+[System.Serializable]
+public class UnitRangeException : System.Exception
+{
+
+  public UnitRangeException(float value, int unit, int scale) :
+  base(string.Format("{0} is out of range when encoded as {1} with scale {2}", value, unit, scale))
+  {
+    this.Value = value;
+  }
+  protected UnitRangeException(
+      System.Runtime.Serialization.SerializationInfo info,
+      System.Runtime.Serialization.StreamingContext context) : base(info, context) { }
+
+  public float Value { get; }
+}

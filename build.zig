@@ -19,8 +19,9 @@ pub fn build(b: *std.build.Builder) !void {
 
     if (enable_dotnet) {
         const svg2cs = b.addSystemCommand(&[_][]const u8{
-            "mcs",
-            "/out:zig-cache/bin/svg2tvg.exe",
+            "csc",
+            "/debug",
+            "/out:zig-out/bin/svg2tvg.exe",
             "/r:System.Drawing.dll",
             "src/tools/svg2tvg.cs",
         });

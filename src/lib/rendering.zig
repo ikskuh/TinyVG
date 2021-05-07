@@ -41,7 +41,7 @@ pub fn render(
     /// The command that should be executed.
     cmd: parsing.DrawCommand,
 ) !void {
-    const temp_buffer_size = 1024;
+    const temp_buffer_size = 4096;
 
     if (!comptime isFramebuffer(@TypeOf(framebuffer)))
         @compileError("framebuffer needs fields width, height and function setPixel!");
@@ -323,7 +323,7 @@ fn renderCircle(
     // Vector from midpoint to center, but incorrect length
     const radius_vec = if (left_side) Point{ .x = -delta.y, .y = delta.x } else Point{ .x = delta.y, .y = -delta.x };
     const len_squared = length2(radius_vec);
-    if (len_squared > r * r or r < 0) {
+    if (len_squared - 0.03 > r * r or r < 0) {
         std.log.err("{d} > {d}", .{ len_squared, r * r });
         return error.InvalidRadius;
     }
@@ -512,7 +512,7 @@ const Painter = struct {
         var max_y: i16 = std.math.minInt(i16);
 
         for (points_lists) |points| {
-            std.debug.assert(points.len >= 3);
+            // std.debug.assert(points.len >= 3);
             for (points) |pt| {
                 min_x = std.math.min(min_x, @floatToInt(i16, std.math.floor(self.scale_x * pt.x)));
                 min_y = std.math.min(min_y, @floatToInt(i16, std.math.floor(self.scale_y * pt.y)));
@@ -540,6 +540,7 @@ const Painter = struct {
 
                 var inside_count: usize = 0;
                 for (points_lists) |points| {
+                    if (points.len < 2) continue;
                     var inside = false;
 
                     // free after https://stackoverflow.com/a/17490923

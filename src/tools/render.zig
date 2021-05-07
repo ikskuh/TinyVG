@@ -137,6 +137,10 @@ const Framebuffer = struct {
     height: usize,
 
     pub fn setPixel(self: *Self, x: isize, y: isize, color: [4]u8) void {
+        if (x < 0 or y < 0)
+            return;
+        if (x >= self.width or y >= self.height)
+            return;
         const offset = (std.math.cast(usize, y) catch return) * self.stride + (std.math.cast(usize, x) catch return);
 
         const dst = self.slice[offset];
