@@ -287,19 +287,29 @@ pub fn renderEllipse(
     large_arc: bool,
     turn_left: bool,
 ) !void {
+    const radius_min = distance(p0, p1) / 2.0;
+    const radius_lim = std.math.min(std.math.fabs(radius_x), std.math.fabs(radius_y));
+
+    const up_scale = if (radius_lim < radius_min)
+        radius_min / radius_lim
+    else
+        1.0;
+
+    // std.log.warn("{d} {d} {d}, {d} => {d}", .{ radius_x, radius_y, radius_lim, radius_min, up_scale });
+
     const ratio = radius_x / radius_y;
     const rot = rotationMat(toRadians(rotation - 90));
     const transform = [2][2]f32{
-        rot[0],
-        .{ rot[1][0] * ratio, rot[1][1] * ratio },
+        .{ rot[0][0] / up_scale, rot[0][1] / up_scale },
+        .{ rot[1][0] / up_scale * ratio, rot[1][1] / up_scale * ratio },
     };
     const transform_back = [2][2]f32{
-        .{ rot[1][1], -rot[0][1] / ratio },
-        .{ -rot[1][0], rot[0][0] / ratio },
+        .{ rot[1][1] * up_scale, -rot[0][1] / ratio * up_scale },
+        .{ -rot[1][0] * up_scale, rot[0][0] / ratio * up_scale },
     };
 
     var tmp = FixedBufferList(Point, circle_divs){};
-    renderCircle(&tmp, applyMat(transform, p0), applyMat(transform, p1), radius_x, large_arc, turn_left) catch unreachable; // buffer is correctly sized
+    renderCircle(&tmp, applyMat(transform, p0), applyMat(transform, p1), radius_x * up_scale, large_arc, turn_left) catch unreachable; // buffer is correctly sized
 
     for (tmp.buffer) |p| {
         try point_list.append(applyMat(transform_back, p));
@@ -324,7 +334,7 @@ fn renderCircle(
     const radius_vec = if (left_side) Point{ .x = -delta.y, .y = delta.x } else Point{ .x = delta.y, .y = -delta.x };
     const len_squared = length2(radius_vec);
     if (len_squared - 0.03 > r * r or r < 0) {
-        std.log.err("{d} > {d}", .{ len_squared, r * r });
+        std.log.err("{d} > {d}", .{ std.math.sqrt(len_squared), std.math.sqrt(r * r) });
         return error.InvalidRadius;
     }
 

@@ -57,7 +57,7 @@ pub fn main() !u8 {
     else blk: {
         var out_name = cli.options.output orelse try std.mem.concat(allocator, u8, &[_][]const u8{
             cli.positionals[0][0..(cli.positionals[0].len - std.fs.path.extension(cli.positionals[0]).len)],
-            ".ppm",
+            ".tvgt",
         });
 
         break :blk try std.fs.cwd().createFile(out_name, .{});
@@ -98,10 +98,7 @@ pub fn main() !u8 {
                 try writer.writeAll("     (\n       fill_path\n       ");
                 try renderStyle(writer, path.style);
                 try writer.writeAll("\n       (");
-                // for (path.path) |node| {
-                //     try writer.writeAll("\n         ");
-                //     try renderPathNode(writer, node);
-                // }
+                try renderPath("         ", writer, path.path);
                 try writer.writeAll("\n       )\n     )\n");
             },
             .fill_polygon => |polygon| {
@@ -163,10 +160,7 @@ pub fn main() !u8 {
                 try writer.writeAll("     (\n       draw_line_path\n       ");
                 try renderStyle(writer, data.style);
                 try writer.print("\n       {d}\n       (", .{data.line_width});
-                // for (data.path) |node| {
-                //     try writer.writeAll("\n         ");
-                //     try renderPathNode(writer, node);
-                // }
+                try renderPath("         ", writer, data.path);
                 try writer.writeAll("\n       )\n     )\n");
             },
             .outline_fill_polygon => |data| {
@@ -187,7 +181,18 @@ pub fn main() !u8 {
     return 0;
 }
 
-fn renderPathNode(writer: anytype, node: tvg.parsing.PathNode) !void {
+fn renderPath(line_prefix: []const u8, writer: anytype, path: tvg.parsing.Path) !void {
+    for (path.segments) |segment| {
+        try writer.print("\n{s}({d} {d})\n{s}(", .{ line_prefix, segment.start.x, segment.start.y, line_prefix });
+        for (segment.commands) |node| {
+            try writer.print("\n{s}  ", .{line_prefix});
+            try renderPathNode(writer, node);
+        }
+        try writer.print("\n{s})", .{line_prefix});
+    }
+}
+
+fn renderPathNode(writer: anytype, node: tvg.parsing.Path.Node) !void {
     switch (node) {
         .line => |line| try writer.print("(line {d} {d})", .{ line.data.x, line.data.y }),
         .horiz => |horiz| try writer.print("(horiz {d})", .{horiz.data}),
@@ -206,8 +211,22 @@ fn renderPathNode(writer: anytype, node: tvg.parsing.PathNode) !void {
             bezier.data.p1.x,
             bezier.data.p1.y,
         }),
-        .arc_circle => |arc_circle| try writer.print("(arc-circle)", .{}),
-        .arc_ellipse => |arc_ellipse| try writer.print("(arc-ellipse)", .{}),
+        .arc_circle => |arc_circle| try writer.print("(arc-circle {d}, {}, {}, ({d} {d}))", .{
+            arc_circle.data.radius,
+            arc_circle.data.large_arc,
+            arc_circle.data.sweep,
+            arc_circle.data.target.x,
+            arc_circle.data.target.y,
+        }),
+        .arc_ellipse => |arc_ellipse| try writer.print("(arc-ellipse {d}, {d}, {d}, {}, {}, ({d} {d}))", .{
+            arc_ellipse.data.radius_x,
+            arc_ellipse.data.radius_y,
+            arc_ellipse.data.rotation,
+            arc_ellipse.data.large_arc,
+            arc_ellipse.data.sweep,
+            arc_ellipse.data.target.x,
+            arc_ellipse.data.target.y,
+        }),
         .close => try writer.writeAll("(close)"),
     }
 }

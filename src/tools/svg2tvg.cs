@@ -10,30 +10,86 @@ using System.Diagnostics;
 using System.Linq;
 using System.Globalization;
 
-class Program
+class Application
 {
   static int Main(string[] args)
   {
     CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
-    var serializer = new XmlSerializer(typeof(SvgDocument));
 
+    string out_file_name = null;
+    string input_file_name = null;
+
+    foreach (var arg in args)
+    {
+      if (arg.StartsWith("-out:"))
+      {
+        out_file_name = arg.Substring(5);
+      }
+      else if (arg.StartsWith("-") && arg.Length != 1)
+      {
+        Console.Error.WriteLine("Unknown command line arg: {0}", arg);
+        return 1;
+      }
+      else
+      {
+        if (input_file_name != null)
+        {
+          Console.Error.WriteLine("svg2tvg requires exactly one positional argument");
+          return 1;
+        }
+        input_file_name = arg;
+      }
+    }
+
+    if (input_file_name == null)
+    {
+      Console.Error.WriteLine("svg2tvg requires exactly one positional argument");
+      return 1;
+    }
+
+    SvgDocument doc;
+    if (input_file_name == "-")
+    {
+      doc = SvgConverter.ParseDocument(Console.In);
+      out_file_name = "-";
+    }
+    else
+    {
+      using (var stream = File.OpenRead(input_file_name))
+      {
+        doc = SvgConverter.ParseDocument(stream);
+      }
+      out_file_name = out_file_name ?? Path.ChangeExtension(input_file_name, "tvg");
+    }
+
+    var binary_tvg = SvgConverter.ConvertToTvg(doc);
+
+    if (out_file_name == "-")
+    {
+      using (var stream = Console.OpenStandardOutput())
+      {
+        stream.Write(binary_tvg);
+      }
+    }
+    else
+    {
+      using (var stream = File.Open(out_file_name, FileMode.Create, FileAccess.Write))
+      {
+        stream.Write(binary_tvg);
+      }
+    }
+
+    return 0;
+  }
+}
+
+class DevRunner
+{
+  static int Main(string[] args)
+  {
     var render_png = false;
     var render_tga = true;
-
-    var unsupported_attribs = new HashSet<string>{
-      "class", // no support for SVG classes
-      "font-weight",
-      "letter-spacing",
-      "word-spacing",
-      "vector-effect",
-      "display",
-      "preserveAspectRatio",
-    };
-
-    var unsupported_elements = new HashSet<string>{
-      "defs", // no support for predefined styles
-      "use",
-    };
+    var render_txt = true;
 
     var banned_files = new HashSet<string>
     {
@@ -56,10 +112,11 @@ class Program
       var src_root = "/home/felix/projects/forks/";
       var dst_root = "/tmp/converted/";
       foreach (var folder in new string[] {
-        // src_root + "/zig-logo",
-        // src_root + "/MaterialDesign/svg",
+        src_root + "/zig-logo",
+       // src_root + "/w3c-svg-files",
+        src_root + "/MaterialDesign/svg",
         src_root + "/papirus-icon-theme/Papirus/48x48/actions",
-        src_root + "/papirus-icon-theme/Papirus/48x48/apps",
+        // src_root + "/papirus-icon-theme/Papirus/48x48/apps",
         // src_root + "/papirus-icon-theme/Papirus/48x48/devices",
         // src_root + "/papirus-icon-theme/Papirus/48x48/emblems",
         // src_root + "/papirus-icon-theme/Papirus/48x48/emotes",
@@ -78,40 +135,12 @@ class Program
 
             Console.WriteLine("parse {0} => {1}", Path.GetFileName(file), dst_file);
             SvgDocument doc;
-            bool fully_supported = true;
             int svg_size;
             try
             {
               using (var stream = File.OpenRead(file))
               {
-                var events = new XmlDeserializationEvents();
-                events.OnUnknownElement = new XmlElementEventHandler((object sender, XmlElementEventArgs e) =>
-                {
-                  if (unsupported_elements.Contains(e.Element.Name))
-                  {
-                    fully_supported = false;
-                    return;
-                  }
-                  throw new InvalidOperationException(string.Format("Unknown element {0}", e.Element.Name));
-                });
-                events.OnUnknownAttribute = new XmlAttributeEventHandler((object sender, XmlAttributeEventArgs e) =>
-                {
-                  if (e.Attr.Prefix == "xml")
-                    return;
-                  if (unsupported_attribs.Contains(e.Attr.Name))
-                  {
-                    fully_supported = false;
-                    return;
-                  }
-                  throw new InvalidOperationException(string.Format("Unknown attribute {0}", e.Attr.Name));
-                });
-                using (var reader = XmlReader.Create(stream, new XmlReaderSettings
-                {
-                  DtdProcessing = DtdProcessing.Ignore,
-                }))
-                {
-                  doc = (SvgDocument)serializer.Deserialize(reader, events);
-                }
+                doc = SvgConverter.ParseDocument(stream);
                 svg_size = (int)stream.Position;
               }
             }
@@ -130,14 +159,17 @@ class Program
               return 1;
             }
             count += 1;
-            if (!fully_supported) unsupported_count += 1;
 
-            if (!fully_supported) continue;
+            if (!doc.IsFullySupported)
+            {
+              unsupported_count += 1;
+              continue;
+            }
 
             byte[] tvg_data;
             try
             {
-              tvg_data = ConvertToTvg(doc);
+              tvg_data = SvgConverter.ConvertToTvg(doc);
             }
             catch (UnitRangeException exception)
             {
@@ -162,6 +194,10 @@ class Program
             {
               Process.Start("zig-out/bin/tvg-render", dst_file).WaitForExit();
               Process.Start("convert", Path.ChangeExtension(dst_file, ".tga") + " " + Path.ChangeExtension(dst_file, ".render.png")).WaitForExit();
+            }
+            if (render_txt)
+            {
+              Process.Start("zig-out/bin/tvg-text", dst_file).WaitForExit();
             }
 
             int tvg_size = tvg_data.Length;
@@ -196,10 +232,10 @@ class Program
     {
       Console.WriteLine("{0} icons parsed successfully, of which {1} are not fully supported and of which {2} crashed.", count, unsupported_count, crash_count);
 
-      if (unknown_styles.Count > 0)
+      if (SvgConverter.unknown_styles.Count > 0)
       {
         Console.WriteLine("Found unknown style keys:");
-        foreach (var kvp in unknown_styles)
+        foreach (var kvp in SvgConverter.unknown_styles)
         {
           Console.Write("\t{0} =>", kvp.Key);
           foreach (var value in kvp.Value)
@@ -223,7 +259,100 @@ class Program
     return 0;
   }
 
-  static byte[] ConvertToTvg(SvgDocument document)
+}
+
+public static class SvgConverter
+{
+  static readonly XmlSerializer serializer = new XmlSerializer(typeof(SvgDocument));
+
+  public static SvgDocument ParseDocument(Stream stream)
+  {
+    using (var sr = new StreamReader(stream, Encoding.UTF8))
+    {
+      return ParseDocument(sr);
+    }
+  }
+
+  public static SvgDocument ParseDocument(TextReader text_reader)
+  {
+    var ignored_attribs = new HashSet<string>
+    {
+      "sodipodi:version",
+    };
+
+    var unsupported_attribs = new HashSet<string>{
+      "class", // no support for SVG classes
+      "font-weight",
+      "letter-spacing",
+      "word-spacing",
+      "vector-effect",
+      "display",
+      "preserveAspectRatio",
+    };
+
+    var ignored_elements = new HashSet<string>
+    {
+      "metadata",
+    };
+
+    var unsupported_elements = new HashSet<string>{
+      "defs", // no support for predefined styles
+      "use",
+      "symbol",
+      "linearGradient",
+    };
+
+    var fully_supported = true;
+
+    var events = new XmlDeserializationEvents();
+    events.OnUnknownElement = new XmlElementEventHandler((object sender, XmlElementEventArgs e) =>
+    {
+      if (e.Element.Prefix == "inkscape")
+        return;
+      if (e.Element.Prefix == "sodipodi")
+        return;
+      if (ignored_elements.Contains(e.Element.Name))
+      {
+        return;
+      }
+      if (unsupported_elements.Contains(e.Element.Name))
+      {
+        fully_supported = false;
+        return;
+      }
+      throw new InvalidOperationException(string.Format("Unknown element {0}", e.Element.Name));
+    });
+    events.OnUnknownAttribute = new XmlAttributeEventHandler((object sender, XmlAttributeEventArgs e) =>
+    {
+      if (e.Attr.Prefix == "xml")
+        return;
+      if (e.Attr.Prefix == "inkscape")
+        return;
+      if (e.Attr.Prefix == "sodipodi")
+        return;
+      if (ignored_attribs.Contains(e.Attr.Name))
+      {
+        return;
+      }
+      if (unsupported_attribs.Contains(e.Attr.Name))
+      {
+        fully_supported = false;
+        return;
+      }
+      throw new InvalidOperationException(string.Format("Unknown attribute {0}", e.Attr.Name));
+    });
+    using (var reader = XmlReader.Create(text_reader, new XmlReaderSettings
+    {
+      DtdProcessing = DtdProcessing.Ignore,
+    }))
+    {
+      var doc = (SvgDocument)serializer.Deserialize(reader, events);
+      doc.IsFullySupported = fully_supported;
+      return doc;
+    }
+  }
+
+  public static byte[] ConvertToTvg(SvgDocument document)
   {
     var intermediate_buffer = new AnalyzeIntermediateBuffer();
 
@@ -335,7 +464,7 @@ class Program
     }
     else if (node is SvgRectangle rect)
     {
-      if (rect.RadiusX != 0 || rect.RadiusY == 0)
+      if (rect.RadiusX != 0 || rect.RadiusY != 0)
       {
         if (rect.Width >= 2 * rect.RadiusX && rect.Height >= 2 * rect.RadiusY)
         {
@@ -349,7 +478,7 @@ class Program
 
           var renderer = new TvgPathRenderer(stream, node.TvgFillStyle);
           // SvgPathParser.Parse(path.Data, new SvgDebugRenderer());
-          SvgPathParser.Parse($"M {rect.X} {rect.Y} m {rx} 0 h {dx} c {rx5} 0 {rx} 0 {rx} {ry} v {dy} c 0 {ry} -{rx} {ry} -{rx} {ry} h -{dx} c -{rx5} 0 -{rx} 0 -{rx} -{ry} v -{dy} c 0 -{ry} {rx5} -{ry} {rx} -{ry}", renderer);
+          SvgPathParser.Parse($"M {rect.X + rx} {rect.Y} h {dx} c {rx5} 0 {rx} 0 {rx} {ry} v {dy} c 0 {ry} -{rx} {ry} -{rx} {ry} h -{dx} c -{rx5} 0 -{rx} 0 -{rx} -{ry} v -{dy} c 0 -{ry} {rx5} -{ry} {rx} -{ry}", renderer);
           renderer.Finish();
           return;
         }
@@ -364,8 +493,8 @@ class Program
       stream.WriteStyle(rect.TvgFillStyle);
       stream.WriteCoordX(rect.X);
       stream.WriteCoordY(rect.Y);
-      stream.WriteCoordX(rect.Width);
-      stream.WriteCoordY(rect.Height);
+      stream.WriteSizeX(rect.Width);
+      stream.WriteSizeY(rect.Height);
 
     }
     else
@@ -418,8 +547,7 @@ class Program
     public void MoveTo(PointF pt)
     {
       //  Console.WriteLine("MoveTo({0},{1})", pt.X, pt.Y);
-      if (CurrentSegmentPrimitives > 0)
-        segments.Add(0);
+      segments.Add(0);
       temp_stream.WritePoint(pt);
     }
     public void LineTo(PointF pt)
@@ -474,8 +602,8 @@ class Program
         (isLarge ? 1 : 0) |
         (sweep ? 0 : 2)
       ));
-      temp_stream.WriteUnit(size.X);
-      temp_stream.WriteUnit(size.Y);
+      temp_stream.WriteUnit(Math.Abs(size.X));
+      temp_stream.WriteUnit(Math.Abs(size.Y));
       temp_stream.WriteUnit(angle);
       temp_stream.WritePoint(ep);
     }
@@ -498,7 +626,7 @@ class Program
       return null;
 
   }
-  static Dictionary<string, HashSet<string>> unknown_styles = new Dictionary<string, HashSet<string>>();
+  public static Dictionary<string, HashSet<string>> unknown_styles = new Dictionary<string, HashSet<string>>();
 
   static void AnalyzeNode(AnalyzeIntermediateBuffer buf, SvgNode node, string indent = "")
   {
@@ -640,21 +768,29 @@ public class AnalyzeIntermediateBuffer
         color = ColorTranslator.FromHtml(text);
         break;
     }
-    color = Program.AdjustColor(color, opacity);
+    color = SvgConverter.AdjustColor(color, opacity);
     colors.Add(color);
     return color;
   }
 
+  int ParseSvgSize(string src)
+  {
+    if (src == null)
+      return 0;
+    src = new string(src.TakeWhile(c => char.IsDigit(c) || (c == '.')).ToArray());
+    return int.Parse(src);
+  }
+
   public AnalyzeResult Finalize(SvgDocument doc)
   {
-    int width = doc.Width;
-    int height = doc.Height;
+    int width = ParseSvgSize(doc.Width);
+    int height = ParseSvgSize(doc.Height);
 
-    float[] viewport = doc.ViewBox?.Split(' ').Select(Program.ToFloat).ToArray() ?? new float[] {
+    float[] viewport = doc.ViewBox?.Split(' ').Select(SvgConverter.ToFloat).ToArray() ?? new float[] {
       0, 0, width, height,
     };
 
-    Program.Assert(viewport.Length == 4);
+    SvgConverter.Assert(viewport.Length == 4);
 
     if (width == 0 && height == 0)
     {
@@ -669,7 +805,7 @@ public class AnalyzeIntermediateBuffer
     {
       scale_bits += 1;
     }
-    Program.Assert(scale_bits < 16);
+    SvgConverter.Assert(scale_bits < 16);
 
 
     if (colors.Count == 0)
@@ -733,10 +869,13 @@ public class SvgDocument : SvgGroup
   public float Y { get; set; }
 
   [XmlAttribute("width")]
-  public int Width { get; set; }
+  public string Width { get; set; }
 
   [XmlAttribute("height")]
-  public int Height { get; set; }
+  public string Height { get; set; }
+
+
+  public bool IsFullySupported { get; set; }
 }
 
 // style="opacity:0.5;fill:#ffffff"
@@ -819,6 +958,7 @@ public enum Overflow
 public class SvgGroup : SvgNode
 {
   [XmlElement("path", typeof(SvgPath))]
+  [XmlElement("text", typeof(SvgText))]
   [XmlElement("rect", typeof(SvgRectangle))]
   [XmlElement("circle", typeof(SvgCircle))]
   [XmlElement("ellipse", typeof(SvgEllipse))]
@@ -835,6 +975,25 @@ public class SvgGroup : SvgNode
 public class SvgPath : SvgNode
 {
   [XmlAttribute("d")]
+  public string Data { get; set; }
+}
+
+
+public class SvgText : SvgNode
+{
+  [XmlAttribute("x")]
+  public float X { get; set; }
+
+  [XmlAttribute("y")]
+  public float Y { get; set; }
+
+  [XmlAttribute("font-size")]
+  public string FontSize { get; set; }
+
+  [XmlAttribute("font-family")]
+  public string FontFamily { get; set; }
+
+  [XmlText]
   public string Data { get; set; }
 }
 
@@ -926,16 +1085,19 @@ public class TvgStream
 
   public void WriteUnit(float value)
   {
-    int scale = (1 << ar.scale_bits);
-    int unit = (int)(value * scale + 0.5);
-    if (unit < short.MinValue || unit > short.MaxValue)
-      throw new UnitRangeException(value, unit, scale);
-    stream.Write(BitConverter.GetBytes((short)unit));
+    checked
+    {
+      int scale = (1 << ar.scale_bits);
+      int unit = (int)(value * scale + 0.5);
+      if (unit < short.MinValue || unit > short.MaxValue)
+        throw new UnitRangeException(value, unit, scale);
+      stream.Write(BitConverter.GetBytes((short)unit));
+    }
   }
 
   public void WriteSizeX(float x)
   {
-    WriteUnit(x / (ar.viewport_width / ar.image_width));
+    WriteUnit(x / (ar.image_width / ar.viewport_width));
   }
 
   public void WriteCoordX(float x)
@@ -945,7 +1107,7 @@ public class TvgStream
 
   public void WriteSizeY(float y)
   {
-    WriteUnit(y / (ar.viewport_height / ar.image_height));
+    WriteUnit(y / (ar.image_height / ar.viewport_height));
   }
 
   public void WriteCoordY(float y)
@@ -1273,9 +1435,19 @@ public class SvgPathParser
   {
     bool relative = (AcceptChar('M', 'm') == 'm');
     SkipWhitespace();
+    var first = true;
     foreach (var pair in ParseCoordinatePairSequence())
     {
-      renderer.MoveTo(MoveCursor(pair, relative));
+      var p = MoveCursor(pair, relative);
+      if (first)
+      {
+        renderer.MoveTo(p);
+      }
+      else
+      {
+        renderer.LineTo(p);
+      }
+      first = false;
     }
   }
 
