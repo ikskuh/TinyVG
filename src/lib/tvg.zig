@@ -161,7 +161,7 @@ pub const Color = extern struct {
     pub fn lerp(lhs: Self, rhs: Self, factor: f32) Self {
         const l = struct {
             fn l(a: u8, b: u8, c: f32) u8 {
-                return @floatToInt(u8, @intToFloat(f32, a) + (@intToFloat(b) - @intToFloat(a)) * std.math.clamp(c, 0, 1));
+                return @floatToInt(u8, @intToFloat(f32, a) + (@intToFloat(f32, b) - @intToFloat(f32, a)) * std.math.clamp(c, 0, 1));
             }
         }.l;
 

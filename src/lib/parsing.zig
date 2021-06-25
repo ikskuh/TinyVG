@@ -77,7 +77,7 @@ pub const Path = struct {
             p1: Point,
         };
 
-        const Type = packed enum(u3) {
+        const Type = enum(u3) {
             line = 0, // x,y
             horiz = 1, // x
             vert = 2, // y

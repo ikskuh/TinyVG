@@ -130,6 +130,7 @@ pub fn render(
             }
         },
         .outline_fill_polygon => |data| {
+            _ = data;
             @panic("outline_fill_polygon not implemented yet!");
         },
         .outline_fill_rectangles => |data| {
@@ -146,6 +147,7 @@ pub fn render(
             }
         },
         .outline_fill_path => |data| {
+            _ = data;
             @panic("outline_fill_path not implemented yet!");
         },
     }
@@ -184,7 +186,7 @@ pub fn renderPath(point_list: anytype, slice_list: anytype, path: tvg.parsing.Pa
 
         try point_store.append(segment.start);
 
-        for (segment.commands) |node, node_index| {
+        for (segment.commands) |node| {
             switch (node) {
                 .line => |pt| try point_store.append(pt.data),
                 .horiz => |x| try point_store.append(Point{ .x = x.data, .y = point_store.back().y }),

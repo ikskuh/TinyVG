@@ -8,10 +8,10 @@ pub fn main() !u8 {
 
     const allocator = &arena.allocator;
 
-    const cli = args.parseForCurrentProcess(CliOptions, allocator) catch return 1;
+    const cli = args.parseForCurrentProcess(CliOptions, allocator, .print) catch return 1;
     defer cli.deinit();
 
-    const stdin = std.io.getStdIn().reader();
+    // const stdin = std.io.getStdIn().reader();
     const stdout = std.io.getStdOut().writer();
     const stderr = std.io.getStdErr().writer();
 

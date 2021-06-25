@@ -3,11 +3,11 @@ const std = @import("std");
 const pkgs = struct {
     const tvg = std.build.Pkg{
         .name = "tvg",
-        .path = "src/lib/tvg.zig",
+        .path = .{ .path = "src/lib/tvg.zig" },
     };
     const args = std.build.Pkg{
         .name = "args",
-        .path = "lib/zig-args/args.zig",
+        .path = .{ .path = "lib/zig-args/args.zig" },
     };
 };
 
@@ -86,7 +86,7 @@ pub fn build(b: *std.build.Builder) !void {
     const tvg_tests = b.addTest("src/lib/tvg.zig");
     tvg_tests.addPackage(std.build.Pkg{
         .name = "ground-truth",
-        .path = "src/data/ground-truth.zig",
+        .path = .{ .path = "src/data/ground-truth.zig" },
         .dependencies = &[_]std.build.Pkg{
             pkgs.tvg,
         },

@@ -8,10 +8,10 @@ pub fn main() !u8 {
 
     const allocator = &arena.allocator;
 
-    const cli = args.parseForCurrentProcess(CliOptions, allocator) catch return 1;
+    const cli = args.parseForCurrentProcess(CliOptions, allocator, .print) catch return 1;
     defer cli.deinit();
 
-    const stdin = std.io.getStdIn().reader();
+    // const stdin = std.io.getStdIn().reader();
     const stdout = std.io.getStdOut().writer();
     const stderr = std.io.getStdErr().writer();
 
@@ -164,12 +164,15 @@ pub fn main() !u8 {
                 try writer.writeAll("\n       )\n     )\n");
             },
             .outline_fill_polygon => |data| {
+                _ = data;
                 try writer.writeAll("     (\n       outline_fill_polygon\n     )\n");
             },
             .outline_fill_rectangles => |data| {
+                _ = data;
                 try writer.writeAll("     (\n       outline_fill_rectangles\n     )\n");
             },
             .outline_fill_path => |data| {
+                _ = data;
                 try writer.writeAll("     (\n       outline_fill_path\n     )\n");
             },
         }

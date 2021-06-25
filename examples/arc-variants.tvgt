@@ -8,6 +8,17 @@
        fill_path
        (flat 0)
        (
+         (48 32)
+         (
+           (horiz 64)
+           (arc-ellipse 18.5, 18.5, 0, false, true, (80 48))
+           (vert 64)
+           (arc-ellipse 18.5, 18.5, 0, false, false, (64 80))
+           (horiz 48)
+           (arc-ellipse 18.5, 18.5, 0, true, true, (32 64))
+           (vert 64)
+           (arc-ellipse 18.5, 18.5, 0, true, false, (48 32))
+         )
        )
      )
   )
