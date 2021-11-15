@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 const painterz = @import("painterz");
 
 /// This is the TVG magic number which recognizes the icon format.
@@ -67,7 +68,7 @@ pub fn render(
 }
 
 comptime {
-    if (std.builtin.is_test) {
+    if (builtin.is_test) {
         _ = @import("builder.zig"); // import file for tests
         _ = parsing;
         _ = rendering;
