@@ -94,6 +94,7 @@ pub const DrawCommand = union(enum) {
     fill_polygon: FillPolygon,
     fill_rectangles: FillRectangles,
     fill_path: FillPath,
+
     draw_lines: DrawLines,
     draw_line_loop: DrawLineSegments,
     draw_line_strip: DrawLineSegments,
