@@ -417,12 +417,12 @@ test "point conversion" {
         //    data.point.x, data.point.y,
         //    ints.x,       ints.y,
         //});
-        std.testing.expectEqual(data.x, ints.x);
-        std.testing.expectEqual(data.y, ints.y);
+        try std.testing.expectEqual(data.x, ints.x);
+        try std.testing.expectEqual(data.y, ints.y);
     }
     for (int2pt) |data| {
         const pt = pointFromInts(data.x, data.y);
-        std.testing.expectApproxEqAbs(@as(f32, 0.0), distance(pt, data.point), sqrt(2.0) / 2.0);
+        try std.testing.expectApproxEqAbs(@as(f32, 0.0), distance(pt, data.point), sqrt(2.0) / 2.0);
     }
 }
 

@@ -13,9 +13,11 @@ pub const current_version = 1;
 
 // submodules
 
-/// A generic module that provides functions for assembling TVG graphics at comptime or
-/// runtime.
-pub const builder = @import("builder.zig").create;
+/// A generic module that provides functions for assembling TVG graphics at comptime.
+pub const comptime_builder = @import("comptime_builder.zig").create;
+
+/// This module provides a runtime usable builder
+pub const builder = @import("builder.zig");
 
 /// Module that provides a generic purpose TVG parser. This parser exports all data as
 /// pre-scaled `f32` values.

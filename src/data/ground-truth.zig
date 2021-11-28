@@ -11,8 +11,8 @@ pub fn main() !void {
     try std.fs.cwd().writeFile("examples/feature-showcase.tvg", &feature_showcase);
 }
 
-const builder = tvg.builder(.@"1/256", .default);
-const builder_16 = tvg.builder(.@"1/16", .default);
+const builder = tvg.comptime_builder(.@"1/256", .default);
+const builder_16 = tvg.comptime_builder(.@"1/16", .default);
 
 pub const app_menu = blk: {
     @setEvalBranchQuota(10_000);
@@ -119,7 +119,7 @@ fn makeShield(comptime b: type) type {
 
 pub const shield = makeShield(builder).data;
 
-pub const shield_8 = makeShield(tvg.builder(.@"1/4", .reduced)).data;
+pub const shield_8 = makeShield(tvg.comptime_builder(.@"1/4", .reduced)).data;
 
 pub const arc_variants = builder.header(92, 92) ++
     builder.colorTable(&[_]tvg.Color{tvg.Color.fromString("40ff00") catch unreachable}) ++

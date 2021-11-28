@@ -705,8 +705,8 @@ fn mapZeroToMax(value: anytype) MapZeroToMax(@TypeOf(value)) {
 }
 
 test "mapZeroToMax" {
-    std.testing.expectEqual(@as(u9, 256), mapZeroToMax(@as(u8, 0)));
-    std.testing.expectEqual(@as(u17, 65536), mapZeroToMax(@as(u16, 0)));
+    try std.testing.expectEqual(@as(u9, 256), mapZeroToMax(@as(u8, 0)));
+    try std.testing.expectEqual(@as(u17, 65536), mapZeroToMax(@as(u16, 0)));
 }
 
 // test "readUInt" {

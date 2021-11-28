@@ -16,7 +16,6 @@ pub fn build(b: *std.build.Builder) !void {
     const mode = b.standardReleaseOptions();
 
     const enable_dotnet = b.option(bool, "enable-dotnet", "Enables building the .NET based tools.") orelse false;
-
     if (enable_dotnet) {
         const svg2cs = b.addSystemCommand(&[_][]const u8{
             "csc",
