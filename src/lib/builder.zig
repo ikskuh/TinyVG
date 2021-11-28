@@ -64,6 +64,7 @@ pub fn Builder(comptime Writer: type) type {
             _ = self;
             @panic("fillPolygon not implemented yet!");
         }
+
         pub fn writeFillRectangles(self: *Self, style: tvg.Style, rectangles: []const tvg.Rectangle) Error!void {
             const rectangle_count = try mapToU6(rectangles.len);
 
@@ -75,22 +76,27 @@ pub fn Builder(comptime Writer: type) type {
                 try self.writeRectangle(rect);
             }
         }
+
         pub fn writeDrawLines(self: *Self) Error!void {
             _ = self;
             @panic("drawLines not implemented yet!");
         }
+
         pub fn writeDrawLineLoop(self: *Self) Error!void {
             _ = self;
             @panic("drawLineLoop not implemented yet!");
         }
+
         pub fn writeDrawLineStrip(self: *Self) Error!void {
             _ = self;
             @panic("drawLineStrip not implemented yet!");
         }
+
         pub fn writeOutlineFillPolygon(self: *Self) Error!void {
             _ = self;
             @panic("outlineFillPolygon not implemented yet!");
         }
+
         pub fn writeOutlineFillRectangles(self: *Self, fill_style: tvg.Style, line_style: tvg.Style, line_width: f32, rectangles: []const tvg.Rectangle) Error!void {
             const rectangle_count = try mapToU6(rectangles.len);
 
@@ -465,4 +471,37 @@ test "encode workspace_add (default range, scale 1/256)" {
     try writer.writeEndOfFile();
 
     try std.testing.expectEqualSlices(u8, &ground_truth.workspace_add, stream.getWritten());
+}
+
+test "encode arc_variants (default range, scale 1/256)" {
+    const Node = tvg.Path.Node;
+
+    var buffer: [1024]u8 = undefined;
+    var stream = std.io.fixedBufferStream(&buffer);
+
+    var writer = builder(stream.writer());
+    try writer.writeHeader(92, 92, .@"1/256", .default);
+    try writer.writeColorTable(&[_]tvg.Color{
+        try tvg.Color.fromString("40ff00"),
+    });
+
+    try writer.writeFillPath(tvg.Style{ .flat = 0 }, &[_]tvg.Path.Segment{
+        tvg.Path.Segment{
+            .start = tvg.point(48, 32),
+            .commands = &[_]Node{
+                Node{ .horiz = .{ .data = 64 } },
+                Node{ .arc_ellipse = .{ .data = .{ .radius_x = 18.5, .radius_y = 18.5, .rotation = 0, .large_arc = false, .sweep = true, .target = tvg.point(80, 48) } } },
+                Node{ .vert = .{ .data = 64 } },
+                Node{ .arc_ellipse = .{ .data = .{ .radius_x = 18.5, .radius_y = 18.5, .rotation = 0, .large_arc = false, .sweep = false, .target = tvg.point(64, 80) } } },
+                Node{ .horiz = .{ .data = 48 } },
+                Node{ .arc_ellipse = .{ .data = .{ .radius_x = 18.5, .radius_y = 18.5, .rotation = 0, .large_arc = true, .sweep = true, .target = tvg.point(32, 64) } } },
+                Node{ .vert = .{ .data = 64 } },
+                Node{ .arc_ellipse = .{ .data = .{ .radius_x = 18.5, .radius_y = 18.5, .rotation = 0, .large_arc = true, .sweep = false, .target = tvg.point(48, 32) } } },
+            },
+        },
+    });
+
+    try writer.writeEndOfFile();
+
+    try std.testing.expectEqualSlices(u8, &ground_truth.arc_variants, stream.getWritten());
 }
