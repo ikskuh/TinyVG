@@ -9,7 +9,7 @@ pub fn Builder(comptime Writer: type) type {
     return struct {
         const Self = @This();
 
-        const Error = Writer.Error || error{OutOfRange};
+        pub const Error = Writer.Error || error{OutOfRange};
 
         writer: Writer,
         state: State = .initial,
@@ -60,9 +60,16 @@ pub fn Builder(comptime Writer: type) type {
             self.state = .body;
         }
 
-        pub fn writeFillPolygon(self: *Self) Error!void {
-            _ = self;
-            @panic("fillPolygon not implemented yet!");
+        pub fn writeFillPolygon(self: *Self, style: tvg.Style, points: []const tvg.Point) Error!void {
+            const count = try mapToU6(points.len);
+
+            try self.writeCommand(.fill_polygon);
+            try self.writeStyleTypeAndCount(style, count);
+            try self.writeStyle(style);
+
+            for (points) |pt| {
+                try self.writePoint(pt);
+            }
         }
 
         pub fn writeFillRectangles(self: *Self, style: tvg.Style, rectangles: []const tvg.Rectangle) Error!void {
@@ -77,24 +84,58 @@ pub fn Builder(comptime Writer: type) type {
             }
         }
 
-        pub fn writeDrawLines(self: *Self) Error!void {
-            _ = self;
-            @panic("drawLines not implemented yet!");
+        pub fn writeDrawLines(self: *Self, style: tvg.Style, line_width: f32, lines: []const tvg.Line) Error!void {
+            const count = try mapToU6(lines.len);
+
+            try self.writeCommand(.draw_lines);
+            try self.writeStyleTypeAndCount(style, count);
+            try self.writeStyle(style);
+            try self.writeUnit(line_width);
+
+            for (lines) |line| {
+                try self.writePoint(line.start);
+                try self.writePoint(line.end);
+            }
         }
 
-        pub fn writeDrawLineLoop(self: *Self) Error!void {
-            _ = self;
-            @panic("drawLineLoop not implemented yet!");
+        pub fn writeDrawLineLoop(self: *Self, style: tvg.Style, line_width: f32, points: []const tvg.Point) Error!void {
+            const count = try mapToU6(points.len - 1);
+
+            try self.writeCommand(.draw_line_loop);
+            try self.writeStyleTypeAndCount(style, count);
+            try self.writeStyle(style);
+            try self.writeUnit(line_width);
+
+            for (points) |pt| {
+                try self.writePoint(pt);
+            }
         }
 
-        pub fn writeDrawLineStrip(self: *Self) Error!void {
-            _ = self;
-            @panic("drawLineStrip not implemented yet!");
+        pub fn writeDrawLineStrip(self: *Self, style: tvg.Style, line_width: f32, points: []const tvg.Point) Error!void {
+            const count = try mapToU6(points.len - 1);
+
+            try self.writeCommand(.draw_line_strip);
+            try self.writeStyleTypeAndCount(style, count);
+            try self.writeStyle(style);
+            try self.writeUnit(line_width);
+
+            for (points) |pt| {
+                try self.writePoint(pt);
+            }
         }
 
-        pub fn writeOutlineFillPolygon(self: *Self) Error!void {
-            _ = self;
-            @panic("outlineFillPolygon not implemented yet!");
+        pub fn writeOutlineFillPolygon(self: *Self, fill_style: tvg.Style, line_style: tvg.Style, line_width: f32, points: []const tvg.Point) Error!void {
+            const count = try mapToU6(points.len);
+
+            try self.writeCommand(.outline_fill_polygon);
+            try self.writeStyleTypeAndCount(fill_style, count);
+            try self.writeStyle(fill_style);
+            try self.writeStyle(line_style);
+            try self.writeUnit(line_width);
+
+            for (points) |pt| {
+                try self.writePoint(pt);
+            }
         }
 
         pub fn writeOutlineFillRectangles(self: *Self, fill_style: tvg.Style, line_style: tvg.Style, line_width: f32, rectangles: []const tvg.Rectangle) Error!void {

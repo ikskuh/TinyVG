@@ -358,6 +358,7 @@ pub fn Parser(comptime Reader: type) type {
                         },
                     };
                 },
+                // TODO: Enable Emitter.emitOutlineFillPolygon,
                 .outline_fill_polygon => @panic("parsing outline_fill_polygon not implemented yet!"),
                 .outline_fill_rectangles => blk: {
                     const count_and_grad = @bitCast(CountAndStyleTag, try self.readByte());

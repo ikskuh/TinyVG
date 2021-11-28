@@ -222,6 +222,10 @@ pub const Rectangle = struct {
     height: f32,
 };
 
+pub fn line(start: Point, end: Point) Line {
+    return Line{ .start = start, .end = end };
+}
+
 pub const Line = struct {
     start: Point,
     end: Point,

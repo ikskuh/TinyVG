@@ -9,6 +9,207 @@ pub fn main() !void {
     try std.fs.cwd().writeFile("examples/shield-8.tvg", &shield_8);
     try std.fs.cwd().writeFile("examples/arc-variants.tvg", &arc_variants);
     try std.fs.cwd().writeFile("examples/feature-showcase.tvg", &feature_showcase);
+
+    {
+        var file = try std.fs.cwd().createFile("examples/everything.tvg", .{});
+        defer file.close();
+
+        try writeEverything(file);
+    }
+}
+
+fn writeEverything(file: std.fs.File) !void {
+    var writer = tvg.builder.builder(file.writer());
+    const Writer = @TypeOf(writer);
+
+    const padding = 25;
+    const Emitter = struct {
+        const width = 100;
+
+        fn emitFillPolygon(w: *Writer, dx: f32, dy: f32, style: tvg.Style) !f32 {
+            try w.writeFillPolygon(
+                style,
+                &[_]tvg.Point{
+                    tvg.point(dx, dy),
+                    tvg.point(dx + width, dy + 10),
+                    tvg.point(dx + 10, dy + 20),
+                    tvg.point(dx + width, dy + 30),
+                    tvg.point(dx, dy + 40),
+                },
+            );
+            return 40;
+        }
+
+        fn emitOutlineFillPolygon(w: *Writer, dx: f32, dy: f32, style: tvg.Style) !f32 {
+            try w.writeOutlineFillPolygon(
+                style,
+                tvg.Style{ .flat = 3 },
+                2.5,
+                &[_]tvg.Point{
+                    tvg.point(dx, dy),
+                    tvg.point(dx + width, dy + 10),
+                    tvg.point(dx + 10, dy + 20),
+                    tvg.point(dx + width, dy + 30),
+                    tvg.point(dx, dy + 40),
+                },
+            );
+            return 40;
+        }
+
+        fn emitFillRectangles(w: *Writer, dx: f32, dy: f32, style: tvg.Style) !f32 {
+            try w.writeFillRectangles(style, &[_]tvg.Rectangle{
+                tvg.rectangle(dx, dy, width, 15),
+                tvg.rectangle(dx, dy + 20, width, 15),
+                tvg.rectangle(dx, dy + 40, width, 15),
+            });
+
+            return 55;
+        }
+
+        fn emitDrawLines(w: *Writer, dx: f32, dy: f32, style: tvg.Style) !f32 {
+            try w.writeDrawLines(
+                style,
+                2.5,
+                &[_]tvg.Line{
+                    tvg.line(tvg.point(dx, dy), tvg.point(dx + width, dy + 10)),
+                    tvg.line(tvg.point(dx, dy + 10), tvg.point(dx + width, dy + 20)),
+                    tvg.line(tvg.point(dx, dy + 20), tvg.point(dx + width, dy + 30)),
+                    tvg.line(tvg.point(dx, dy + 30), tvg.point(dx + width, dy + 40)),
+                },
+            );
+            return 40;
+        }
+
+        fn emitDrawLineLoop(w: *Writer, dx: f32, dy: f32, style: tvg.Style) !f32 {
+            try w.writeDrawLineLoop(
+                style,
+                2.5,
+                &[_]tvg.Point{
+                    tvg.point(dx, dy),
+                    tvg.point(dx + width, dy + 10),
+                    tvg.point(dx + 10, dy + 20),
+                    tvg.point(dx + width, dy + 30),
+                    tvg.point(dx, dy + 40),
+                },
+            );
+            return 40;
+        }
+
+        fn emitDrawLineStrip(w: *Writer, dx: f32, dy: f32, style: tvg.Style) !f32 {
+            try w.writeDrawLineStrip(
+                style,
+                2.5,
+                &[_]tvg.Point{
+                    tvg.point(dx, dy),
+                    tvg.point(dx + width, dy + 10),
+                    tvg.point(dx + 10, dy + 20),
+                    tvg.point(dx + width, dy + 30),
+                    tvg.point(dx, dy + 40),
+                },
+            );
+            return 40;
+        }
+
+        fn emitOutlineFillRectangles(w: *Writer, dx: f32, dy: f32, style: tvg.Style) !f32 {
+            try w.writeOutlineFillRectangles(
+                style,
+                tvg.Style{ .flat = 3 },
+                2.5,
+                &[_]tvg.Rectangle{
+                    tvg.rectangle(dx, dy, width, 15),
+                    tvg.rectangle(dx, dy + 20, width, 15),
+                    tvg.rectangle(dx, dy + 40, width, 15),
+                },
+            );
+
+            return 55;
+        }
+        fn emitFillPath(w: *Writer, dx: f32, dy: f32, style: tvg.Style) !f32 {
+            _ = w;
+            _ = dx;
+            _ = dy;
+            _ = style;
+            @panic("");
+        }
+        fn emitDrawPath(w: *Writer, dx: f32, dy: f32, style: tvg.Style) !f32 {
+            _ = w;
+            _ = dx;
+            _ = dy;
+            _ = style;
+            @panic("");
+        }
+        fn emitOutlineFillPath(w: *Writer, dx: f32, dy: f32, style: tvg.Style) !f32 {
+            _ = w;
+            _ = dx;
+            _ = dy;
+            _ = style;
+            @panic("");
+        }
+    };
+
+    const items = [_]fn (*Writer, f32, f32, tvg.Style) Writer.Error!f32{
+        Emitter.emitFillRectangles,
+        Emitter.emitOutlineFillRectangles,
+        Emitter.emitDrawLines,
+        Emitter.emitDrawLineLoop,
+        Emitter.emitDrawLineStrip,
+        Emitter.emitFillPolygon,
+        // TODO: Fix parser! Emitter.emitOutlineFillPolygon,
+        // Emitter.emitDrawPath,
+        // Emitter.emitFillPath,
+        // Emitter.emitOutlineFillPath,
+    };
+
+    var style_base = [_]tvg.Style{
+        tvg.Style{ .flat = 0 },
+        tvg.Style{ .linear = .{
+            .point_0 = tvg.point(0, 0),
+            .point_1 = tvg.point(Emitter.width, 50),
+            .color_0 = 1,
+            .color_1 = 2,
+        } },
+        tvg.Style{ .radial = .{
+            .point_0 = tvg.point(50, 25),
+            .point_1 = tvg.point(Emitter.width, 50),
+            .color_0 = 1,
+            .color_1 = 2,
+        } },
+    };
+
+    try writer.writeHeader(3 * Emitter.width + 4 * padding, 512, .@"1/32", .default);
+    try writer.writeColorTable(&[_]tvg.Color{
+        try tvg.Color.fromString("e7a915"), // 0 yellow
+        try tvg.Color.fromString("ff7800"), // 1 orange
+        try tvg.Color.fromString("40ff00"), // 2 green
+        try tvg.Color.fromString("ba004d"), // 3 reddish purple
+        try tvg.Color.fromString("62009e"), // 4 blueish purple
+        try tvg.Color.fromString("94e538"), // 5 grass green
+    });
+
+    var dx: f32 = padding;
+    for (style_base) |style_example| {
+        var dy: f32 = padding;
+
+        for (items) |item| {
+            var style = style_example;
+            switch (style) {
+                .flat => {},
+                .linear, .radial => |*grad| {
+                    grad.point_0.x += dx;
+                    grad.point_0.y += dy;
+                    grad.point_1.x += dx;
+                    grad.point_1.y += dy;
+                },
+            }
+
+            const height = try item(&writer, dx, dy, style);
+            dy += (height + padding);
+        }
+
+        dx += (Emitter.width + padding);
+    }
+
+    try writer.writeEndOfFile();
 }
 
 const builder = tvg.comptime_builder(.@"1/256", .default);
