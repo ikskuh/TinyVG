@@ -60,15 +60,68 @@ pub fn Builder(comptime Writer: type) type {
             self.state = .body;
         }
 
+        pub fn writeFillPolygon(self: *Self) Error!void {
+            _ = self;
+            @panic("fillPolygon not implemented yet!");
+        }
+        pub fn writeFillRectangles(self: *Self) Error!void {
+            _ = self;
+            @panic("fillRectangles not implemented yet!");
+        }
+        pub fn writeDrawLines(self: *Self) Error!void {
+            _ = self;
+            @panic("drawLines not implemented yet!");
+        }
+        pub fn writeDrawLineLoop(self: *Self) Error!void {
+            _ = self;
+            @panic("drawLineLoop not implemented yet!");
+        }
+        pub fn writeDrawLineStrip(self: *Self) Error!void {
+            _ = self;
+            @panic("drawLineStrip not implemented yet!");
+        }
+        pub fn writeOutlineFillPolygon(self: *Self) Error!void {
+            _ = self;
+            @panic("outlineFillPolygon not implemented yet!");
+        }
+        pub fn writeOutlineFillRectangles(self: *Self) Error!void {
+            _ = self;
+            @panic("outlineFillRectangles not implemented yet!");
+        }
+
         pub fn writeFillPath(self: *Self, style: tvg.Style, path: []const tvg.Path.Segment) Error!void {
-            const segment_count = try mapToU6(path.len);
-            for (path) |segment| {
-                _ = std.math.cast(u32, segment.commands.len) catch return error.OutOfRange;
-            }
+            const segment_count = try validatePath(path);
 
             try self.writeCommand(.fill_path);
             try self.writeStyleTypeAndCount(style, segment_count);
             try self.writeStyle(style);
+
+            try self.writePath(path);
+        }
+
+        pub fn writeDrawPath(self: *Self, style: tvg.Style, line_width: f32, path: []const tvg.Path.Segment) Error!void {
+            const segment_count = try validatePath(path);
+
+            try self.writeCommand(.draw_path);
+            try self.writeStyleTypeAndCount(style, segment_count);
+            try self.writeStyle(style);
+
+            try self.writeUnit(line_width);
+
+            try self.writePath(path);
+        }
+
+        pub fn writeOutlineFillPath(self: *Self, fill_style: tvg.Style, line_style: tvg.Style, line_width: f32, path: []const tvg.Path.Segment) Error!void {
+            const segment_count = try validatePath(path);
+
+            try self.writeCommand(.outline_fill_path);
+            try self.writeStyleTypeAndCount(fill_style, segment_count);
+
+            try self.writer.writeByte(@enumToInt(std.meta.activeTag(line_style)));
+
+            try self.writeStyle(line_style);
+            try self.writeStyle(fill_style);
+            try self.writeUnit(line_width);
 
             try self.writePath(path);
         }
@@ -80,6 +133,14 @@ pub fn Builder(comptime Writer: type) type {
             try self.writer.writeByte(@enumToInt(tvg.format.Command.end_of_document));
 
             self.state = .end_of_file;
+        }
+
+        fn validatePath(segments: []const tvg.Path.Segment) Error!StyleCount {
+            const segment_count = try mapToU6(segments.len);
+            for (segments) |segment| {
+                _ = std.math.cast(u32, segment.commands.len) catch return error.OutOfRange;
+            }
+            return segment_count;
         }
 
         fn writeCommand(self: *Self, cmd: tvg.format.Command) Error!void {
