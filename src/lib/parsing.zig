@@ -425,10 +425,11 @@ pub fn Parser(comptime Reader: type) type {
                 segment.start.x = try self.readUnit();
                 segment.start.y = try self.readUnit();
 
-                segment.commands = buffers.second[segment_start..][0..segment_len];
-                for (segment.commands) |*node| {
+                var commands = buffers.second[segment_start..][0..segment_len];
+                for (commands) |*node| {
                     node.* = try self.readNode();
                 }
+                segment.commands = commands;
 
                 segment_start += segment_len;
             }

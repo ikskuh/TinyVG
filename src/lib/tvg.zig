@@ -211,6 +211,10 @@ pub const Point = struct {
     y: f32,
 };
 
+pub fn rectangle(x: f32, y: f32, width: f32, height: f32) Rectangle {
+    return .{ .x = x, .y = y, .width = width, .height = height };
+}
+
 pub const Rectangle = struct {
     x: f32,
     y: f32,
@@ -228,7 +232,7 @@ pub const Path = struct {
 
     pub const Segment = struct {
         start: Point,
-        commands: []Node,
+        commands: []const Node,
     };
 
     pub const Node = union(Type) {

@@ -64,9 +64,16 @@ pub fn Builder(comptime Writer: type) type {
             _ = self;
             @panic("fillPolygon not implemented yet!");
         }
-        pub fn writeFillRectangles(self: *Self) Error!void {
-            _ = self;
-            @panic("fillRectangles not implemented yet!");
+        pub fn writeFillRectangles(self: *Self, style: tvg.Style, rectangles: []const tvg.Rectangle) Error!void {
+            const rectangle_count = try mapToU6(rectangles.len);
+
+            try self.writeCommand(.fill_rectangles);
+            try self.writeStyleTypeAndCount(style, rectangle_count);
+            try self.writeStyle(style);
+
+            for (rectangles) |rect| {
+                try self.writeRectangle(rect);
+            }
         }
         pub fn writeDrawLines(self: *Self) Error!void {
             _ = self;
@@ -84,9 +91,20 @@ pub fn Builder(comptime Writer: type) type {
             _ = self;
             @panic("outlineFillPolygon not implemented yet!");
         }
-        pub fn writeOutlineFillRectangles(self: *Self) Error!void {
-            _ = self;
-            @panic("outlineFillRectangles not implemented yet!");
+        pub fn writeOutlineFillRectangles(self: *Self, fill_style: tvg.Style, line_style: tvg.Style, line_width: f32, rectangles: []const tvg.Rectangle) Error!void {
+            const rectangle_count = try mapToU6(rectangles.len);
+
+            try self.writeCommand(.outline_fill_rectangles);
+            try self.writeStyleTypeAndCount(fill_style, rectangle_count);
+
+            try self.writer.writeByte(@enumToInt(std.meta.activeTag(line_style)));
+            try self.writeStyle(line_style);
+            try self.writeStyle(fill_style);
+            try self.writeUnit(line_width);
+
+            for (rectangles) |rect| {
+                try self.writeRectangle(rect);
+            }
         }
 
         pub fn writeFillPath(self: *Self, style: tvg.Style, path: []const tvg.Path.Segment) Error!void {
@@ -260,6 +278,13 @@ pub fn Builder(comptime Writer: type) type {
             try self.writeUnit(point.y);
         }
 
+        fn writeRectangle(self: *Self, rect: tvg.Rectangle) Error!void {
+            try self.writeUnit(rect.x);
+            try self.writeUnit(rect.y);
+            try self.writeUnit(rect.width);
+            try self.writeUnit(rect.height);
+        }
+
         const State = enum {
             initial,
             color_table,
@@ -340,7 +365,7 @@ fn renderTestShield(writer: *Builder(std.io.FixedBufferStream([]u8).Writer)) !vo
 
 const ground_truth = @import("ground-truth");
 
-test "render shield (default range, scale 1/256)" {
+test "encode shield (default range, scale 1/256)" {
     var buffer: [1024]u8 = undefined;
     var stream = std.io.fixedBufferStream(&buffer);
 
@@ -351,7 +376,7 @@ test "render shield (default range, scale 1/256)" {
     try std.testing.expectEqualSlices(u8, &ground_truth.shield, stream.getWritten());
 }
 
-test "render shield (reduced range, scale 1/4)" {
+test "encode shield (reduced range, scale 1/4)" {
     var buffer: [1024]u8 = undefined;
     var stream = std.io.fixedBufferStream(&buffer);
 
@@ -360,4 +385,84 @@ test "render shield (reduced range, scale 1/4)" {
     try renderTestShield(&writer);
 
     try std.testing.expectEqualSlices(u8, &ground_truth.shield_8, stream.getWritten());
+}
+
+test "encode app_menu (default range, scale 1/256)" {
+    var buffer: [1024]u8 = undefined;
+    var stream = std.io.fixedBufferStream(&buffer);
+
+    var writer = builder(stream.writer());
+    try writer.writeHeader(48, 48, .@"1/256", .default);
+    try writer.writeColorTable(&[_]tvg.Color{
+        try tvg.Color.fromString("000000"),
+    });
+    try writer.writeFillRectangles(tvg.Style{ .flat = 0 }, &[_]tvg.Rectangle{
+        tvg.rectangle(6, 12, 36, 4),
+        tvg.rectangle(6, 22, 36, 4),
+        tvg.rectangle(6, 32, 36, 4),
+    });
+    try writer.writeEndOfFile();
+
+    try std.testing.expectEqualSlices(u8, &ground_truth.app_menu, stream.getWritten());
+}
+
+test "encode workspace (default range, scale 1/256)" {
+    var buffer: [1024]u8 = undefined;
+    var stream = std.io.fixedBufferStream(&buffer);
+
+    var writer = builder(stream.writer());
+    try writer.writeHeader(48, 48, .@"1/256", .default);
+    try writer.writeColorTable(&[_]tvg.Color{
+        try tvg.Color.fromString("008751"),
+        try tvg.Color.fromString("83769c"),
+        try tvg.Color.fromString("1d2b53"),
+    });
+
+    try writer.writeFillRectangles(tvg.Style{ .flat = 0 }, &[_]tvg.Rectangle{tvg.rectangle(6, 6, 16, 36)});
+    try writer.writeFillRectangles(tvg.Style{ .flat = 1 }, &[_]tvg.Rectangle{tvg.rectangle(26, 6, 16, 16)});
+    try writer.writeFillRectangles(tvg.Style{ .flat = 2 }, &[_]tvg.Rectangle{tvg.rectangle(26, 26, 16, 16)});
+    try writer.writeEndOfFile();
+
+    try std.testing.expectEqualSlices(u8, &ground_truth.workspace, stream.getWritten());
+}
+
+test "encode workspace_add (default range, scale 1/256)" {
+    const Node = tvg.Path.Node;
+
+    var buffer: [1024]u8 = undefined;
+    var stream = std.io.fixedBufferStream(&buffer);
+
+    var writer = builder(stream.writer());
+    try writer.writeHeader(48, 48, .@"1/256", .default);
+    try writer.writeColorTable(&[_]tvg.Color{
+        try tvg.Color.fromString("008751"),
+        try tvg.Color.fromString("83769c"),
+        try tvg.Color.fromString("ff004d"),
+    });
+
+    try writer.writeFillRectangles(tvg.Style{ .flat = 0 }, &[_]tvg.Rectangle{tvg.rectangle(6, 6, 16, 36)});
+    try writer.writeFillRectangles(tvg.Style{ .flat = 1 }, &[_]tvg.Rectangle{tvg.rectangle(26, 6, 16, 16)});
+
+    try writer.writeFillPath(tvg.Style{ .flat = 2 }, &[_]tvg.Path.Segment{
+        tvg.Path.Segment{
+            .start = tvg.point(26, 32),
+            .commands = &[_]Node{
+                Node{ .horiz = .{ .data = 32 } },
+                Node{ .vert = .{ .data = 26 } },
+                Node{ .horiz = .{ .data = 36 } },
+                Node{ .vert = .{ .data = 32 } },
+                Node{ .horiz = .{ .data = 42 } },
+                Node{ .vert = .{ .data = 36 } },
+                Node{ .horiz = .{ .data = 36 } },
+                Node{ .vert = .{ .data = 42 } },
+                Node{ .horiz = .{ .data = 32 } },
+                Node{ .vert = .{ .data = 36 } },
+                Node{ .horiz = .{ .data = 26 } },
+            },
+        },
+    });
+
+    try writer.writeEndOfFile();
+
+    try std.testing.expectEqualSlices(u8, &ground_truth.workspace_add, stream.getWritten());
 }
