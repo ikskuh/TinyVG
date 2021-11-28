@@ -113,7 +113,7 @@ class DevRunner
       var dst_root = "/tmp/converted/";
       foreach (var folder in new string[] {
         src_root + "/zig-logo",
-       // src_root + "/w3c-svg-files",
+        // src_root + "/w3c-svg-files",
         src_root + "/MaterialDesign/svg",
         src_root + "/papirus-icon-theme/Papirus/48x48/actions",
         // src_root + "/papirus-icon-theme/Papirus/48x48/apps",

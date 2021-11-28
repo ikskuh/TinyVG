@@ -7,7 +7,7 @@ const pkgs = struct {
     };
     const args = std.build.Pkg{
         .name = "args",
-        .path = .{ .path = "lib/zig-args/args.zig" },
+        .path = .{ .path = "vendor/zig-args/args.zig" },
     };
 };
 
