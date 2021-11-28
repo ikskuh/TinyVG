@@ -184,7 +184,7 @@ pub fn main() !u8 {
     return 0;
 }
 
-fn renderPath(line_prefix: []const u8, writer: anytype, path: tvg.parsing.Path) !void {
+fn renderPath(line_prefix: []const u8, writer: anytype, path: tvg.Path) !void {
     for (path.segments) |segment| {
         try writer.print("\n{s}({d} {d})\n{s}(", .{ line_prefix, segment.start.x, segment.start.y, line_prefix });
         for (segment.commands) |node| {
@@ -195,7 +195,7 @@ fn renderPath(line_prefix: []const u8, writer: anytype, path: tvg.parsing.Path) 
     }
 }
 
-fn renderPathNode(writer: anytype, node: tvg.parsing.Path.Node) !void {
+fn renderPathNode(writer: anytype, node: tvg.Path.Node) !void {
     switch (node) {
         .line => |line| try writer.print("(line {d} {d})", .{ line.data.x, line.data.y }),
         .horiz => |horiz| try writer.print("(horiz {d})", .{horiz.data}),
@@ -234,7 +234,7 @@ fn renderPathNode(writer: anytype, node: tvg.parsing.Path.Node) !void {
     }
 }
 
-fn renderStyle(writer: anytype, style: tvg.parsing.Style) !void {
+fn renderStyle(writer: anytype, style: tvg.Style) !void {
     switch (style) {
         .flat => |color| try writer.print("(flat {d})", .{color}),
         .linear, .radial => |grad| {

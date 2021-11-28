@@ -5,7 +5,7 @@ const parsing = tvg.parsing;
 const Point = tvg.Point;
 const Rectangle = tvg.Rectangle;
 const Color = tvg.Color;
-const Style = tvg.parsing.Style;
+const Style = tvg.Style;
 
 // TODO: Make these configurable
 const circle_divs = 100;
@@ -153,7 +153,7 @@ pub fn render(
     }
 }
 
-pub fn renderPath(point_list: anytype, slice_list: anytype, path: tvg.parsing.Path) !void {
+pub fn renderPath(point_list: anytype, slice_list: anytype, path: tvg.Path) !void {
     const Helper = struct {
         list: @TypeOf(point_list),
         last: Point,

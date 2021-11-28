@@ -77,6 +77,18 @@ comptime {
     }
 }
 
+/// The value range used in the encoding.
+pub const Range = enum {
+    /// unit takes only 8 bit
+    reduced,
+
+    /// unit uses 16 bit,
+    default,
+
+    // unit uses 32 bit,
+    //enhanced,
+};
+
 /// A TVG scale value. Defines the scale for all units inside a graphic.
 /// The scale is defined by the number of decimal bits in a `i16`, thus scaling
 /// can be trivially implemented by shifting the integers right by the scale bits.
@@ -189,6 +201,11 @@ pub const Color = extern struct {
     }
 };
 
+/// Constructs a new point
+pub fn point(x: f32, y: f32) Point {
+    return .{ .x = x, .y = y };
+}
+
 pub const Point = struct {
     x: f32,
     y: f32,
@@ -204,6 +221,98 @@ pub const Rectangle = struct {
 pub const Line = struct {
     start: Point,
     end: Point,
+};
+
+pub const Path = struct {
+    segments: []Segment,
+
+    pub const Segment = struct {
+        start: Point,
+        commands: []Node,
+    };
+
+    pub const Node = union(Type) {
+        const Self = @This();
+
+        line: NodeData(Point),
+        horiz: NodeData(f32),
+        vert: NodeData(f32),
+        bezier: NodeData(Bezier),
+        arc_circle: NodeData(ArcCircle),
+        arc_ellipse: NodeData(ArcEllipse),
+        close: NodeData(void),
+        quadratic_bezier: NodeData(QuadraticBezier),
+
+        pub fn NodeData(comptime Payload: type) type {
+            return struct {
+                line_width: ?f32 = null,
+                data: Payload,
+
+                pub fn init(line_width: ?f32, data: Payload) @This() {
+                    return .{ .line_width = line_width, .data = data };
+                }
+            };
+        }
+
+        pub const ArcCircle = struct {
+            radius: f32,
+            large_arc: bool,
+            sweep: bool,
+            target: Point,
+        };
+
+        pub const ArcEllipse = struct {
+            radius_x: f32,
+            radius_y: f32,
+            rotation: f32,
+            large_arc: bool,
+            sweep: bool,
+            target: Point,
+        };
+
+        pub const Bezier = struct {
+            c0: Point,
+            c1: Point,
+            p1: Point,
+        };
+
+        pub const QuadraticBezier = struct {
+            c: Point,
+            p1: Point,
+        };
+    };
+
+    pub const Type = enum(u3) {
+        line = 0, // x,y
+        horiz = 1, // x
+        vert = 2, // y
+        bezier = 3, // c0x,c0y,c1x,c1y,x,y
+        arc_circle = 4, //r,x,y
+        arc_ellipse = 5, // rx,ry,x,y
+        close = 6,
+        quadratic_bezier = 7,
+    };
+};
+
+pub const StyleType = enum(u2) {
+    flat = 0,
+    linear = 1,
+    radial = 2,
+};
+
+pub const Style = union(StyleType) {
+    const Self = @This();
+
+    flat: u32, // color index
+    linear: Gradient,
+    radial: Gradient,
+};
+
+pub const Gradient = struct {
+    point_0: Point,
+    point_1: Point,
+    color_0: u32,
+    color_1: u32,
 };
 
 // brainstorming
@@ -228,3 +337,11 @@ pub const Line = struct {
 // primitive types (other)
 // - line strip
 // - lines
+
+test {
+    _ = comptime_builder;
+    _ = builder;
+    _ = parsing;
+    _ = rendering;
+    _ = format;
+}

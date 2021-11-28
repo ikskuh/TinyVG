@@ -15,80 +15,10 @@ pub const Header = struct {
 const Point = tvg.Point;
 const Rectangle = tvg.Rectangle;
 const Line = tvg.Line;
-
-pub const Path = struct {
-    segments: []Segment,
-
-    pub const Segment = struct {
-        start: Point,
-        commands: []Node,
-    };
-
-    pub const Node = union(enum) {
-        const Self = @This();
-
-        line: NodeData(Point),
-        horiz: NodeData(f32),
-        vert: NodeData(f32),
-        bezier: NodeData(Bezier),
-        arc_circle: NodeData(ArcCircle),
-        arc_ellipse: NodeData(ArcEllipse),
-        close: NodeData(void),
-        quadratic_bezier: NodeData(QuadraticBezier),
-
-        fn NodeData(comptime Payload: type) type {
-            return struct {
-                line_width: ?f32,
-                data: Payload,
-
-                fn init(
-                    line_width: ?f32,
-                    data: Payload,
-                ) @This() {
-                    return .{ .line_width = line_width, .data = data };
-                }
-            };
-        }
-
-        pub const ArcCircle = struct {
-            radius: f32,
-            large_arc: bool,
-            sweep: bool,
-            target: Point,
-        };
-
-        pub const ArcEllipse = struct {
-            radius_x: f32,
-            radius_y: f32,
-            rotation: f32,
-            large_arc: bool,
-            sweep: bool,
-            target: Point,
-        };
-
-        pub const Bezier = struct {
-            c0: Point,
-            c1: Point,
-            p1: Point,
-        };
-
-        pub const QuadraticBezier = struct {
-            c: Point,
-            p1: Point,
-        };
-
-        const Type = enum(u3) {
-            line = 0, // x,y
-            horiz = 1, // x
-            vert = 2, // y
-            bezier = 3, // c0x,c0y,c1x,c1y,x,y
-            arc_circ = 4, //r,x,y
-            arc_ellipse = 5, // rx,ry,x,y
-            close = 6,
-            quad_bezier = 7,
-        };
-    };
-};
+const Path = tvg.Path;
+const StyleType = tvg.StyleType;
+const Style = tvg.Style;
+const Gradient = tvg.Gradient;
 
 pub const DrawCommand = union(enum) {
     fill_polygon: FillPolygon,
@@ -157,29 +87,6 @@ pub const DrawCommand = union(enum) {
         line_width: f32,
         path: Path,
     };
-};
-
-const StyleType = enum(u2) {
-    flat = 0,
-    linear = 1,
-    radial = 2,
-};
-
-pub const Style = union(StyleType) {
-    const Self = @This();
-
-    flat: u32, // color index
-    linear: Gradient,
-    radial: Gradient,
-};
-
-const Gradient = struct {
-    const Self = @This();
-
-    point_0: Point,
-    point_1: Point,
-    color_0: u32,
-    color_1: u32,
 };
 
 pub fn Parser(comptime Reader: type) type {
@@ -535,7 +442,7 @@ pub fn Parser(comptime Reader: type) type {
 
         fn readNode(self: Self) !Path.Node {
             const Tag = packed struct {
-                type: Path.Node.Type,
+                type: Path.Type,
                 padding0: u1 = 0,
                 has_line_width: bool,
                 padding1: u3 = 0,
@@ -570,7 +477,7 @@ pub fn Parser(comptime Reader: type) type {
                         .y = try self.readUnit(),
                     },
                 }) },
-                .arc_circ => blk: {
+                .arc_circle => blk: {
                     var flags = try self.readByte();
                     break :blk PathNode{ .arc_circle = PathNode.NodeData(PathNode.ArcCircle).init(line_width, PathNode.ArcCircle{
                         .radius = try self.readUnit(),
@@ -596,8 +503,7 @@ pub fn Parser(comptime Reader: type) type {
                         },
                     }) };
                 },
-                .close => PathNode{ .close = PathNode.NodeData(void).init(line_width, {}) },
-                .quad_bezier => PathNode{ .quadratic_bezier = PathNode.NodeData(PathNode.QuadraticBezier).init(line_width, PathNode.QuadraticBezier{
+                .quadratic_bezier => PathNode{ .quadratic_bezier = PathNode.NodeData(PathNode.QuadraticBezier).init(line_width, PathNode.QuadraticBezier{
                     .c = Point{
                         .x = try self.readUnit(),
                         .y = try self.readUnit(),
@@ -607,6 +513,7 @@ pub fn Parser(comptime Reader: type) type {
                         .y = try self.readUnit(),
                     },
                 }) },
+                .close => PathNode{ .close = PathNode.NodeData(void).init(line_width, {}) },
             };
         }
 

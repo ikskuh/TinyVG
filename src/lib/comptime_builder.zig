@@ -41,11 +41,7 @@ pub const Gradient = struct {
     color_1: u7,
 };
 
-pub const StyleSpec = enum(u2) {
-    flat = 0,
-    linear = 1,
-    radial = 2,
-};
+pub const StyleSpec = tvg.StyleType;
 
 fn StyleType(comptime spec: StyleSpec) type {
     return switch (spec) {
@@ -61,17 +57,8 @@ fn uint16(v: u16) [2]u8 {
     return buf;
 }
 
-pub const Range = enum {
-    /// unit takes only 8 bit
-    reduced,
-    /// unit uses 16 bit,
-    default,
-    // unit uses 32 bit,
-    //enhanced,
-};
-
 // TODO: Add 8 or 16 bit precision option
-pub fn create(comptime scale: tvg.Scale, comptime range: Range) type {
+pub fn create(comptime scale: tvg.Scale, comptime range: tvg.Range) type {
     const sUNIT = switch (range) {
         .reduced => 1,
         .default => 2,
