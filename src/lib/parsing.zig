@@ -367,8 +367,8 @@ pub fn Parser(comptime Reader: type) type {
 
                     const line_style_dat = try self.readByte();
 
-                    const fill_style = try self.readStyle(try count_and_grad.getStyleType());
                     const line_style = try self.readStyle(try convertStyleType(@truncate(u2, line_style_dat)));
+                    const fill_style = try self.readStyle(try count_and_grad.getStyleType());
 
                     const line_width = try self.readUnit();
 
@@ -417,7 +417,28 @@ pub fn Parser(comptime Reader: type) type {
                         },
                     };
                 },
-                .outline_fill_path => @panic("parsing outline_fill_path not implemented yet!"),
+                .outline_fill_path => blk: {
+                    const count_and_grad = @bitCast(CountAndStyleTag, try self.readByte());
+                    const segment_count = count_and_grad.getCount();
+
+                    const line_style_dat = try self.readByte();
+
+                    const line_style = try self.readStyle(try convertStyleType(@truncate(u2, line_style_dat)));
+                    const fill_style = try self.readStyle(try count_and_grad.getStyleType());
+
+                    const line_width = try self.readUnit();
+
+                    const path = try self.readPath(segment_count);
+
+                    break :blk DrawCommand{
+                        .outline_fill_path = DrawCommand.OutlineFillPath{
+                            .fill_style = fill_style,
+                            .line_style = line_style,
+                            .line_width = line_width,
+                            .path = path,
+                        },
+                    };
+                },
                 _ => return error.InvalidData,
             };
         }
@@ -566,6 +587,12 @@ pub fn Parser(comptime Reader: type) type {
             };
             grad.color_0 = try self.readUInt();
             grad.color_1 = try self.readUInt();
+
+            if (grad.color_0 >= self.color_table.len)
+                return error.InvalidData;
+            if (grad.color_1 >= self.color_table.len)
+                return error.InvalidData;
+
             return grad;
         }
 

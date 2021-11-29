@@ -165,12 +165,25 @@ fn writeEverything(file: std.fs.File) !void {
             });
             return 50;
         }
-        fn emitOutlineFillPath(w: *Writer, dx: f32, dy: f32, style: tvg.Style) !f32 {
-            _ = w;
-            _ = dx;
-            _ = dy;
-            _ = style;
-            @panic("");
+        fn emitOutlineFillPath(w: *Writer, x: f32, y: f32, style: tvg.Style) !f32 {
+            const Node = tvg.Path.Node;
+            try w.writeOutlineFillPath(style, tvg.Style{ .flat = 3 }, 2.5, &[_]tvg.Path.Segment{
+                tvg.Path.Segment{
+                    .start = tvg.point(x, y),
+                    .commands = &[_]Node{
+                        Node{ .horiz = .{ .data = x + 10 } }, // H 10
+                        Node{ .vert = .{ .data = y + 10 } }, // V 10
+                        Node{ .horiz = .{ .data = x + 20 } }, // H 20
+                        Node{ .line = .{ .data = tvg.point(x + 100, y) } }, // L 100 1
+                        Node{ .bezier = .{ .data = .{ .c0 = tvg.point(x + 75, y + 20), .c1 = tvg.point(x + 90, y + 50), .p1 = tvg.point(x + 75, y + 50) } } }, // C 75 20 91 50 75 50
+                        Node{ .quadratic_bezier = .{ .data = .{ .c = tvg.point(x + 50, y + 50), .p1 = tvg.point(x + 50, y + 25) } } }, // Q 50 50 50 25
+                        Node{ .arc_ellipse = .{ .data = .{ .radius_x = 35.0, .radius_y = 50.0, .rotation = 1.5, .large_arc = false, .sweep = true, .target = tvg.point(x + 25, y + 35) } } }, // A 0.7 1 20 0 0 25 35
+                        Node{ .arc_circle = .{ .data = .{ .radius = 14.0, .large_arc = false, .sweep = false, .target = tvg.point(x, y + 25) } } }, // A 1 1 0 0 1 0 35
+                        Node{ .close = .{ .data = {} } }, // Z
+                    },
+                },
+            });
+            return 50;
         }
     };
 
@@ -181,10 +194,10 @@ fn writeEverything(file: std.fs.File) !void {
         Emitter.emitDrawLineLoop,
         Emitter.emitDrawLineStrip,
         Emitter.emitFillPolygon,
-        // Emitter.emitOutlineFillPolygon,
+        Emitter.emitOutlineFillPolygon,
         Emitter.emitDrawPath,
         Emitter.emitFillPath,
-        // Emitter.emitOutlineFillPath,
+        Emitter.emitOutlineFillPath,
     };
 
     var style_base = [_]tvg.Style{

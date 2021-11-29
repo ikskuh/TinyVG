@@ -68,20 +68,23 @@
        )
      )
      (
+       outline_fill_polygon
+     )
+     (
        draw_line_path
        (flat 0)
        1.5
        (
-         (25 445)
+         (25 510)
          (
            (horiz 35)
-           (vert 455)
+           (vert 520)
            (horiz 45)
-           (line 125 445)
-           (bezier (100 465) (115 495) (100 495))
-           (quad-bezier (75 495) (75 470))
-           (arc-ellipse 35, 50, 1.5, false, true, (50 480))
-           (arc-circle 14, false, false, (25 470))
+           (line 125 510)
+           (bezier (100 530) (115 560) (100 560))
+           (quad-bezier (75 560) (75 535))
+           (arc-ellipse 35, 50, 1.5, false, true, (50 545))
+           (arc-circle 14, false, false, (25 535))
            (close)
          )
        )
@@ -90,19 +93,22 @@
        fill_path
        (flat 0)
        (
-         (25 520)
+         (25 585)
          (
            (horiz 35)
-           (vert 530)
+           (vert 595)
            (horiz 45)
-           (line 125 520)
-           (bezier (100 540) (115 570) (100 570))
-           (quad-bezier (75 570) (75 545))
-           (arc-ellipse 35, 50, 1.5, false, true, (50 555))
-           (arc-circle 14, false, false, (25 545))
+           (line 125 585)
+           (bezier (100 605) (115 635) (100 635))
+           (quad-bezier (75 635) (75 610))
+           (arc-ellipse 35, 50, 1.5, false, true, (50 620))
+           (arc-circle 14, false, false, (25 610))
            (close)
          )
        )
+     )
+     (
+       outline_fill_path
      )
      (
        fill_rectangles
@@ -163,41 +169,47 @@
        )
      )
      (
+       outline_fill_polygon
+     )
+     (
        draw_line_path
-       (linear (150 445) (250 495) 1 2 )
+       (linear (150 510) (250 560) 1 2 )
        1.5
        (
-         (150 445)
+         (150 510)
          (
            (horiz 160)
-           (vert 455)
+           (vert 520)
            (horiz 170)
-           (line 250 445)
-           (bezier (225 465) (240 495) (225 495))
-           (quad-bezier (200 495) (200 470))
-           (arc-ellipse 35, 50, 1.5, false, true, (175 480))
-           (arc-circle 14, false, false, (150 470))
+           (line 250 510)
+           (bezier (225 530) (240 560) (225 560))
+           (quad-bezier (200 560) (200 535))
+           (arc-ellipse 35, 50, 1.5, false, true, (175 545))
+           (arc-circle 14, false, false, (150 535))
            (close)
          )
        )
      )
      (
        fill_path
-       (linear (150 520) (250 570) 1 2 )
+       (linear (150 585) (250 635) 1 2 )
        (
-         (150 520)
+         (150 585)
          (
            (horiz 160)
-           (vert 530)
+           (vert 595)
            (horiz 170)
-           (line 250 520)
-           (bezier (225 540) (240 570) (225 570))
-           (quad-bezier (200 570) (200 545))
-           (arc-ellipse 35, 50, 1.5, false, true, (175 555))
-           (arc-circle 14, false, false, (150 545))
+           (line 250 585)
+           (bezier (225 605) (240 635) (225 635))
+           (quad-bezier (200 635) (200 610))
+           (arc-ellipse 35, 50, 1.5, false, true, (175 620))
+           (arc-circle 14, false, false, (150 610))
            (close)
          )
        )
+     )
+     (
+       outline_fill_path
      )
      (
        fill_rectangles
@@ -258,41 +270,47 @@
        )
      )
      (
+       outline_fill_polygon
+     )
+     (
        draw_line_path
-       (radial (325 470) (375 495) 1 2 )
+       (radial (325 535) (375 560) 1 2 )
        1.5
        (
-         (275 445)
+         (275 510)
          (
            (horiz 285)
-           (vert 455)
+           (vert 520)
            (horiz 295)
-           (line 375 445)
-           (bezier (350 465) (365 495) (350 495))
-           (quad-bezier (325 495) (325 470))
-           (arc-ellipse 35, 50, 1.5, false, true, (300 480))
-           (arc-circle 14, false, false, (275 470))
+           (line 375 510)
+           (bezier (350 530) (365 560) (350 560))
+           (quad-bezier (325 560) (325 535))
+           (arc-ellipse 35, 50, 1.5, false, true, (300 545))
+           (arc-circle 14, false, false, (275 535))
            (close)
          )
        )
      )
      (
        fill_path
-       (radial (325 545) (375 570) 1 2 )
+       (radial (325 610) (375 635) 1 2 )
        (
-         (275 520)
+         (275 585)
          (
            (horiz 285)
-           (vert 530)
+           (vert 595)
            (horiz 295)
-           (line 375 520)
-           (bezier (350 540) (365 570) (350 570))
-           (quad-bezier (325 570) (325 545))
-           (arc-ellipse 35, 50, 1.5, false, true, (300 555))
-           (arc-circle 14, false, false, (275 545))
+           (line 375 585)
+           (bezier (350 605) (365 635) (350 635))
+           (quad-bezier (325 635) (325 610))
+           (arc-ellipse 35, 50, 1.5, false, true, (300 620))
+           (arc-circle 14, false, false, (275 610))
            (close)
          )
        )
+     )
+     (
+       outline_fill_path
      )
   )
 )

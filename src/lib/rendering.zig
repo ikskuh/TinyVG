@@ -130,9 +130,20 @@ pub fn render(
             }
         },
         .outline_fill_polygon => |data| {
-            _ = data;
-            @panic("outline_fill_polygon not implemented yet!");
+            painter.fillPolygon(framebuffer, color_table, data.fill_style, data.vertices);
+
+            var start_index: usize = data.vertices.len - 1;
+            for (data.vertices) |end, end_index| {
+                const start = data.vertices[start_index];
+
+                painter.drawLine(framebuffer, color_table, data.line_style, data.line_width, data.line_width, .{
+                    .start = start,
+                    .end = end,
+                });
+                start_index = end_index;
+            }
         },
+
         .outline_fill_rectangles => |data| {
             for (data.rectangles) |rect| {
                 painter.fillRectangle(framebuffer, rect.x, rect.y, rect.width, rect.height, color_table, data.fill_style);
@@ -147,8 +158,29 @@ pub fn render(
             }
         },
         .outline_fill_path => |data| {
-            _ = data;
-            @panic("outline_fill_path not implemented yet!");
+            var point_store = FixedBufferList(Point, temp_buffer_size){};
+            var slice_store = FixedBufferList(IndexSlice, 64){}; // known upper bound
+
+            try renderPath(&point_store, &slice_store, data.path);
+
+            var slices: [64][]const Point = undefined;
+            for (slice_store.items()) |src, i| {
+                slices[i] = point_store.items()[src.offset..][0..src.len];
+            }
+
+            for (slices[0..slice_store.length]) |vertices| {
+                painter.fillPolygon(framebuffer, color_table, data.fill_style, vertices);
+            }
+
+            for (slices[0..slice_store.length]) |vertices| {
+                for (vertices[1..]) |end, i| {
+                    const start = vertices[i]; // is actually [i-1], but we access the slice off-by-one!
+                    painter.drawLine(framebuffer, color_table, data.line_style, data.line_width, data.line_width, .{
+                        .start = start,
+                        .end = end,
+                    });
+                }
+            }
         },
     }
 }
