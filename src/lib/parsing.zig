@@ -358,8 +358,35 @@ pub fn Parser(comptime Reader: type) type {
                         },
                     };
                 },
-                // TODO: Enable Emitter.emitOutlineFillPolygon,
-                .outline_fill_polygon => @panic("parsing outline_fill_polygon not implemented yet!"),
+                .outline_fill_polygon => blk: {
+                    const count_and_grad = @bitCast(CountAndStyleTag, try self.readByte());
+
+                    const vertex_count = count_and_grad.getCount();
+                    if (vertex_count < 2)
+                        return error.InvalidData;
+
+                    const line_style_dat = try self.readByte();
+
+                    const fill_style = try self.readStyle(try count_and_grad.getStyleType());
+                    const line_style = try self.readStyle(try convertStyleType(@truncate(u2, line_style_dat)));
+
+                    const line_width = try self.readUnit();
+
+                    var vertices = try self.setTempStorage(Point, vertex_count);
+                    for (vertices) |*pt| {
+                        pt.x = try self.readUnit();
+                        pt.y = try self.readUnit();
+                    }
+
+                    break :blk DrawCommand{
+                        .outline_fill_polygon = DrawCommand.OutlineFillPolygon{
+                            .fill_style = fill_style,
+                            .line_style = line_style,
+                            .line_width = line_width,
+                            .vertices = vertices,
+                        },
+                    };
+                },
                 .outline_fill_rectangles => blk: {
                     const count_and_grad = @bitCast(CountAndStyleTag, try self.readByte());
                     const line_style_dat = try self.readByte();

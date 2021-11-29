@@ -129,8 +129,9 @@ pub fn Builder(comptime Writer: type) type {
 
             try self.writeCommand(.outline_fill_polygon);
             try self.writeStyleTypeAndCount(fill_style, count);
-            try self.writeStyle(fill_style);
+            try self.writer.writeByte(@enumToInt(std.meta.activeTag(line_style)));
             try self.writeStyle(line_style);
+            try self.writeStyle(fill_style);
             try self.writeUnit(line_width);
 
             for (points) |pt| {
@@ -167,7 +168,7 @@ pub fn Builder(comptime Writer: type) type {
         pub fn writeDrawPath(self: *Self, style: tvg.Style, line_width: f32, path: []const tvg.Path.Segment) Error!void {
             const segment_count = try validatePath(path);
 
-            try self.writeCommand(.draw_path);
+            try self.writeCommand(.draw_line_path);
             try self.writeStyleTypeAndCount(style, segment_count);
             try self.writeStyle(style);
 
