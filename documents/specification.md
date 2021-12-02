@@ -39,9 +39,9 @@ TVG files are roughly structured like this:
 
 Files are made up of a header, followed by a color lookup table and a sequence of commands terminated by a _end of file_ command.
 
-**NOTE:** The following documentation uses a tabular style to document structures. All integers are assumed to be encoded in little-endian byte order.
-The _Type_ column of each structure definition uses a Zig notation for types and each field is padded with zero bits to the previous one.
-If a field does not align to a byte boundary, the next field will be offset into the byte by the current fields bit size. This means, that two consecutive fields **a** (`u3`) and **b** (`u5`) can be extracted from the byte by using `(byte & 0x7) >> 0` for **a** and `(byte & 0x1F) >> 3` for **b**.
+**NOTE:** The following documentation uses a tabular style to document structures. All integers are assumed to be encoded in little-endian byte order if not specified otherwise.
+The _Type_ column of each structure definition uses a Zig notation for types and the fields have no padding bits inbetween.
+If a field does not align to a byte boundary, the next field will be offset into the byte by the current fields bit offset + bit size. This means, that two consecutive fields **a** (`u3`) and **b** (`u5`) can be extracted from the byte by using `(byte & 0x7) >> 0` for **a** and `(byte & 0x1F) >> 3` for **b**.
 
 ### Header
 
@@ -87,7 +87,7 @@ YADA YADA
 
 YADA YADA
 
-### Unit
+### Units
 
 The unit is the common type for both positions and sizes in the vector graphic. It is encoded as a signed integer with a configurable amount of bits (see [Coordinate Range](#coordinate-range)) and fractional bits.
 
