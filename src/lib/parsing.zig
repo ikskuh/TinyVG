@@ -1,15 +1,13 @@
 const std = @import("std");
 const tvg = @import("tvg.zig");
 
-pub const CoordinateRange = enum { default, reduced };
-
 pub const Header = struct {
     version: u8,
     scale: tvg.Scale,
-    custom_color_space: bool,
-    coordinate_range: CoordinateRange,
-    width: u16,
-    height: u16,
+    color_encoding: tvg.ColorEncoding,
+    coordinate_range: tvg.Range,
+    width: u32,
+    height: u32,
 };
 
 const Point = tvg.Point;
@@ -89,6 +87,9 @@ pub const DrawCommand = union(enum) {
     };
 };
 
+pub const ParseError = error{ EndOfStream, InvalidData, OutOfMemory };
+pub const ParseHeaderError = ParseError || error{ UnsupportedColorFormat, UnsupportedVersion };
+
 pub fn Parser(comptime Reader: type) type {
     return struct {
         const Self = @This();
@@ -101,79 +102,97 @@ pub fn Parser(comptime Reader: type) type {
         header: Header,
         color_table: []tvg.Color,
 
-        pub fn init(allocator: *std.mem.Allocator, reader: Reader) !Self {
+        pub fn init(allocator: *std.mem.Allocator, reader: Reader) (Reader.Error || ParseHeaderError)!Self {
             var actual_magic_number: [2]u8 = undefined;
             reader.readNoEof(&actual_magic_number) catch return error.InvalidData;
             if (!std.mem.eql(u8, &actual_magic_number, &tvg.magic_number))
                 return error.InvalidData;
 
             const version = reader.readByte() catch return error.InvalidData;
-            var header: Header = undefined;
-            var color_table: []tvg.Color = undefined;
+
+            var self = Self{
+                .allocator = allocator,
+                .reader = reader,
+                .temp_buffer = std.ArrayList(u8).init(allocator),
+
+                .header = undefined,
+                .color_table = undefined,
+            };
 
             switch (version) {
                 1 => {
                     const ScaleAndFlags = packed struct {
                         scale: u4,
-                        custom_color_space: bool,
-                        reduced_coordinate_space: bool,
-                        padding: u2,
+                        color_encoding: u2,
+                        coordinate_range: u2,
                     };
+                    comptime {
+                        if (@sizeOf(ScaleAndFlags) != 1) @compileError("Invalid range!");
+                    }
 
                     const scale_and_flags = @bitCast(ScaleAndFlags, try reader.readByte());
-                    // if (scale_and_flags.scale > 8)
-                    //     return error.InvalidData;
-                    if (scale_and_flags.padding != 0)
-                        return error.InvalidData;
 
                     const scale = @intToEnum(tvg.Scale, scale_and_flags.scale);
+                    const color_encoding = @intToEnum(tvg.ColorEncoding, scale_and_flags.color_encoding);
+                    const range = @intToEnum(tvg.Range, scale_and_flags.coordinate_range);
 
-                    const width: u16 = if (scale_and_flags.reduced_coordinate_space)
-                        mapZeroToMax(try reader.readByte())
-                    else
-                        try reader.readIntLittle(u16);
-                    const height: u16 = if (scale_and_flags.reduced_coordinate_space)
-                        mapZeroToMax(try reader.readByte())
-                    else
-                        try reader.readIntLittle(u16);
+                    const width: u32 = switch (range) {
+                        .reduced => mapZeroToMax(try reader.readIntLittle(u8)),
+                        .default => mapZeroToMax(try reader.readIntLittle(u16)),
+                        .enhanced => std.math.cast(u32, mapZeroToMax(try reader.readIntLittle(u32))) catch return error.InvalidData,
+                    };
+                    const height: u32 = switch (range) {
+                        .reduced => mapZeroToMax(try reader.readIntLittle(u8)),
+                        .default => mapZeroToMax(try reader.readIntLittle(u16)),
+                        .enhanced => std.math.cast(u32, mapZeroToMax(try reader.readIntLittle(u32))) catch return error.InvalidData,
+                    };
 
-                    const color_count = reader.readIntLittle(u16) catch return error.InvalidData;
+                    const color_count = try self.readUInt();
 
-                    color_table = try allocator.alloc(tvg.Color, color_count);
-                    errdefer allocator.free(color_table);
+                    self.color_table = try allocator.alloc(tvg.Color, color_count);
+                    errdefer allocator.free(self.color_table);
 
-                    for (color_table) |*c| {
-                        c.* = tvg.Color{
-                            .r = try reader.readByte(),
-                            .g = try reader.readByte(),
-                            .b = try reader.readByte(),
-                            .a = try reader.readByte(),
+                    for (self.color_table) |*c| {
+                        c.* = switch (color_encoding) {
+                            .u8888 => tvg.Color{
+                                .r = @intToFloat(f32, try reader.readIntLittle(u8)) / 255.0,
+                                .g = @intToFloat(f32, try reader.readIntLittle(u8)) / 255.0,
+                                .b = @intToFloat(f32, try reader.readIntLittle(u8)) / 255.0,
+                                .a = @intToFloat(f32, try reader.readIntLittle(u8)) / 255.0,
+                            },
+                            .u565 => blk: {
+                                const rgb = try reader.readIntLittle(u16);
+                                break :blk tvg.Color{
+                                    .r = @intToFloat(f32, (rgb & 0x1F) >> 0) / 31.0,
+                                    .g = @intToFloat(f32, (rgb & 0x3F) >> 5) / 63.0,
+                                    .b = @intToFloat(f32, (rgb & 0x1F) >> 11) / 31.0,
+                                    .a = 1.0,
+                                };
+                            },
+                            .f32 => tvg.Color{
+                                // TODO: Verify if this is platform independently correct:
+                                .r = @bitCast(f32, try reader.readIntLittle(u32)),
+                                .g = @bitCast(f32, try reader.readIntLittle(u32)),
+                                .b = @bitCast(f32, try reader.readIntLittle(u32)),
+                                .a = @bitCast(f32, try reader.readIntLittle(u32)),
+                            },
+                            .custom => return error.UnsupportedColorFormat,
                         };
                     }
 
-                    header = Header{
+                    self.header = Header{
                         .version = version,
                         .scale = scale,
                         .width = width,
                         .height = height,
-                        .custom_color_space = scale_and_flags.custom_color_space,
-                        .coordinate_range = if (scale_and_flags.reduced_coordinate_space)
-                            CoordinateRange.reduced
-                        else
-                            CoordinateRange.default,
+                        .color_encoding = color_encoding,
+                        .coordinate_range = range,
                     };
                 },
                 else => return error.UnsupportedVersion,
             }
 
-            return Self{
-                .allocator = allocator,
-                .reader = reader,
-                .temp_buffer = std.ArrayList(u8).init(allocator),
-
-                .header = header,
-                .color_table = color_table,
-            };
+            return self;
         }
 
         pub fn deinit(self: *Self) void {
@@ -210,7 +229,7 @@ pub fn Parser(comptime Reader: type) type {
             return result;
         }
 
-        pub fn next(self: *Self) !?DrawCommand {
+        pub fn next(self: *Self) (Reader.Error || ParseError)!?DrawCommand {
             if (self.end_of_document)
                 return null;
             const command_byte = try self.reader.readByte();
@@ -252,7 +271,7 @@ pub fn Parser(comptime Reader: type) type {
                         rect.width = try self.readUnit();
                         rect.height = try self.readUnit();
                         if (rect.width <= 0 or rect.height <= 0)
-                            return error.InvalidFormat;
+                            return error.InvalidData;
                     }
 
                     break :blk DrawCommand{
@@ -405,7 +424,7 @@ pub fn Parser(comptime Reader: type) type {
                         rect.width = try self.readUnit();
                         rect.height = try self.readUnit();
                         if (rect.width <= 0 or rect.height <= 0)
-                            return error.InvalidFormat;
+                            return error.InvalidData;
                     }
 
                     break :blk DrawCommand{
@@ -618,6 +637,7 @@ pub fn Parser(comptime Reader: type) type {
             switch (self.header.coordinate_range) {
                 .reduced => return @intToEnum(tvg.Unit, try self.reader.readIntLittle(i8)).toFloat(self.header.scale),
                 .default => return @intToEnum(tvg.Unit, try self.reader.readIntLittle(i16)).toFloat(self.header.scale),
+                .enhanced => return @intToEnum(tvg.Unit, try self.reader.readIntLittle(i32)).toFloat(self.header.scale),
             }
         }
 

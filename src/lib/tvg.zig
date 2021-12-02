@@ -14,7 +14,7 @@ pub const current_version = 1;
 // submodules
 
 /// A generic module that provides functions for assembling TVG graphics at comptime.
-pub const comptime_builder = @import("comptime_builder.zig").create;
+// pub const comptime_builder = @import("comptime_builder.zig").create;
 
 /// This module provides a runtime usable builder
 pub const builder = @import("builder.zig");
@@ -78,19 +78,52 @@ comptime {
 }
 
 /// The value range used in the encoding.
-pub const Range = enum {
-    /// unit takes only 8 bit
-    reduced,
-
+pub const Range = enum(u2) {
     /// unit uses 16 bit,
-    default,
+    default = 0,
+
+    /// unit takes only 8 bit
+    reduced = 1,
 
     // unit uses 32 bit,
-    //enhanced,
+    enhanced = 2,
+};
+
+/// The color encoding used in a TVG file. This enum describes how the data in the color table section of the format looks like.
+pub const ColorEncoding = enum(u2) {
+    /// A classic 4-tuple with 8 bit unsigned channels.
+    /// Encodes red, green, blue and alpha. If not specified otherwise (via external means) the color channels encode sRGB color data
+    /// and the alpha stores linear transparency.
+    u8888 = 0,
+
+    /// A 16 bit color format with 5 bit for red and blue, and 6 bit color depth for green channel.
+    /// This format is typically used in embedded devices or cheaper displays. If not specified otherwise (via external means) the color channels encode sRGB color data.
+    u565 = 1,
+
+    /// A format with 16 byte per color and 4 channels. Each channel is encoded as a `binary32` IEEE 754 value.
+    /// The first three channels encode color data, the fourth channel encodes linear alpha.
+    /// If not specified otherwise (via external means) the color channels encode sRGB color data and the alpha stores linear transparency.
+    f32 = 2,
+
+    /// This format is specified by external means and is meant to signal that these files are *valid*, but it's not possible
+    /// to decode them without external knowledge about the color encoding. This is meant for special cases where huge savings
+    /// might be possible by not encoding any color information in the files itself or special device dependent color formats are required.
+    ///
+    /// Possible uses cases are:
+    ///
+    /// - External fixed or shared color palettes
+    /// - CMYK format for printing
+    /// - High precision 16 bit color formats
+    /// - Using non-sRGB color spaces
+    /// - Using RAL numbers for painting
+    /// - ...
+    ///
+    /// **NOTE:** A conforming parser is allowed to reject any file with a custom color encoding, as these are meant to be parsed with a specific use case.
+    custom = 3,
 };
 
 /// A TVG scale value. Defines the scale for all units inside a graphic.
-/// The scale is defined by the number of decimal bits in a `i16`, thus scaling
+/// The scale is defined by the number of decimal bits in a `i32`, thus scaling
 /// can be trivially implemented by shifting the integers right by the scale bits.
 pub const Scale = enum(u4) {
     const Self = @This();
@@ -126,16 +159,16 @@ pub const Scale = enum(u4) {
 };
 
 /// A scalable fixed-point number.
-pub const Unit = enum(i16) {
+pub const Unit = enum(i32) {
     const Self = @This();
 
     _,
 
     pub fn init(scale: Scale, value: f32) Self {
-        return @intToEnum(Self, @floatToInt(i16, value * @intToFloat(f32, scale.getScaleFactor()) + 0.5));
+        return @intToEnum(Self, @floatToInt(i32, value * @intToFloat(f32, scale.getScaleFactor()) + 0.5));
     }
 
-    pub fn raw(self: Self) i16 {
+    pub fn raw(self: Self) i32 {
         return @enumToInt(self);
     }
 
@@ -143,39 +176,39 @@ pub const Unit = enum(i16) {
         return @intToFloat(f32, @enumToInt(self)) / @intToFloat(f32, scale.getScaleFactor());
     }
 
-    pub fn toInt(self: Self, scale: Scale) i16 {
+    pub fn toInt(self: Self, scale: Scale) i32 {
         const factor = scale.getScaleFactor();
         return @divFloor(@enumToInt(self) + (@divExact(factor, 2)), factor);
     }
 
-    pub fn toUnsignedInt(self: Self, scale: Scale) !u15 {
+    pub fn toUnsignedInt(self: Self, scale: Scale) !u31 {
         const i = toInt(self, scale);
         if (i < 0)
             return error.InvalidData;
-        return @intCast(u15, i);
+        return @intCast(u31, i);
     }
 };
 
 pub const Color = extern struct {
     const Self = @This();
 
-    r: u8,
-    g: u8,
-    b: u8,
-    a: u8,
+    r: f32,
+    g: f32,
+    b: f32,
+    a: f32,
 
-    pub fn toArray(self: Self) [4]u8 {
+    pub fn toRgba8(self: Self) [4]u8 {
         return [4]u8{
-            self.r,
-            self.g,
-            self.b,
-            self.a,
+            @floatToInt(u8, std.math.clamp(255.0 * self.r, 0.0, 255.0)),
+            @floatToInt(u8, std.math.clamp(255.0 * self.g, 0.0, 255.0)),
+            @floatToInt(u8, std.math.clamp(255.0 * self.b, 0.0, 255.0)),
+            @floatToInt(u8, std.math.clamp(255.0 * self.a, 0.0, 255.0)),
         };
     }
 
     pub fn lerp(lhs: Self, rhs: Self, factor: f32) Self {
         const l = struct {
-            fn l(a: u8, b: u8, c: f32) u8 {
+            fn l(a: f32, b: f32, c: f32) u8 {
                 return @floatToInt(u8, @intToFloat(f32, a) + (@intToFloat(f32, b) - @intToFloat(f32, a)) * std.math.clamp(c, 0, 1));
             }
         }.l;
@@ -191,10 +224,10 @@ pub const Color = extern struct {
     pub fn fromString(str: []const u8) !Self {
         return switch (str.len) {
             6 => Self{
-                .r = try std.fmt.parseInt(u8, str[0..2], 16),
-                .g = try std.fmt.parseInt(u8, str[2..4], 16),
-                .b = try std.fmt.parseInt(u8, str[4..6], 16),
-                .a = 0xFF,
+                .r = @intToFloat(f32, try std.fmt.parseInt(u8, str[0..2], 16)) / 255.0,
+                .g = @intToFloat(f32, try std.fmt.parseInt(u8, str[2..4], 16)) / 255.0,
+                .b = @intToFloat(f32, try std.fmt.parseInt(u8, str[4..6], 16)) / 255.0,
+                .a = 1.0,
             },
             else => error.InvalidFormat,
         };
@@ -347,7 +380,6 @@ pub const Gradient = struct {
 // - lines
 
 test {
-    _ = comptime_builder;
     _ = builder;
     _ = parsing;
     _ = rendering;

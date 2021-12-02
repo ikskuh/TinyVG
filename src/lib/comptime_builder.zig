@@ -29,9 +29,20 @@ fn join(list: anytype) [JoinLength(@TypeOf(list))]u8 {
     return array;
 }
 
+fn writeU8(buf: *[1]u8, value: u8) void {
+    buf[0] = value;
+}
+
 fn writeU16(buf: *[2]u8, value: u16) void {
     buf[0] = @truncate(u8, value >> 0);
     buf[1] = @truncate(u8, value >> 8);
+}
+
+fn writeU32(buf: *[4]u8, value: u32) void {
+    buf[0] = @truncate(u8, value >> 0);
+    buf[1] = @truncate(u8, value >> 8);
+    buf[2] = @truncate(u8, value >> 16);
+    buf[3] = @truncate(u8, value >> 24);
 }
 
 pub const Gradient = struct {
@@ -62,21 +73,28 @@ pub fn create(comptime scale: tvg.Scale, comptime range: tvg.Range) type {
     const sUNIT = switch (range) {
         .reduced => 1,
         .default => 2,
+        .enhanced => 4,
     };
     const sPOINT = 2 * sUNIT;
     const sGRADIENT = 2 * sPOINT + 2;
 
     return struct {
         pub fn unit(value: f32) [sUNIT]u8 {
-            const val = @bitCast(u16, scale.map(value).raw());
+            const val = @bitCast(u32, scale.map(value).raw());
             switch (range) {
                 .reduced => {
-                    if (val >= 0x100) unreachable;
-                    return [1]u8{@truncate(u8, val)};
+                    var buf: [1]u8 = undefined;
+                    writeU8(&buf, std.math.cast(u8, val) catch unreachable);
+                    return buf;
                 },
                 .default => {
                     var buf: [2]u8 = undefined;
-                    writeU16(&buf, val);
+                    writeU16(&buf, std.math.cast(u16, val) catch unreachable);
+                    return buf;
+                },
+                .enhanced => {
+                    var buf: [4]u8 = undefined;
+                    writeU32(&buf, val);
                     return buf;
                 },
             }
@@ -98,7 +116,7 @@ pub fn create(comptime scale: tvg.Scale, comptime range: tvg.Range) type {
             return join(.{ unit(x), unit(y) });
         }
 
-        pub fn header(width: u16, height: u16) [4 + 2 * sUNIT]u8 {
+        pub fn header(width: u32, height: u32) [4 + 2 * sUNIT]u8 {
             return join(.{
                 tvg.magic_number,
                 byte(tvg.current_version),
@@ -108,10 +126,10 @@ pub fn create(comptime scale: tvg.Scale, comptime range: tvg.Range) type {
             });
         }
 
-        pub fn colorTable(comptime colors: []const tvg.Color) [2 + 4 * colors.len]u8 {
-            var buf: [2 + 4 * colors.len]u8 = undefined;
+        pub fn colorTable(comptime colors: []const tvg.Color) [1 + 4 * colors.len]u8 {
+            var buf: [1 + 4 * colors.len]u8 = undefined;
             std.mem.set(u8, &buf, 0x55);
-            writeU16(buf[0..2], @intCast(u16, colors.len));
+            buf[0] = @intCast(u7, colors.len);
             for (colors) |c, i| {
                 buf[2 + 4 * i + 0] = c.r;
                 buf[2 + 4 * i + 1] = c.g;

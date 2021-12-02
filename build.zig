@@ -54,7 +54,9 @@ pub fn build(b: *std.build.Builder) !void {
     gen_gt_step.dependOn(&generate_ground_truth.step);
 
     const files = [_][]const u8{
-        "app_menu.tvg", "shield.tvg", "shield-8.tvg", "workspace.tvg", "workspace_add.tvg", "feature-showcase.tvg", "arc-variants.tvg", "everything.tvg",
+        // "app_menu.tvg",  "workspace.tvg", "workspace_add.tvg", "feature-showcase.tvg", "arc-variants.tvg", ,
+        "shield.tvg",     "shield-8.tvg",      "shield-32.tvg",
+        "everything.tvg", "everything-32.tvg",
     };
     inline for (files) |file| {
         const tvg_conversion = render.run();

@@ -19,51 +19,73 @@ class Application
     string out_file_name = null;
     string input_file_name = null;
 
-    foreach (var arg in args)
+    var positionals = new List<string>();
+
+    for (int i = 0; i < args.Length; i++)
     {
-      if (arg.StartsWith("-out:"))
+      var arg = args[i];
+
+      if (arg == "--output")
       {
-        out_file_name = arg.Substring(5);
+        out_file_name = positionals[i + 1];
+        i += 1;
       }
-      else if (arg.StartsWith("-") && arg.Length != 1)
+      else if (arg == "--help")
+      {
+        Console.WriteLine("svg2tvg [--output <file_name>] <input_file>");
+        return 0;
+      }
+      else if (arg.StartsWith("-") && arg != "-")
       {
         Console.Error.WriteLine("Unknown command line arg: {0}", arg);
         return 1;
       }
       else
       {
-        if (input_file_name != null)
-        {
-          Console.Error.WriteLine("svg2tvg requires exactly one positional argument");
-          return 1;
-        }
-        input_file_name = arg;
+        positionals.Add(arg);
       }
     }
 
-    if (input_file_name == null)
+    switch (positionals.Count)
     {
-      Console.Error.WriteLine("svg2tvg requires exactly one positional argument");
-      return 1;
+      case 0:
+        Console.Error.WriteLine("svg2tvg [--output <file_name>] <input_file>");
+        return 1;
+      case 1:
+        break;
+      default:
+        Console.Error.WriteLine("svg2tvg requires exactly one positional argument");
+        return 1;
+    }
+    input_file_name = positionals[0];
+
+    if (out_file_name != "-")
+    {
+      out_file_name = out_file_name ?? Path.ChangeExtension(input_file_name, "tvg");
     }
 
     SvgDocument doc;
     if (input_file_name == "-")
     {
       doc = SvgConverter.ParseDocument(Console.In);
-      out_file_name = "-";
     }
     else
     {
-      using (var stream = File.OpenRead(input_file_name))
+      try
       {
-        doc = SvgConverter.ParseDocument(stream);
+        using (var stream = File.OpenRead(input_file_name))
+        {
+          doc = SvgConverter.ParseDocument(stream);
+        }
       }
-      out_file_name = out_file_name ?? Path.ChangeExtension(input_file_name, "tvg");
+      catch (System.IO.FileNotFoundException)
+      {
+        Console.Error.WriteLine("Could not open '{0}'", input_file_name);
+        return 1;
+      }
     }
 
     var binary_tvg = SvgConverter.ConvertToTvg(doc);
-
     if (out_file_name == "-")
     {
       using (var stream = Console.OpenStandardOutput())
@@ -222,7 +244,7 @@ class DevRunner
               Process.Start("timg", file).WaitForExit();
               Console.WriteLine(ex);
               return 1;
-              crash_count += 1;
+              // crash_count += 1;
             }
           }
         }

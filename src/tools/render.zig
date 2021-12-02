@@ -86,8 +86,11 @@ pub fn main() !u8 {
         defer if (!read_stdin)
             dest_file.close();
 
+        const width = try std.math.cast(u16, geometry.width);
+        const height = try std.math.cast(u16, geometry.height);
+
         var writer = dest_file.writer();
-        try dumpTga(writer, geometry.width, geometry.height, image_buffer);
+        try dumpTga(writer, width, height, image_buffer);
     }
 
     return 0;
@@ -213,17 +216,17 @@ const CliOptions = struct {
 const Geometry = struct {
     const Self = @This();
 
-    width: u16,
-    height: u16,
+    width: u32,
+    height: u32,
 
     pub fn parse(str: []const u8) !Self {
         if (std.mem.indexOfScalar(u8, str, 'x')) |index| {
             return Geometry{
-                .width = try std.fmt.parseInt(u16, str[0..index], 10),
-                .height = try std.fmt.parseInt(u16, str[index + 1 ..], 10),
+                .width = try std.fmt.parseInt(u32, str[0..index], 10),
+                .height = try std.fmt.parseInt(u32, str[index + 1 ..], 10),
             };
         } else {
-            const v = try std.fmt.parseInt(u16, str, 10);
+            const v = try std.fmt.parseInt(u32, str, 10);
             return Geometry{
                 .width = v,
                 .height = v,

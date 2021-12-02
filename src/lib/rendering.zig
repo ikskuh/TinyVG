@@ -607,7 +607,7 @@ const Painter = struct {
                     .even_odd => (inside_count % 2) == 1,
                 };
                 if (set) {
-                    framebuffer.setPixel(x, y, sampleStlye(color_table, style, x, y).toArray());
+                    framebuffer.setPixel(x, y, sampleStlye(color_table, style, x, y).toRgba8());
                 }
             }
         }
@@ -621,7 +621,7 @@ const Painter = struct {
         while (py < ylimit) : (py += 1) {
             var px = @floatToInt(i16, std.math.floor(self.scale_x * x));
             while (px < xlimit) : (px += 1) {
-                framebuffer.setPixel(px, py, sampleStlye(color_table, style, px, py).toArray());
+                framebuffer.setPixel(px, py, sampleStlye(color_table, style, px, py).toRgba8());
             }
         }
     }
@@ -676,25 +676,25 @@ const Painter = struct {
                     delta.y /= self.scale_y;
                     const dist = length2(delta);
                     if (dist <= r2)
-                        framebuffer.setPixel(x, y, sampleStlye(color_table, style, x, y).toArray());
+                        framebuffer.setPixel(x, y, sampleStlye(color_table, style, x, y).toRgba8());
                 }
             }
         } else {
             const pt = pointToInts(location);
-            framebuffer.setPixel(pt.x, pt.y, sampleStlye(color_table, style, pt.x, pt.y).toArray());
+            framebuffer.setPixel(pt.x, pt.y, sampleStlye(color_table, style, pt.x, pt.y).toRgba8());
         }
     }
 };
 
 const sRGB_gamma = 2.2;
 
-fn gamma2linear(v: f32) u8 {
+fn gamma2linear(v: f32) f32 {
     std.debug.assert(v >= 0 and v <= 1);
-    return @floatToInt(u8, 255.0 * std.math.pow(f32, v, 1.0 / sRGB_gamma));
+    return 255.0 * std.math.pow(f32, v, 1.0 / sRGB_gamma);
 }
 
-fn linear2gamma(v: u8) f32 {
-    return std.math.pow(f32, @intToFloat(f32, v) / 255.0, sRGB_gamma);
+fn linear2gamma(v: f32) f32 {
+    return std.math.pow(f32, v / 255.0, sRGB_gamma);
 }
 
 fn lerp_sRGB(c0: Color, c1: Color, f_unchecked: f32) Color {
@@ -703,7 +703,7 @@ fn lerp_sRGB(c0: Color, c1: Color, f_unchecked: f32) Color {
         .r = gamma2linear(lerp(linear2gamma(c0.r), linear2gamma(c1.r), f)),
         .g = gamma2linear(lerp(linear2gamma(c0.g), linear2gamma(c1.g), f)),
         .b = gamma2linear(lerp(linear2gamma(c0.b), linear2gamma(c1.b), f)),
-        .a = @floatToInt(u8, lerp(@intToFloat(f32, c0.a), @intToFloat(f32, c0.a), f)),
+        .a = lerp(c0.a, c0.a, f),
     };
 }
 

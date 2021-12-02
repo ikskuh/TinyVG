@@ -15,6 +15,7 @@ Translated:
 SVG is a horribly complex format, allowing the embedding of JavaScript and other features no sane person ever wants to have in their images. Other relevant vector graphics formats do not exit or don't have a documentation or specification (looking at you, [HVIF](https://en.wikipedia.org/wiki/Haiku_Vector_Icon_Format)!).
 
 This project tries to create and specify a new vector format suitable for:
+
 - Small and medium icons (think toolbar, buttons, …)
 - Low complexity graphics (think graphs, diagrams, …)
 - Embedded platforms (low resource requirements)
@@ -22,23 +23,24 @@ This project tries to create and specify a new vector format suitable for:
 ## Project Goals
 
 Create a vector graphics format that fulfils the following requirements:
-- Binary encoded
-- Small file size (must be smaller than equivalent bitmaps or SVG graphics)
-- Can be rendered without floating point support (suitable for embedded)
-- Can be rendered efficiently with modern GPUs (suitable for PC, games)
+
+- Binary encoded ✅
+- Small file size (must be smaller than equivalent bitmaps or SVG graphics) ✅
+- Can be rendered without floating point support (suitable for embedded) ✅
+- Can be rendered efficiently with modern GPUs (suitable for PC, games) ✅
 - Supports the following drawing primitives:
-  - points / circles
-  - lines
-  - triangles / polygons
+  - points / circles ✅
+  - lines ✅
+  - triangles / polygons ✅
 - Support drawing styles
-  - filled
-  - outline
-  - filled with outline
+  - filled ✅
+  - outline ✅
+  - filled with outline ✅
 - Support
-  - flat colors
+  - flat colors ✅
   - bitmap textures
-  - linear gradients
-  - line widths
+  - linear gradients ✅
+  - line widths ✅
 - Can use hinting to allow really small rendering (16²)
 
 ## Use Cases
@@ -53,7 +55,9 @@ The use cases here are listed to be considered while working on the specificatio
 
 ## Project Status
 
-This project is currently work-in-progress and there's neither a specification or a reference implementation. Consider this a mind-experiment for now
+This project is currently work-in-progress and there's only a reference implementation.
+
+The specification is work-in-progress and incomplete right now, and the format itself needs some clean-ups and streamlining order of things in the format itself. After that, the specification will be created.
 
 See the following documents:
 
@@ -62,7 +66,26 @@ See the following documents:
 
 See also this image to have a preview of what is already implemented:
 
-![Preview](examples/feature-showcase.png)
+![Preview](examples/everything.png)
+
+### Milestones
+
+- [x] Create prototype implementation
+- [ ] Finalize prototype
+  - [x] Add smaller/bigger colors (16 bit, 30 bit)
+  - [x] Add color space information (the color space is defined as sRGB)
+  - [x] Add extended coordinate space (32 bit coordinates)
+  - [ ] Expand opcode space for mirrored/repeated splines
+  - [ ] Encode primary style in command, reduces command to 63 variants, allows bigger encoding
+- [ ] Add auxiliary tools
+  - [ ] C Library
+  - [ ] Wasm Polyfill
+  - [ ] Inkscape Plugin
+- [ ] Benchmark Suite
+  - [ ] File Size (SVG vs. TVG)
+- [ ] Write specification
+- [ ] Review specification
+- [ ] Lock the specification into _Version 1_.
 
 ## Considerations
 
@@ -81,7 +104,8 @@ See also this image to have a preview of what is already implemented:
   - Use UTF-8 encoding
 
 ## Resources
+
 - [CSS Gradients](https://css-tricks.com/css3-gradients/)
   - Radial and conic gradients can be used for nice 3D shading
 - Previous Work: [TurtleFont](https://github.com/MasterQ32/turtlefont) is a pure line-drawing vector format
-- [SVG Path Editor](https://yqnn.github.io/svg-path-editor/), a tool to easily design or inspect SVG paths 
+- [SVG Path Editor](https://yqnn.github.io/svg-path-editor/), a tool to easily design or inspect SVG paths
