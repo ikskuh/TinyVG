@@ -26,9 +26,6 @@ pub const parsing = @import("parsing.zig");
 /// A TVG software renderer based on the parsing module. Takes a parser stream as input.
 pub const rendering = @import("rendering.zig");
 
-/// Contains common TVG constants
-pub const format = @import("format.zig");
-
 /// Returns a stream of TVG commands as well as the document header.
 /// - `allocator` is used to allocate temporary data like the current set of vertices for *FillPolygon*. This can be a fixed-buffer allocator.
 /// - `reader` is a generic stream that provides the TVG byte data.
@@ -234,6 +231,25 @@ pub const Color = extern struct {
     }
 };
 
+pub const Command = enum(u6) {
+    end_of_document = 0,
+
+    fill_polygon = 1,
+    fill_rectangles = 2,
+    fill_path = 3,
+
+    draw_lines = 4,
+    draw_line_loop = 5,
+    draw_line_strip = 6,
+    draw_line_path = 7,
+
+    outline_fill_polygon = 8,
+    outline_fill_rectangles = 9,
+    outline_fill_path = 10,
+
+    _,
+};
+
 /// Constructs a new point
 pub fn point(x: f32, y: f32) Point {
     return .{ .x = x, .y = y };
@@ -383,5 +399,4 @@ test {
     _ = builder;
     _ = parsing;
     _ = rendering;
-    _ = format;
 }

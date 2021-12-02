@@ -83,16 +83,71 @@ pub fn build(b: *std.build.Builder) !void {
         gen_gt_step.dependOn(&tvgt_conversion.step);
         gen_gt_step.dependOn(&png_conversion.step);
     }
+    {
+        const tvg_tests = b.addTest("src/lib/tvg.zig");
+        tvg_tests.addPackage(std.build.Pkg{
+            .name = "ground-truth",
+            .path = .{ .path = "src/data/ground-truth.zig" },
+            .dependencies = &[_]std.build.Pkg{
+                pkgs.tvg,
+            },
+        });
 
-    const tvg_tests = b.addTest("src/lib/tvg.zig");
-    tvg_tests.addPackage(std.build.Pkg{
-        .name = "ground-truth",
-        .path = .{ .path = "src/data/ground-truth.zig" },
-        .dependencies = &[_]std.build.Pkg{
-            pkgs.tvg,
-        },
-    });
+        const test_step = b.step("test", "Runs all tests");
+        test_step.dependOn(&tvg_tests.step);
+    }
+    {
+        const merge_covs = b.addSystemCommand(&[_][]const u8{
+            "kcov",
+            "--merge",
+            b.pathFromRoot("kcov-output"),
+            b.pathFromRoot("kcov-output"),
+        });
+        inline for (files) |file| {
+            merge_covs.addArg(b.pathJoin(&[_][]const u8{ b.pathFromRoot("kcov-output"), file }));
+        }
 
-    const test_step = b.step("test", "Runs all tests");
-    test_step.dependOn(&tvg_tests.step);
+        const tvg_coverage = b.addTest("src/lib/tvg.zig");
+        tvg_coverage.addPackage(std.build.Pkg{
+            .name = "ground-truth",
+            .path = .{ .path = "src/data/ground-truth.zig" },
+            .dependencies = &[_]std.build.Pkg{
+                pkgs.tvg,
+            },
+        });
+        tvg_coverage.setExecCmd(&[_]?[]const u8{
+            "kcov",
+            "--exclude-path=~/software/zig-current",
+            b.pathFromRoot("kcov-output"), // output dir for kcov
+            null, // to get zig to use the --test-cmd-bin flag
+        });
+
+        const generator_coverage = b.addSystemCommand(&[_][]const u8{
+            "kcov",
+            "--exclude-path=~/software/zig-current",
+            b.pathFromRoot("kcov-output"), // output dir for kcov
+        });
+        generator_coverage.addArtifactArg(ground_truth_generator);
+
+        inline for (files) |file| {
+            const tvg_conversion = b.addSystemCommand(&[_][]const u8{
+                "kcov",
+                "--exclude-path=~/software/zig-current",
+                b.pathJoin(&[_][]const u8{ b.pathFromRoot("kcov-output"), file }), // output dir for kcov
+            });
+            tvg_conversion.addArtifactArg(render);
+            tvg_conversion.addArg(file);
+            tvg_conversion.addArg("--output");
+            tvg_conversion.addArg(file[0 .. file.len - 3] ++ "tga");
+            tvg_conversion.cwd = "examples";
+
+            merge_covs.step.dependOn(&tvg_conversion.step);
+        }
+
+        merge_covs.step.dependOn(&tvg_coverage.step);
+        merge_covs.step.dependOn(&generator_coverage.step);
+
+        const coverage_step = b.step("coverage", "Generates ground truth and runs all tests with kcov");
+        coverage_step.dependOn(&merge_covs.step);
+    }
 }

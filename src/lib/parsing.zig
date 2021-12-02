@@ -233,7 +233,7 @@ pub fn Parser(comptime Reader: type) type {
             if (self.end_of_document)
                 return null;
             const command_byte = try self.reader.readByte();
-            return switch (@intToEnum(tvg.format.Command, command_byte)) {
+            return switch (@intToEnum(tvg.Command, command_byte)) {
                 .end_of_document => {
                     self.end_of_document = true;
                     return null;
@@ -710,7 +710,7 @@ test "mapZeroToMax" {
 // }
 
 test "coverage test" {
-    const source = &@import("ground-truth").feature_showcase;
+    const source = @import("ground-truth").everything_16;
 
     var stream = std.io.fixedBufferStream(@as([]const u8, source));
 
