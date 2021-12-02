@@ -45,6 +45,8 @@ If a field does not align to a byte boundary, the next field will be offset into
 
 ### Header
 
+Each TVG file starts with a header defining some global values for the file like scale and image size. The header is always at offset 0 in a file.
+
 | Field            | Type                 | Description                                                                                                                                                                                   |
 | ---------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | magic            | `[2]u8`              | Must be `{ 0x72, 0x56 }`                                                                                                                                                                      |
