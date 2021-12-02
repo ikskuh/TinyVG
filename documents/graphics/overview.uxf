@@ -1,98 +1,108 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <diagram program="umlet" version="14.3.0">
-  <zoom_level>19</zoom_level>
+  <zoom_level>20</zoom_level>
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>532</x>
-      <y>380</y>
-      <w>380</w>
-      <h>76</h>
+      <x>500</x>
+      <y>440</y>
+      <w>400</w>
+      <h>80</h>
     </coordinates>
     <panel_attributes>valign=center
+lw=1
 Header</panel_attributes>
     <additional_attributes/>
   </element>
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>532</x>
-      <y>456</y>
-      <w>380</w>
-      <h>114</h>
+      <x>500</x>
+      <y>520</y>
+      <w>400</w>
+      <h>120</h>
     </coordinates>
     <panel_attributes>valign=center
+lw=1
 Color Table</panel_attributes>
     <additional_attributes/>
   </element>
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>532</x>
-      <y>570</y>
-      <w>380</w>
-      <h>38</h>
+      <x>500</x>
+      <y>640</y>
+      <w>400</w>
+      <h>40</h>
     </coordinates>
     <panel_attributes>valign=center
+lw=1
 Command</panel_attributes>
     <additional_attributes/>
   </element>
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>532</x>
-      <y>608</y>
-      <w>380</w>
-      <h>76</h>
+      <x>500</x>
+      <y>680</y>
+      <w>400</w>
+      <h>80</h>
     </coordinates>
     <panel_attributes>valign=center
+lw=1
 Command</panel_attributes>
     <additional_attributes/>
   </element>
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>532</x>
-      <y>798</y>
-      <w>380</w>
-      <h>57</h>
+      <x>500</x>
+      <y>880</y>
+      <w>400</w>
+      <h>60</h>
     </coordinates>
     <panel_attributes>valign=center
+lw=1
 End Of File</panel_attributes>
     <additional_attributes/>
   </element>
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>532</x>
-      <y>741</y>
-      <w>380</w>
-      <h>57</h>
+      <x>500</x>
+      <y>820</y>
+      <w>400</w>
+      <h>60</h>
     </coordinates>
     <panel_attributes>valign=center
+lw=1
 Command</panel_attributes>
     <additional_attributes/>
   </element>
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>532</x>
-      <y>380</y>
-      <w>380</w>
-      <h>475</h>
+      <x>500</x>
+      <y>440</y>
+      <w>400</w>
+      <h>500</h>
     </coordinates>
-    <panel_attributes>lw=6</panel_attributes>
+    <panel_attributes>lw=6
+bg=white
+transparency=0
+layer=-1</panel_attributes>
     <additional_attributes/>
   </element>
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>532</x>
-      <y>684</y>
-      <w>380</w>
-      <h>57</h>
+      <x>500</x>
+      <y>760</y>
+      <w>400</w>
+      <h>60</h>
     </coordinates>
     <panel_attributes>valign=center
+lw=1
 Command</panel_attributes>
     <additional_attributes/>
   </element>
