@@ -1,6 +1,6 @@
 # `.tvg`: Tiny Vector Graphics
 
-A new format for simple vector graphics.
+![Project Logo](design/logo.svg) A new format for simple vector graphics.
 
 ## Why?
 
@@ -76,7 +76,7 @@ See also this image to have a preview of what is already implemented:
   - [x] Add color space information (the color space is defined as sRGB)
   - [x] Add extended coordinate space (32 bit coordinates)
   - [ ] Expand opcode space for mirrored/repeated splines
-  - [ ] Encode primary style in command, reduces command to 63 variants, allows bigger encoding
+  - [x] Encode primary style in command, reduces command to 63 variants, allows bigger encoding
 - [ ] Add auxiliary tools
   - [ ] C Library
   - [ ] Wasm Polyfill

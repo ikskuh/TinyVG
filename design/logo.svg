@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="200"
+   height="200"
+   viewBox="0 0 200 200"
+   version="1.1"
+   id="svg5"
+   inkscape:version="1.1 (c68e22c387, 2021-05-23)"
+   sodipodi:docname="logo.svg"
+   inkscape:export-filename="/home/felix/projects/libraries/tvg/design/logo.png"
+   inkscape:export-xdpi="25.6"
+   inkscape:export-ydpi="25.6"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview7"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:document-units="px"
+     showgrid="false"
+     units="px"
+     width="768px"
+     fit-margin-top="0"
+     fit-margin-left="0"
+     fit-margin-right="0"
+     fit-margin-bottom="0"
+     showguides="false"
+     inkscape:guide-bbox="true"
+     inkscape:zoom="2.5160938"
+     inkscape:cx="107.90536"
+     inkscape:cy="123.80301"
+     inkscape:window-width="1920"
+     inkscape:window-height="1058"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1"
+     scale-x="0.26458">
+    <sodipodi:guide
+       position="24.858937,195.48397"
+       orientation="1,0"
+       id="guide13003" />
+    <sodipodi:guide
+       position="174.75094,193.51495"
+       orientation="1,0"
+       id="guide13005" />
+    <sodipodi:guide
+       position="192.71829,185.88498"
+       orientation="0,-1"
+       id="guide13007" />
+    <sodipodi:guide
+       position="66.208455,11.134031"
+       orientation="0,-1"
+       id="guide13009" />
+    <sodipodi:guide
+       position="49.964001,185.88498"
+       orientation="1,0"
+       id="guide13011" />
+    <sodipodi:guide
+       position="149.892,185.88498"
+       orientation="1,0"
+       id="guide13013" />
+    <sodipodi:guide
+       position="174.75094,161.02604"
+       orientation="0,-1"
+       id="guide13015" />
+    <sodipodi:guide
+       position="180.16576,35.992969"
+       orientation="0,-1"
+       id="guide13017" />
+  </sodipodi:namedview>
+  <defs
+     id="defs2" />
+  <g
+     inkscape:label="Ebene 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-0.11715782,-99.103813)">
+    <path
+       style="fill:#2b0245;fill-opacity:1;stroke:none;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="m 50.081157,111.65634 h 99.927993 l 24.85894,24.85894 v 125.03307 l -24.85894,24.85893 H 50.081157 L 24.976094,261.54835 V 136.51528 Z"
+       id="path12687"
+       sodipodi:nodetypes="ccccccccc" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:34.3076px;line-height:1.25;font-family:Cantarell;-inkscape-font-specification:'Cantarell, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#feb93f;fill-opacity:1;stroke:none;stroke-width:0.857694"
+       x="71.251907"
+       y="142.84421"
+       id="text1932"
+       transform="scale(0.95786891,1.0439842)"><tspan
+         sodipodi:role="line"
+         id="tspan1930"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:34.3076px;font-family:Cantarell;-inkscape-font-specification:'Cantarell, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#feb93f;fill-opacity:1;stroke-width:0.857694"
+         x="71.251907"
+         y="142.84421">TVG</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:12.7604px;line-height:1.25;font-family:Cantarell;-inkscape-font-specification:'Cantarell, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#feb93f;fill-opacity:1;stroke:none;stroke-width:0.319009"
+       x="44.639378"
+       y="251.69521"
+       id="text3058"
+       transform="scale(0.95034514,1.0522493)"><tspan
+         sodipodi:role="line"
+         id="tspan3056"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:12.7604px;font-family:Cantarell;-inkscape-font-specification:'Cantarell, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#feb93f;fill-opacity:1;stroke-width:0.319009"
+         x="44.639378"
+         y="251.69521">Tiny Vector Graphics</tspan></text>
+    <path
+       id="path5903"
+       style="fill:#feb93f;fill-opacity:1;stroke:none;stroke-width:1.765;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="m 88.555428,149.0049 0.09405,20.72896 -14.034286,-13.26172 11.185364,51.20152 13.092223,15.10503 -32.492071,16.53594 34.610812,2.66908 4.66896,5.65651 3.68712,-10.7642 17.51831,-11.75691 -2.3394,-21.31549 8.25376,0.0517 -11.96723,-8.39845 -10.18232,6.90242 -6.27713,-17.7245 z m -11.184845,12.30519 25.142647,23.3009 -15.607312,21.17494 z m 43.345677,36.17608 7.61917,4.92735 -15.23886,0.12609 z m -8.85786,8.31991 12.42663,9.82421 0.93793,8.10079 -7.68946,-1.88774 z m 1.77767,17.62993 -28.653033,15.6254 -12.380123,-0.93327 27.803986,-14.4291 z" />
+  </g>
+</svg>
