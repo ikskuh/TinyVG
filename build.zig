@@ -55,7 +55,7 @@ pub fn build(b: *std.build.Builder) !void {
 
     const files = [_][]const u8{
         // "app_menu.tvg",  "workspace.tvg", "workspace_add.tvg", "feature-showcase.tvg", "arc-variants.tvg", ,
-        "shield.tvg",     "shield-8.tvg",      "shield-32.tvg",
+        "shield-16.tvg",  "shield-8.tvg",      "shield-32.tvg",
         "everything.tvg", "everything-32.tvg",
     };
     inline for (files) |file| {

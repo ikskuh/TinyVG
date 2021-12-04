@@ -14,7 +14,7 @@ pub fn main() !void {
     // try std.fs.cwd().writeFile("examples/workspace.tvg", &workspace);
     // try std.fs.cwd().writeFile("examples/workspace_add.tvg", &workspace_add);
     {
-        var file = try std.fs.cwd().createFile("examples/shield.tvg", .{});
+        var file = try std.fs.cwd().createFile("examples/shield-8.tvg", .{});
         defer file.close();
 
         var writer = tvg.builder.builder(file.writer());
@@ -23,7 +23,7 @@ pub fn main() !void {
         try renderShield(&writer);
     }
     {
-        var file = try std.fs.cwd().createFile("examples/shield-8.tvg", .{});
+        var file = try std.fs.cwd().createFile("examples/shield-16.tvg", .{});
         defer file.close();
 
         var writer = tvg.builder.builder(file.writer());
