@@ -1,9 +1,29 @@
+//!
+//! This module implements means to write/create TVG files.
+//!
+
 const std = @import("std");
 const tvg = @import("tvg.zig");
 
 pub fn builder(writer: anytype) Builder(@TypeOf(writer)) {
     return .{ .writer = writer };
 }
+
+// normal types:
+//   style.type
+//   uint(length - 1)
+//   style
+//   (line_width)
+//
+// outline types:
+//   fill_style.type
+//   line_style.type
+//
+//   uint(length - 1)
+//
+//   fill_style
+//   line_style
+//   line_width
 
 pub fn Builder(comptime Writer: type) type {
     return struct {
@@ -108,37 +128,21 @@ pub fn Builder(comptime Writer: type) type {
         }
 
         pub fn writeFillPolygon(self: *Self, style: tvg.Style, points: []const tvg.Point) Error!void {
-            const count = try mapToU6(points.len);
-
-            try self.writeCommand(.fill_polygon);
-            try self.writeStyleTypeAndCount(style, count);
-            try self.writeStyle(style);
-
+            try self.writeFillHeader(.fill_polygon, style, points.len);
             for (points) |pt| {
                 try self.writePoint(pt);
             }
         }
 
         pub fn writeFillRectangles(self: *Self, style: tvg.Style, rectangles: []const tvg.Rectangle) Error!void {
-            const rectangle_count = try mapToU6(rectangles.len);
-
-            try self.writeCommand(.fill_rectangles);
-            try self.writeStyleTypeAndCount(style, rectangle_count);
-            try self.writeStyle(style);
-
+            try self.writeFillHeader(.fill_rectangles, style, rectangles.len);
             for (rectangles) |rect| {
                 try self.writeRectangle(rect);
             }
         }
 
         pub fn writeDrawLines(self: *Self, style: tvg.Style, line_width: f32, lines: []const tvg.Line) Error!void {
-            const count = try mapToU6(lines.len);
-
-            try self.writeCommand(.draw_lines);
-            try self.writeStyleTypeAndCount(style, count);
-            try self.writeStyle(style);
-            try self.writeUnit(line_width);
-
+            try self.writeLineHeader(.draw_lines, style, line_width, lines.len);
             for (lines) |line| {
                 try self.writePoint(line.start);
                 try self.writePoint(line.end);
@@ -146,96 +150,51 @@ pub fn Builder(comptime Writer: type) type {
         }
 
         pub fn writeDrawLineLoop(self: *Self, style: tvg.Style, line_width: f32, points: []const tvg.Point) Error!void {
-            const count = try mapToU6(points.len - 1);
-
-            try self.writeCommand(.draw_line_loop);
-            try self.writeStyleTypeAndCount(style, count);
-            try self.writeStyle(style);
-            try self.writeUnit(line_width);
-
+            try self.writeLineHeader(.draw_line_loop, style, line_width, points.len);
             for (points) |pt| {
                 try self.writePoint(pt);
             }
         }
 
         pub fn writeDrawLineStrip(self: *Self, style: tvg.Style, line_width: f32, points: []const tvg.Point) Error!void {
-            const count = try mapToU6(points.len - 1);
-
-            try self.writeCommand(.draw_line_strip);
-            try self.writeStyleTypeAndCount(style, count);
-            try self.writeStyle(style);
-            try self.writeUnit(line_width);
-
+            try self.writeLineHeader(.draw_line_strip, style, line_width, points.len);
             for (points) |pt| {
                 try self.writePoint(pt);
             }
         }
 
         pub fn writeOutlineFillPolygon(self: *Self, fill_style: tvg.Style, line_style: tvg.Style, line_width: f32, points: []const tvg.Point) Error!void {
-            const count = try mapToU6(points.len);
-
-            try self.writeCommand(.outline_fill_polygon);
-            try self.writeStyleTypeAndCount(fill_style, count);
-            try self.writer.writeByte(@enumToInt(std.meta.activeTag(line_style)));
-            try self.writeStyle(line_style);
-            try self.writeStyle(fill_style);
-            try self.writeUnit(line_width);
-
+            try self.writeOutlineFillHeader(.outline_fill_polygon, fill_style, line_style, line_width, points.len);
             for (points) |pt| {
                 try self.writePoint(pt);
             }
         }
 
         pub fn writeOutlineFillRectangles(self: *Self, fill_style: tvg.Style, line_style: tvg.Style, line_width: f32, rectangles: []const tvg.Rectangle) Error!void {
-            const rectangle_count = try mapToU6(rectangles.len);
-
-            try self.writeCommand(.outline_fill_rectangles);
-            try self.writeStyleTypeAndCount(fill_style, rectangle_count);
-
-            try self.writer.writeByte(@enumToInt(std.meta.activeTag(line_style)));
-            try self.writeStyle(line_style);
-            try self.writeStyle(fill_style);
-            try self.writeUnit(line_width);
-
+            try self.writeOutlineFillHeader(.outline_fill_rectangles, fill_style, line_style, line_width, rectangles.len);
             for (rectangles) |rect| {
                 try self.writeRectangle(rect);
             }
         }
 
         pub fn writeFillPath(self: *Self, style: tvg.Style, path: []const tvg.Path.Segment) Error!void {
-            const segment_count = try validatePath(path);
+            try validatePath(path);
 
-            try self.writeCommand(.fill_path);
-            try self.writeStyleTypeAndCount(style, segment_count);
-            try self.writeStyle(style);
-
+            try self.writeFillHeader(.fill_path, style, path.len);
             try self.writePath(path);
         }
 
         pub fn writeDrawPath(self: *Self, style: tvg.Style, line_width: f32, path: []const tvg.Path.Segment) Error!void {
-            const segment_count = try validatePath(path);
+            try validatePath(path);
 
-            try self.writeCommand(.draw_line_path);
-            try self.writeStyleTypeAndCount(style, segment_count);
-            try self.writeStyle(style);
-
-            try self.writeUnit(line_width);
-
+            try self.writeLineHeader(.draw_line_path, style, line_width, path.len);
             try self.writePath(path);
         }
 
         pub fn writeOutlineFillPath(self: *Self, fill_style: tvg.Style, line_style: tvg.Style, line_width: f32, path: []const tvg.Path.Segment) Error!void {
-            const segment_count = try validatePath(path);
+            try validatePath(path);
 
-            try self.writeCommand(.outline_fill_path);
-            try self.writeStyleTypeAndCount(fill_style, segment_count);
-
-            try self.writer.writeByte(@enumToInt(std.meta.activeTag(line_style)));
-
-            try self.writeStyle(line_style);
-            try self.writeStyle(fill_style);
-            try self.writeUnit(line_width);
-
+            try self.writeOutlineFillHeader(.outline_fill_path, fill_style, line_style, line_width, path.len);
             try self.writePath(path);
         }
 
@@ -243,25 +202,64 @@ pub fn Builder(comptime Writer: type) type {
             errdefer self.state = .faulted;
             std.debug.assert(self.state == .body);
 
-            try self.writer.writeByte(@enumToInt(tvg.Command.end_of_document));
+            try self.writeCommandAndStyleType(.end_of_document, .flat);
 
             self.state = .end_of_file;
         }
 
-        fn validatePath(segments: []const tvg.Path.Segment) Error!StyleCount {
-            const segment_count = try mapToU6(segments.len);
-            for (segments) |segment| {
-                _ = std.math.cast(u32, segment.commands.len) catch return error.OutOfRange;
-            }
-            return segment_count;
+        /// Writes the preamble for a `draw_*` command
+        fn writeFillHeader(self: *Self, command: tvg.Command, style: tvg.Style, count: usize) Error!void {
+            const actual_len = try validateLength(count);
+
+            try self.writeCommandAndStyleType(command, style);
+            try self.writeUint(actual_len);
+            try self.writeStyle(style);
         }
 
-        fn writeCommand(self: *Self, cmd: tvg.Command) Error!void {
-            try self.writer.writeByte(@enumToInt(cmd));
+        /// Writes the preamble for a `draw_*` command
+        fn writeLineHeader(self: *Self, command: tvg.Command, style: tvg.Style, line_width: f32, count: usize) Error!void {
+            const actual_len = try validateLength(count);
+
+            try self.writeCommandAndStyleType(command, style);
+            try self.writeUint(actual_len);
+            try self.writeStyle(style);
+            try self.writeUnit(line_width);
+        }
+
+        /// Writes the preamble for a `outline_fill_*` command
+        fn writeOutlineFillHeader(self: *Self, command: tvg.Command, fill_style: tvg.Style, line_style: tvg.Style, line_width: f32, length: usize) Error!void {
+            const total_count = try validateLength(length);
+            const reduced_count = if (total_count < std.math.maxInt(u6))
+                @intToEnum(ReducedCount, @truncate(u6, total_count))
+            else
+                return error.OutOfRange;
+
+            try self.writeCommandAndStyleType(command, fill_style);
+            try self.writeStyleTypeAndCount(line_style, reduced_count);
+            try self.writeStyle(fill_style);
+            try self.writeStyle(line_style);
+            try self.writeUnit(line_width);
+        }
+
+        fn validateLength(count: usize) Error!u32 {
+            if (count == 0)
+                return error.OutOfRange;
+            return std.math.cast(u32, count - 1) catch return error.OutOfRange;
+        }
+
+        fn validatePath(segments: []const tvg.Path.Segment) Error!void {
+            _ = try validateLength(segments.len);
+            for (segments) |segment| {
+                _ = try validateLength(segment.commands.len);
+            }
+        }
+
+        fn writeCommandAndStyleType(self: *Self, cmd: tvg.Command, style_type: tvg.StyleType) Error!void {
+            try self.writer.writeByte((@as(u8, @enumToInt(style_type)) << 6) | @enumToInt(cmd));
         }
 
         /// Encodes a 6 bit count as well as a 2 bit style type.
-        fn writeStyleTypeAndCount(self: *Self, style: tvg.StyleType, mapped_count: StyleCount) !void {
+        fn writeStyleTypeAndCount(self: *Self, style: tvg.StyleType, mapped_count: ReducedCount) !void {
             const data = (@as(u8, @enumToInt(style)) << 6) | @enumToInt(mapped_count);
             try self.writer.writeByte(data);
         }
@@ -280,10 +278,9 @@ pub fn Builder(comptime Writer: type) type {
         }
 
         fn writePath(self: *Self, path: []const tvg.Path.Segment) !void {
-            std.debug.assert(path.len > 0);
-            std.debug.assert(path.len <= 64);
             for (path) |item| {
-                try self.writeUint(@intCast(u32, item.commands.len));
+                std.debug.assert(item.commands.len > 0);
+                try self.writeUint(@intCast(u32, item.commands.len - 1));
             }
             for (path) |item| {
                 try self.writePoint(item.start);
@@ -394,21 +391,16 @@ pub fn Builder(comptime Writer: type) type {
     };
 }
 
-fn mapSizeToType(comptime Dest: type, value: u32) error{OutOfRange}!Dest {
-    if (value == 0 or value > std.math.maxInt(Dest) + 1) return error.OutOfRange;
+fn mapSizeToType(comptime Dest: type, value: usize) error{OutOfRange}!Dest {
+    if (value == 0 or value > std.math.maxInt(Dest) + 1) {
+        return error.OutOfRange;
+    }
     if (value == std.math.maxInt(Dest))
         return 0;
     return @intCast(Dest, value);
 }
 
-fn mapToU6(value: usize) error{OutOfRange}!StyleCount {
-    if (value == 0 or value > 0x20) return error.OutOfRange;
-    if (value == 0x40)
-        return @intToEnum(StyleCount, 0);
-    return @intToEnum(StyleCount, @intCast(u6, value));
-}
-
-const StyleCount = enum(u6) {
+const ReducedCount = enum(u6) {
     // 0 = 64, everything else is equivalent
     _,
 };

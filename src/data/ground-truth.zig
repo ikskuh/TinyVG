@@ -1,13 +1,13 @@
 const std = @import("std");
 const tvg = @import("tvg");
 
-pub const everything_16 = blk: {
-    @setEvalBranchQuota(100_000);
-    comptime var buf: [2048]u8 = undefined;
-    var stream = std.io.fixedBufferStream(&buf);
-    writeEverything(stream.writer(), .default) catch unreachable;
-    break :blk stream.getWritten();
-};
+// pub const everything_16 = blk: {
+//     @setEvalBranchQuota(100_000);
+//     comptime var buf: [2048]u8 = undefined;
+//     var stream = std.io.fixedBufferStream(&buf);
+//     writeEverything(stream.writer(), .default) catch unreachable;
+//     break :blk stream.getWritten();
+// };
 
 pub fn main() !void {
     // try std.fs.cwd().writeFile("examples/app_menu.tvg", &app_menu);

@@ -1,3 +1,7 @@
+//!
+//! This module implements means to render the output of the parsing module.
+//!
+
 const std = @import("std");
 const tvg = @import("tvg.zig");
 const parsing = tvg.parsing;

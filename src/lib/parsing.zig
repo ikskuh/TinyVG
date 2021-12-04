@@ -1,3 +1,7 @@
+//!
+//! This module implements means to read/decode TVG files.
+//!
+
 const std = @import("std");
 const tvg = @import("tvg.zig");
 
@@ -229,43 +233,88 @@ pub fn Parser(comptime Reader: type) type {
             return result;
         }
 
+        fn ValAndSize(comptime T: type) type {
+            return struct { data: T, count: usize };
+        }
+
+        fn checkInit(comptime T: type, comptime fields: []const []const u8) void {
+            inline for (fields) |fld| {
+                if (!@hasField(T, fld))
+                    @compileError("Invalid field");
+            }
+
+            if (fields.len != std.meta.fields(T).len) {
+                @compileError("Uninitialized type");
+            }
+        }
+
+        fn readFillHeader(self: *Self, primary_style_type: tvg.StyleType, comptime T: type, comptime uninit_field: []const u8) (Reader.Error || ParseError)!ValAndSize(T) {
+            checkInit(T, &[_][]const u8{ "style", uninit_field });
+
+            var value: T = undefined;
+
+            const count = @as(usize, try self.readUInt()) + 1;
+            value.style = try self.readStyle(primary_style_type);
+
+            return ValAndSize(T){ .data = value, .count = count };
+        }
+
+        fn readLineHeader(self: *Self, primary_style_type: tvg.StyleType, comptime T: type, comptime uninit_field: []const u8) (Reader.Error || ParseError)!ValAndSize(T) {
+            checkInit(T, &[_][]const u8{ "style", "line_width", uninit_field });
+
+            var value: T = undefined;
+
+            const count = @as(usize, try self.readUInt()) + 1;
+            value.style = try self.readStyle(primary_style_type);
+            value.line_width = try self.readUnit();
+
+            return ValAndSize(T){ .data = value, .count = count };
+        }
+
+        fn readOutlineFillHeader(self: *Self, primary_style_type: tvg.StyleType, comptime T: type, comptime uninit_field: []const u8) (Reader.Error || ParseError)!ValAndSize(T) {
+            checkInit(T, &[_][]const u8{ "fill_style", "line_style", "line_width", uninit_field });
+
+            var value: T = undefined;
+
+            const count_and_grad = @bitCast(CountAndStyleTag, try self.readByte());
+
+            const count = count_and_grad.getCount();
+
+            value.fill_style = try self.readStyle(primary_style_type);
+            value.line_style = try self.readStyle(try count_and_grad.getStyleType());
+            value.line_width = try self.readUnit();
+
+            return ValAndSize(T){ .data = value, .count = count };
+        }
+
         pub fn next(self: *Self) (Reader.Error || ParseError)!?DrawCommand {
             if (self.end_of_document)
                 return null;
             const command_byte = try self.reader.readByte();
-            return switch (@intToEnum(tvg.Command, command_byte)) {
+            const primary_style_type = std.meta.intToEnum(tvg.StyleType, @truncate(u2, command_byte >> 6)) catch return error.InvalidData;
+            const command = @intToEnum(tvg.Command, @truncate(u6, command_byte));
+
+            return switch (command) {
                 .end_of_document => {
                     self.end_of_document = true;
                     return null;
                 },
                 .fill_polygon => blk: {
-                    const count_and_grad = @bitCast(CountAndStyleTag, try self.readByte());
+                    var data = try self.readFillHeader(primary_style_type, DrawCommand.FillPolygon, "vertices");
 
-                    const vertex_count = count_and_grad.getCount();
-                    if (vertex_count < 2) return error.InvalidData;
-
-                    const style = try self.readStyle(try count_and_grad.getStyleType());
-
-                    var vertices = try self.setTempStorage(Point, vertex_count);
-                    for (vertices) |*pt| {
+                    data.data.vertices = try self.setTempStorage(Point, data.count);
+                    for (data.data.vertices) |*pt| {
                         pt.x = try self.readUnit();
                         pt.y = try self.readUnit();
                     }
 
-                    break :blk DrawCommand{
-                        .fill_polygon = DrawCommand.FillPolygon{
-                            .style = style,
-                            .vertices = vertices,
-                        },
-                    };
+                    break :blk DrawCommand{ .fill_polygon = data.data };
                 },
                 .fill_rectangles => blk: {
-                    const count_and_grad = @bitCast(CountAndStyleTag, try self.readByte());
-                    const style = try self.readStyle(try count_and_grad.getStyleType());
-                    const rectangle_count = count_and_grad.getCount();
+                    var data = try self.readFillHeader(primary_style_type, DrawCommand.FillRectangles, "rectangles");
 
-                    var rectangles = try self.setTempStorage(Rectangle, rectangle_count);
-                    for (rectangles) |*rect| {
+                    data.data.rectangles = try self.setTempStorage(Rectangle, data.count);
+                    for (data.data.rectangles) |*rect| {
                         rect.x = try self.readUnit();
                         rect.y = try self.readUnit();
                         rect.width = try self.readUnit();
@@ -274,151 +323,73 @@ pub fn Parser(comptime Reader: type) type {
                             return error.InvalidData;
                     }
 
-                    break :blk DrawCommand{
-                        .fill_rectangles = DrawCommand.FillRectangles{
-                            .style = style,
-                            .rectangles = rectangles,
-                        },
-                    };
+                    break :blk DrawCommand{ .fill_rectangles = data.data };
                 },
                 .fill_path => blk: {
-                    const count_and_grad = @bitCast(CountAndStyleTag, try self.readByte());
-                    const style = try self.readStyle(try count_and_grad.getStyleType());
-                    const segment_count = count_and_grad.getCount();
+                    var data = try self.readFillHeader(primary_style_type, DrawCommand.FillPath, "path");
 
-                    var path = try self.readPath(segment_count);
+                    data.data.path = try self.readPath(data.count);
 
-                    break :blk DrawCommand{
-                        .fill_path = DrawCommand.FillPath{
-                            .style = style,
-                            .path = path,
-                        },
-                    };
+                    break :blk DrawCommand{ .fill_path = data.data };
                 },
                 .draw_lines => blk: {
-                    const count_and_grad = @bitCast(CountAndStyleTag, try self.readByte());
-                    const style = try self.readStyle(try count_and_grad.getStyleType());
-                    const line_count = count_and_grad.getCount();
+                    var data = try self.readLineHeader(primary_style_type, DrawCommand.DrawLines, "lines");
 
-                    const line_width = try self.readUnit();
-
-                    var lines = try self.setTempStorage(Line, line_count);
-                    for (lines) |*line| {
+                    data.data.lines = try self.setTempStorage(Line, data.count);
+                    for (data.data.lines) |*line| {
                         line.start.x = try self.readUnit();
                         line.start.y = try self.readUnit();
                         line.end.x = try self.readUnit();
                         line.end.y = try self.readUnit();
                     }
 
-                    break :blk DrawCommand{
-                        .draw_lines = DrawCommand.DrawLines{
-                            .style = style,
-                            .line_width = line_width,
-                            .lines = lines,
-                        },
-                    };
+                    break :blk DrawCommand{ .draw_lines = data.data };
                 },
                 .draw_line_loop => blk: {
-                    const count_and_grad = @bitCast(CountAndStyleTag, try self.readByte());
-                    const style = try self.readStyle(try count_and_grad.getStyleType());
-                    const point_count = count_and_grad.getCount() + 1;
+                    var data = try self.readLineHeader(primary_style_type, DrawCommand.DrawLineSegments, "vertices");
 
-                    const line_width = try self.readUnit();
-
-                    var points = try self.setTempStorage(Point, point_count);
-                    for (points) |*point| {
+                    data.data.vertices = try self.setTempStorage(Point, data.count);
+                    for (data.data.vertices) |*point| {
                         point.x = try self.readUnit();
                         point.y = try self.readUnit();
                     }
 
-                    break :blk DrawCommand{
-                        .draw_line_loop = DrawCommand.DrawLineSegments{
-                            .style = style,
-                            .line_width = line_width,
-                            .vertices = points,
-                        },
-                    };
+                    break :blk DrawCommand{ .draw_line_loop = data.data };
                 },
                 .draw_line_strip => blk: {
-                    const count_and_grad = @bitCast(CountAndStyleTag, try self.readByte());
-                    const style = try self.readStyle(try count_and_grad.getStyleType());
-                    const point_count = count_and_grad.getCount() + 1;
+                    var data = try self.readLineHeader(primary_style_type, DrawCommand.DrawLineSegments, "vertices");
 
-                    const line_width = try self.readUnit();
-
-                    var points = try self.setTempStorage(Point, point_count);
-                    for (points) |*point| {
+                    data.data.vertices = try self.setTempStorage(Point, data.count);
+                    for (data.data.vertices) |*point| {
                         point.x = try self.readUnit();
                         point.y = try self.readUnit();
                     }
 
-                    break :blk DrawCommand{
-                        .draw_line_strip = DrawCommand.DrawLineSegments{
-                            .style = style,
-                            .line_width = line_width,
-                            .vertices = points,
-                        },
-                    };
+                    break :blk DrawCommand{ .draw_line_strip = data.data };
                 },
                 .draw_line_path => blk: {
-                    const count_and_grad = @bitCast(CountAndStyleTag, try self.readByte());
-                    const style = try self.readStyle(try count_and_grad.getStyleType());
-                    const segment_count = count_and_grad.getCount();
+                    var data = try self.readLineHeader(primary_style_type, DrawCommand.DrawPath, "path");
 
-                    const line_width = try self.readUnit();
+                    data.data.path = try self.readPath(data.count);
 
-                    const path = try self.readPath(segment_count);
-
-                    break :blk DrawCommand{
-                        .draw_line_path = DrawCommand.DrawPath{
-                            .style = style,
-                            .line_width = line_width,
-                            .path = path,
-                        },
-                    };
+                    break :blk DrawCommand{ .draw_line_path = data.data };
                 },
                 .outline_fill_polygon => blk: {
-                    const count_and_grad = @bitCast(CountAndStyleTag, try self.readByte());
+                    var data = try self.readOutlineFillHeader(primary_style_type, DrawCommand.OutlineFillPolygon, "vertices");
 
-                    const vertex_count = count_and_grad.getCount();
-                    if (vertex_count < 2)
-                        return error.InvalidData;
-
-                    const line_style_dat = try self.readByte();
-
-                    const line_style = try self.readStyle(try convertStyleType(@truncate(u2, line_style_dat)));
-                    const fill_style = try self.readStyle(try count_and_grad.getStyleType());
-
-                    const line_width = try self.readUnit();
-
-                    var vertices = try self.setTempStorage(Point, vertex_count);
-                    for (vertices) |*pt| {
+                    data.data.vertices = try self.setTempStorage(Point, data.count);
+                    for (data.data.vertices) |*pt| {
                         pt.x = try self.readUnit();
                         pt.y = try self.readUnit();
                     }
 
-                    break :blk DrawCommand{
-                        .outline_fill_polygon = DrawCommand.OutlineFillPolygon{
-                            .fill_style = fill_style,
-                            .line_style = line_style,
-                            .line_width = line_width,
-                            .vertices = vertices,
-                        },
-                    };
+                    break :blk DrawCommand{ .outline_fill_polygon = data.data };
                 },
                 .outline_fill_rectangles => blk: {
-                    const count_and_grad = @bitCast(CountAndStyleTag, try self.readByte());
-                    const line_style_dat = try self.readByte();
+                    var data = try self.readOutlineFillHeader(primary_style_type, DrawCommand.OutlineFillRectangles, "rectangles");
 
-                    const line_style = try self.readStyle(try convertStyleType(@truncate(u2, line_style_dat)));
-                    const fill_style = try self.readStyle(try count_and_grad.getStyleType());
-
-                    const line_width = try self.readUnit();
-
-                    const rectangle_count = count_and_grad.getCount();
-
-                    var rectangles = try self.setTempStorage(Rectangle, rectangle_count);
-                    for (rectangles) |*rect| {
+                    data.data.rectangles = try self.setTempStorage(Rectangle, data.count);
+                    for (data.data.rectangles) |*rect| {
                         rect.x = try self.readUnit();
                         rect.y = try self.readUnit();
                         rect.width = try self.readUnit();
@@ -427,61 +398,38 @@ pub fn Parser(comptime Reader: type) type {
                             return error.InvalidData;
                     }
 
-                    break :blk DrawCommand{
-                        .outline_fill_rectangles = DrawCommand.OutlineFillRectangles{
-                            .fill_style = fill_style,
-                            .line_style = line_style,
-                            .line_width = line_width,
-                            .rectangles = rectangles,
-                        },
-                    };
+                    break :blk DrawCommand{ .outline_fill_rectangles = data.data };
                 },
                 .outline_fill_path => blk: {
-                    const count_and_grad = @bitCast(CountAndStyleTag, try self.readByte());
-                    const segment_count = count_and_grad.getCount();
+                    var data = try self.readOutlineFillHeader(primary_style_type, DrawCommand.OutlineFillPath, "path");
 
-                    const line_style_dat = try self.readByte();
+                    data.data.path = try self.readPath(data.count);
 
-                    const line_style = try self.readStyle(try convertStyleType(@truncate(u2, line_style_dat)));
-                    const fill_style = try self.readStyle(try count_and_grad.getStyleType());
-
-                    const line_width = try self.readUnit();
-
-                    const path = try self.readPath(segment_count);
-
-                    break :blk DrawCommand{
-                        .outline_fill_path = DrawCommand.OutlineFillPath{
-                            .fill_style = fill_style,
-                            .line_style = line_style,
-                            .line_width = line_width,
-                            .path = path,
-                        },
-                    };
+                    break :blk DrawCommand{ .outline_fill_path = data.data };
                 },
-                _ => return error.InvalidData,
+                _ => {
+                    return error.InvalidData;
+                },
             };
         }
 
-        fn readPath(self: *Self, segment_count: usize) !Path {
+        fn readPath(self: *Self, path_length: usize) !Path {
             var segment_lengths: [64]usize = undefined;
-            std.debug.assert(segment_count <= segment_lengths.len);
+            std.debug.assert(path_length <= segment_lengths.len);
 
             var total_node_count: usize = 0;
 
             {
                 var i: usize = 0;
-                while (i < segment_count) : (i += 1) {
-                    segment_lengths[i] = try self.readUInt();
+                while (i < path_length) : (i += 1) {
+                    segment_lengths[i] = @as(usize, try self.readUInt()) + 1;
                     total_node_count += segment_lengths[i];
-                    // std.log.debug("node[{}]: {}", .{ i, segment_lengths[i] });
                 }
             }
 
-            // std.log.debug("total: {}", .{total_node_count});
-
             const buffers = try self.setDualTempStorage(
                 Path.Segment,
-                segment_count,
+                path_length,
                 Path.Node,
                 total_node_count,
             );
@@ -501,7 +449,7 @@ pub fn Parser(comptime Reader: type) type {
 
                 segment_start += segment_len;
             }
-            std.debug.assert(buffers.first.len == segment_count);
+            std.debug.assert(buffers.first.len == path_length);
             std.debug.assert(segment_start == total_node_count);
 
             return Path{
@@ -657,9 +605,7 @@ const CountAndStyleTag = packed struct {
     style_kind: u2,
 
     pub fn getCount(self: Self) usize {
-        if (self.raw_count == 0)
-            return self.raw_count -% 1;
-        return self.raw_count;
+        return @as(usize, self.raw_count) + 1;
     }
 
     pub fn getStyleType(self: Self) !StyleType {
@@ -710,9 +656,12 @@ test "mapZeroToMax" {
 // }
 
 test "coverage test" {
-    const source = @import("ground-truth").everything_16;
+    var source_buf: [2048]u8 = undefined;
+    var stream = std.io.fixedBufferStream(&source_buf);
 
-    var stream = std.io.fixedBufferStream(@as([]const u8, source));
+    @import("ground-truth").writeEverything(stream.writer(), .default) catch unreachable;
+
+    try stream.seekTo(0);
 
     var parser = try Parser(@TypeOf(stream).Reader).init(std.testing.allocator, stream.reader());
     defer parser.deinit();
