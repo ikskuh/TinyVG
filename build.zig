@@ -9,6 +9,10 @@ const pkgs = struct {
         .name = "args",
         .path = .{ .path = "vendor/zig-args/args.zig" },
     };
+    const ptk = std.build.Pkg{
+        .name = "ptk",
+        .path = .{ .path = "vendor/parser-toolkit/src/main.zig" },
+    };
 };
 
 pub fn build(b: *std.build.Builder) !void {
@@ -40,6 +44,7 @@ pub fn build(b: *std.build.Builder) !void {
     text.setTarget(target);
     text.addPackage(pkgs.tvg);
     text.addPackage(pkgs.args);
+    text.addPackage(pkgs.ptk);
     text.install();
 
     const ground_truth_generator = b.addExecutable("ground-truth-generator", "src/data/ground-truth.zig");

@@ -77,6 +77,10 @@ See also this image to have a preview of what is already implemented:
   - [x] Add extended coordinate space (32 bit coordinates)
   - [ ] Expand opcode space for mirrored/repeated splines
   - [x] Encode primary style in command, reduces command to 63 variants, allows bigger encoding
+- [ ] Implement textual representation
+  - [ ] Convert to TVG
+  - [x] Convert to text
+  - [ ] Format text
 - [ ] Add auxiliary tools
   - [ ] C Library
   - [ ] Wasm Polyfill
