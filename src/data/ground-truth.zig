@@ -17,7 +17,7 @@ pub fn main() !void {
         var file = try std.fs.cwd().createFile("examples/shield-8.tvg", .{});
         defer file.close();
 
-        var writer = tvg.builder.builder(file.writer());
+        var writer = tvg.builder.create(file.writer());
         try writer.writeHeader(24, 24, .@"1/4", .u8888, .reduced);
 
         try renderShield(&writer);
@@ -26,7 +26,7 @@ pub fn main() !void {
         var file = try std.fs.cwd().createFile("examples/shield-16.tvg", .{});
         defer file.close();
 
-        var writer = tvg.builder.builder(file.writer());
+        var writer = tvg.builder.create(file.writer());
         try writer.writeHeader(24, 24, .@"1/32", .u8888, .default);
 
         try renderShield(&writer);
@@ -35,7 +35,7 @@ pub fn main() !void {
         var file = try std.fs.cwd().createFile("examples/shield-32.tvg", .{});
         defer file.close();
 
-        var writer = tvg.builder.builder(file.writer());
+        var writer = tvg.builder.create(file.writer());
         try writer.writeHeader(24, 24, .@"1/2048", .u8888, .enhanced);
 
         try renderShield(&writer);
@@ -60,7 +60,7 @@ pub fn main() !void {
 
 /// This function renders a new 
 pub fn writeEverything(src_writer: anytype, range: tvg.Range) !void {
-    var writer = tvg.builder.builder(src_writer);
+    var writer = tvg.builder.create(src_writer);
     const Writer = @TypeOf(writer);
 
     const padding = 25;

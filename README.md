@@ -12,7 +12,7 @@ Translated:
 
 > Virtually all relevant web browsers can display most of the language specification.
 
-SVG is a horribly complex format, allowing the embedding of JavaScript and other features no sane person ever wants to have in their images. Other relevant vector graphics formats do not exit or don't have a documentation or specification (looking at you, [HVIF](https://en.wikipedia.org/wiki/Haiku_Vector_Icon_Format)!).
+SVG is a horribly complex format, allowing the embedding of JavaScript and other features no sane person ever wants to have in their images. Other relevant vector graphics formats do not exist or don't have a documentation or specification (looking at you, [HVIF](https://en.wikipedia.org/wiki/Haiku_Vector_Icon_Format)!).
 
 This project tries to create and specify a new vector format suitable for:
 
@@ -75,12 +75,13 @@ See also this image to have a preview of what is already implemented:
   - [x] Add smaller/bigger colors (16 bit, 30 bit)
   - [x] Add color space information (the color space is defined as sRGB)
   - [x] Add extended coordinate space (32 bit coordinates)
-  - [ ] Expand opcode space for mirrored/repeated splines
+  - [ ] Expand opcode space for mirrored/repeated splines in paths
   - [x] Encode primary style in command, reduces command to 63 variants, allows bigger encoding
 - [ ] Implement textual representation
-  - [ ] Convert to TVG
+  - [x] Convert to TVG
   - [x] Convert to text
-  - [ ] Format text
+  - [x] Format text
+  - [ ] Convert to SVG
 - [ ] Add auxiliary tools
   - [ ] C Library
   - [ ] Wasm Polyfill

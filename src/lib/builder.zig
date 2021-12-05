@@ -5,7 +5,7 @@
 const std = @import("std");
 const tvg = @import("tvg.zig");
 
-pub fn builder(writer: anytype) Builder(@TypeOf(writer)) {
+pub fn create(writer: anytype) Builder(@TypeOf(writer)) {
     return .{ .writer = writer };
 }
 
@@ -411,7 +411,7 @@ test "encode shield (default range, scale 1/256)" {
     var buffer: [1024]u8 = undefined;
     var stream = std.io.fixedBufferStream(&buffer);
 
-    var writer = builder(stream.writer());
+    var writer = create(stream.writer());
     try writer.writeHeader(24, 24, .@"1/256", .u8888, .default);
     try ground_truth.renderShield(&writer);
 }
@@ -420,7 +420,7 @@ test "encode shield (reduced range, scale 1/4)" {
     var buffer: [1024]u8 = undefined;
     var stream = std.io.fixedBufferStream(&buffer);
 
-    var writer = builder(stream.writer());
+    var writer = create(stream.writer());
     try writer.writeHeader(24, 24, .@"1/4", .u8888, .reduced);
     try ground_truth.renderShield(&writer);
 }
@@ -429,7 +429,7 @@ test "encode app_menu (default range, scale 1/256)" {
     var buffer: [1024]u8 = undefined;
     var stream = std.io.fixedBufferStream(&buffer);
 
-    var writer = builder(stream.writer());
+    var writer = create(stream.writer());
     try writer.writeHeader(48, 48, .@"1/256", .u8888, .default);
     try writer.writeColorTable(&[_]tvg.Color{
         try tvg.Color.fromString("000000"),
@@ -446,7 +446,7 @@ test "encode workspace (default range, scale 1/256)" {
     var buffer: [1024]u8 = undefined;
     var stream = std.io.fixedBufferStream(&buffer);
 
-    var writer = builder(stream.writer());
+    var writer = create(stream.writer());
     try writer.writeHeader(48, 48, .@"1/256", .u8888, .default);
     try writer.writeColorTable(&[_]tvg.Color{
         try tvg.Color.fromString("008751"),
@@ -466,7 +466,7 @@ test "encode workspace_add (default range, scale 1/256)" {
     var buffer: [1024]u8 = undefined;
     var stream = std.io.fixedBufferStream(&buffer);
 
-    var writer = builder(stream.writer());
+    var writer = create(stream.writer());
     try writer.writeHeader(48, 48, .@"1/256", .u8888, .default);
     try writer.writeColorTable(&[_]tvg.Color{
         try tvg.Color.fromString("008751"),
@@ -505,7 +505,7 @@ test "encode arc_variants (default range, scale 1/256)" {
     var buffer: [1024]u8 = undefined;
     var stream = std.io.fixedBufferStream(&buffer);
 
-    var writer = builder(stream.writer());
+    var writer = create(stream.writer());
     try writer.writeHeader(92, 92, .@"1/256", .u8888, .default);
     try writer.writeColorTable(&[_]tvg.Color{
         try tvg.Color.fromString("40ff00"),
