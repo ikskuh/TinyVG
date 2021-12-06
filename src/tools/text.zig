@@ -248,69 +248,69 @@ fn renderTvgText(comptime Reader: type, writer: anytype, parser: *tvg.parsing.Pa
 
     try writer.writeAll("  (\n");
     while (try parser.next()) |command| {
-        try writer.print("     (\n       {s}", .{std.meta.tagName(command)});
+        try writer.print("    (\n      {s}", .{std.meta.tagName(command)});
         switch (command) {
             .fill_rectangles => |data| {
-                try renderStyle("\n       ", writer, data.style);
-                try renderRectangles("\n       ", writer, data.rectangles);
+                try renderStyle("\n      ", writer, data.style);
+                try renderRectangles("\n      ", writer, data.rectangles);
             },
 
             .outline_fill_rectangles => |data| {
-                try renderStyle("\n       ", writer, data.fill_style);
-                try renderStyle("\n       ", writer, data.line_style);
-                try writer.print("\n       {d}", .{data.line_width});
-                try renderRectangles("\n       ", writer, data.rectangles);
+                try renderStyle("\n      ", writer, data.fill_style);
+                try renderStyle("\n      ", writer, data.line_style);
+                try writer.print("\n      {d}", .{data.line_width});
+                try renderRectangles("\n      ", writer, data.rectangles);
             },
 
             .draw_lines => |data| {
-                try renderStyle("\n       ", writer, data.style);
-                try writer.print("\n       {d}", .{data.line_width});
-                try renderLines("\n       ", writer, data.lines);
+                try renderStyle("\n      ", writer, data.style);
+                try writer.print("\n      {d}", .{data.line_width});
+                try renderLines("\n      ", writer, data.lines);
             },
 
             .draw_line_loop => |data| {
-                try renderStyle("\n       ", writer, data.style);
-                try writer.print("\n       {d}", .{data.line_width});
-                try renderPoints("\n       ", writer, data.vertices);
+                try renderStyle("\n      ", writer, data.style);
+                try writer.print("\n      {d}", .{data.line_width});
+                try renderPoints("\n      ", writer, data.vertices);
             },
 
             .draw_line_strip => |data| {
-                try renderStyle("\n       ", writer, data.style);
-                try writer.print("\n       {d}", .{data.line_width});
-                try renderPoints("\n       ", writer, data.vertices);
+                try renderStyle("\n      ", writer, data.style);
+                try writer.print("\n      {d}", .{data.line_width});
+                try renderPoints("\n      ", writer, data.vertices);
             },
 
             .fill_polygon => |data| {
-                try renderStyle("\n       ", writer, data.style);
-                try renderPoints("\n       ", writer, data.vertices);
+                try renderStyle("\n      ", writer, data.style);
+                try renderPoints("\n      ", writer, data.vertices);
             },
 
             .outline_fill_polygon => |data| {
-                try renderStyle("\n       ", writer, data.fill_style);
-                try renderStyle("\n       ", writer, data.line_style);
-                try writer.print("\n       {d}", .{data.line_width});
-                try renderPoints("\n       ", writer, data.vertices);
+                try renderStyle("\n      ", writer, data.fill_style);
+                try renderStyle("\n      ", writer, data.line_style);
+                try writer.print("\n      {d}", .{data.line_width});
+                try renderPoints("\n      ", writer, data.vertices);
             },
 
             .draw_line_path => |data| {
-                try renderStyle("\n       ", writer, data.style);
-                try writer.print("\n       {d}", .{data.line_width});
-                try renderPath("\n       ", writer, data.path);
+                try renderStyle("\n      ", writer, data.style);
+                try writer.print("\n      {d}", .{data.line_width});
+                try renderPath("\n      ", writer, data.path);
             },
 
             .fill_path => |data| {
-                try renderStyle("\n       ", writer, data.style);
-                try renderPath("\n       ", writer, data.path);
+                try renderStyle("\n      ", writer, data.style);
+                try renderPath("\n      ", writer, data.path);
             },
 
             .outline_fill_path => |data| {
-                try renderStyle("\n       ", writer, data.fill_style);
-                try renderStyle("\n       ", writer, data.line_style);
-                try writer.print("\n       {d}", .{data.line_width});
-                try renderPath("\n       ", writer, data.path);
+                try renderStyle("\n      ", writer, data.fill_style);
+                try renderStyle("\n      ", writer, data.line_style);
+                try writer.print("\n      {d}", .{data.line_width});
+                try renderPath("\n      ", writer, data.path);
             },
         }
-        try writer.writeAll("\n     )\n");
+        try writer.writeAll("\n    )\n");
     }
     try writer.writeAll("  )\n");
 
