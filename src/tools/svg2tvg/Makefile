@@ -1,7 +1,7 @@
 TARGETS=win-x64 linux-x64 linux-arm64 linux-arm
 
 default:
-	dotnet build
+	dotnet build -r linux-x64 -p:PublishSingleFile=true -p:SelfContained=true
 
 publish: $(TARGETS)
 

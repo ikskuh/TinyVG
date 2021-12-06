@@ -32,7 +32,7 @@ class Application
       }
       else if (arg == "--help")
       {
-        Console.WriteLine("svg2tvg [--output <file_name>] <input_file>");
+        Console.WriteLine("svg2tvgt [--output <file_name>] <input_file>");
         return 0;
       }
       else if (arg.StartsWith("-") && arg != "-")
@@ -49,19 +49,19 @@ class Application
     switch (positionals.Count)
     {
       case 0:
-        Console.Error.WriteLine("svg2tvg [--output <file_name>] <input_file>");
+        Console.Error.WriteLine("svg2tvgt [--output <file_name>] <input_file>");
         return 1;
       case 1:
         break;
       default:
-        Console.Error.WriteLine("svg2tvg requires exactly one positional argument");
+        Console.Error.WriteLine("svg2tvgt requires exactly one positional argument");
         return 1;
     }
     input_file_name = positionals[0];
 
     if (out_file_name != "-")
     {
-      out_file_name = out_file_name ?? Path.ChangeExtension(input_file_name, "tvg");
+      out_file_name = out_file_name ?? Path.ChangeExtension(input_file_name, "tvgt");
     }
 
     SvgDocument doc;
@@ -85,19 +85,19 @@ class Application
       }
     }
 
-    var binary_tvg = SvgConverter.ConvertToTvg(doc);
+    var text_tvg = SvgConverter.ConvertToTvgText(doc);
     if (out_file_name == "-")
     {
-      using (var stream = Console.OpenStandardOutput())
-      {
-        stream.Write(binary_tvg);
-      }
+      Console.Write(text_tvg);
     }
     else
     {
       using (var stream = File.Open(out_file_name, FileMode.Create, FileAccess.Write))
       {
-        stream.Write(binary_tvg);
+        using (var sw = new StreamWriter(stream, new UTF8Encoding(false)))
+        {
+          sw.Write(text_tvg);
+        }
       }
     }
 
@@ -105,183 +105,183 @@ class Application
   }
 }
 
-class DevRunner
-{
-  static int Main(string[] args)
-  {
-    var render_png = false;
-    var render_tga = true;
-    var render_txt = true;
+// class DevRunner
+// {
+//   static int Main(string[] args)
+//   {
+//     var render_png = false;
+//     var render_tga = true;
+//     var render_txt = true;
 
-    var banned_files = new HashSet<string>
-    {
-      // Banned for: using exponent floats.
-      // "distributor-logo-midnightbsd.svg",
-      // "twitter.svg",
-      // "cadence.svg",
-    };
+//     var banned_files = new HashSet<string>
+//     {
+//       // Banned for: using exponent floats.
+//       // "distributor-logo-midnightbsd.svg",
+//       // "twitter.svg",
+//       // "cadence.svg",
+//     };
 
-    int count = 0;
-    int unsupported_count = 0;
-    int crash_count = 0;
+//     int count = 0;
+//     int unsupported_count = 0;
+//     int crash_count = 0;
 
-    int total_svg_size = 0;
-    int total_tvg_size = 0;
-    int total_png_size = 0;
+//     int total_svg_size = 0;
+//     int total_tvg_size = 0;
+//     int total_png_size = 0;
 
-    try
-    {
-      var src_root = "/home/felix/projects/forks/";
-      var dst_root = "/tmp/converted/";
-      foreach (var folder in new string[] {
-        src_root + "/zig-logo",
-        // src_root + "/w3c-svg-files",
-        src_root + "/MaterialDesign/svg",
-        src_root + "/papirus-icon-theme/Papirus/48x48/actions",
-        // src_root + "/papirus-icon-theme/Papirus/48x48/apps",
-        // src_root + "/papirus-icon-theme/Papirus/48x48/devices",
-        // src_root + "/papirus-icon-theme/Papirus/48x48/emblems",
-        // src_root + "/papirus-icon-theme/Papirus/48x48/emotes",
-        // src_root + "/papirus-icon-theme/Papirus/48x48/mimetypes",
-        // src_root + "/papirus-icon-theme/Papirus/48x48/places",
-        // src_root + "/papirus-icon-theme/Papirus/48x48/status",
-       })
-      {
-        foreach (var file in Directory.GetFiles(folder, "*.svg"))
-        {
-          if (banned_files.Contains(Path.GetFileName(file)))
-            continue;
-          try
-          {
-            var dst_file = dst_root + Path.GetFileName(Path.GetDirectoryName(file)) + "/" + Path.GetFileNameWithoutExtension(file) + ".tvg";
+//     try
+//     {
+//       var src_root = "/home/felix/projects/forks/";
+//       var dst_root = "/tmp/converted/";
+//       foreach (var folder in new string[] {
+//         src_root + "/zig-logo",
+//         // src_root + "/w3c-svg-files",
+//         src_root + "/MaterialDesign/svg",
+//         src_root + "/papirus-icon-theme/Papirus/48x48/actions",
+//         // src_root + "/papirus-icon-theme/Papirus/48x48/apps",
+//         // src_root + "/papirus-icon-theme/Papirus/48x48/devices",
+//         // src_root + "/papirus-icon-theme/Papirus/48x48/emblems",
+//         // src_root + "/papirus-icon-theme/Papirus/48x48/emotes",
+//         // src_root + "/papirus-icon-theme/Papirus/48x48/mimetypes",
+//         // src_root + "/papirus-icon-theme/Papirus/48x48/places",
+//         // src_root + "/papirus-icon-theme/Papirus/48x48/status",
+//        })
+//       {
+//         foreach (var file in Directory.GetFiles(folder, "*.svg"))
+//         {
+//           if (banned_files.Contains(Path.GetFileName(file)))
+//             continue;
+//           try
+//           {
+//             var dst_file = dst_root + Path.GetFileName(Path.GetDirectoryName(file)) + "/" + Path.GetFileNameWithoutExtension(file) + ".tvg";
 
-            Console.WriteLine("parse {0} => {1}", Path.GetFileName(file), dst_file);
-            SvgDocument doc;
-            int svg_size;
-            try
-            {
-              using (var stream = File.OpenRead(file))
-              {
-                doc = SvgConverter.ParseDocument(stream);
-                svg_size = (int)stream.Position;
-              }
-            }
-            catch (Exception exception)
-            {
-              Console.WriteLine("Failed to parse {0}", file);
-              Process.Start("timg", file).WaitForExit();
-              var pad = "";
-              var e = exception;
-              while (e != null)
-              {
-                Console.Error.WriteLine("{0}{1}", pad, e.Message);
-                pad = pad + " ";
-                e = e.InnerException;
-              }
-              return 1;
-            }
-            count += 1;
+//             Console.WriteLine("parse {0} => {1}", Path.GetFileName(file), dst_file);
+//             SvgDocument doc;
+//             int svg_size;
+//             try
+//             {
+//               using (var stream = File.OpenRead(file))
+//               {
+//                 doc = SvgConverter.ParseDocument(stream);
+//                 svg_size = (int)stream.Position;
+//               }
+//             }
+//             catch (Exception exception)
+//             {
+//               Console.WriteLine("Failed to parse {0}", file);
+//               Process.Start("timg", file).WaitForExit();
+//               var pad = "";
+//               var e = exception;
+//               while (e != null)
+//               {
+//                 Console.Error.WriteLine("{0}{1}", pad, e.Message);
+//                 pad = pad + " ";
+//                 e = e.InnerException;
+//               }
+//               return 1;
+//             }
+//             count += 1;
 
-            if (!doc.IsFullySupported)
-            {
-              unsupported_count += 1;
-              continue;
-            }
+//             if (!doc.IsFullySupported)
+//             {
+//               unsupported_count += 1;
+//               continue;
+//             }
 
-            byte[] tvg_data;
-            try
-            {
-              tvg_data = SvgConverter.ConvertToTvg(doc);
-            }
-            catch (UnitRangeException exception)
-            {
-              Console.WriteLine("Failed to parse {0}", file);
-              var pad = "";
-              Exception e = exception;
-              while (e != null)
-              {
-                Console.Error.WriteLine("{0}{1}", pad, e.Message);
-                pad = pad + " ";
-                e = e.InnerException;
-              }
-              continue;
-            }
+//             byte[] tvg_data;
+//             try
+//             {
+//               tvg_data = SvgConverter.ConvertToTvg(doc);
+//             }
+//             catch (UnitRangeException exception)
+//             {
+//               Console.WriteLine("Failed to parse {0}", file);
+//               var pad = "";
+//               Exception e = exception;
+//               while (e != null)
+//               {
+//                 Console.Error.WriteLine("{0}{1}", pad, e.Message);
+//                 pad = pad + " ";
+//                 e = e.InnerException;
+//               }
+//               continue;
+//             }
 
-            Directory.CreateDirectory(Path.GetDirectoryName(dst_file));
-            File.WriteAllBytes(dst_file, tvg_data);
+//             Directory.CreateDirectory(Path.GetDirectoryName(dst_file));
+//             File.WriteAllBytes(dst_file, tvg_data);
 
-            if (render_png) Process.Start("convert", file + " " + Path.ChangeExtension(dst_file, ".original.png")).WaitForExit();
+//             if (render_png) Process.Start("convert", file + " " + Path.ChangeExtension(dst_file, ".original.png")).WaitForExit();
 
-            if (render_tga)
-            {
-              Process.Start("zig-out/bin/tvg-render", dst_file).WaitForExit();
-              Process.Start("convert", Path.ChangeExtension(dst_file, ".tga") + " " + Path.ChangeExtension(dst_file, ".render.png")).WaitForExit();
-            }
-            if (render_txt)
-            {
-              Process.Start("zig-out/bin/tvg-text", dst_file).WaitForExit();
-            }
+//             if (render_tga)
+//             {
+//               Process.Start("zig-out/bin/tvg-render", dst_file).WaitForExit();
+//               Process.Start("convert", Path.ChangeExtension(dst_file, ".tga") + " " + Path.ChangeExtension(dst_file, ".render.png")).WaitForExit();
+//             }
+//             if (render_txt)
+//             {
+//               Process.Start("zig-out/bin/tvg-text", dst_file).WaitForExit();
+//             }
 
-            int tvg_size = tvg_data.Length;
-            int png_size = render_png ? File.ReadAllBytes(Path.ChangeExtension(dst_file, ".original.png")).Length : 0;
+//             int tvg_size = tvg_data.Length;
+//             int png_size = render_png ? File.ReadAllBytes(Path.ChangeExtension(dst_file, ".original.png")).Length : 0;
 
-            Console.WriteLine("SVG: {0}\t(100%)\tTVG: {1}\t({2}%),\tPNG: {3}\t(%{4})",
-              svg_size,
-              tvg_size,
-              (100 * tvg_size / svg_size),
-              png_size,
-              (100 * png_size / svg_size)
-            );
-            total_svg_size += svg_size;
-            total_tvg_size += tvg_size;
-            total_png_size += png_size;
-          }
-          catch (Exception ex)
-          {
-            Console.WriteLine("Failed to translate {0}", file);
-            if (!(ex is NotSupportedException))
-            {
-              Process.Start("timg", file).WaitForExit();
-              Console.WriteLine(ex);
-              return 1;
-              // crash_count += 1;
-            }
-          }
-        }
-      }
-    }
-    finally
-    {
-      Console.WriteLine("{0} icons parsed successfully, of which {1} are not fully supported and of which {2} crashed.", count, unsupported_count, crash_count);
+//             Console.WriteLine("SVG: {0}\t(100%)\tTVG: {1}\t({2}%),\tPNG: {3}\t(%{4})",
+//               svg_size,
+//               tvg_size,
+//               (100 * tvg_size / svg_size),
+//               png_size,
+//               (100 * png_size / svg_size)
+//             );
+//             total_svg_size += svg_size;
+//             total_tvg_size += tvg_size;
+//             total_png_size += png_size;
+//           }
+//           catch (Exception ex)
+//           {
+//             Console.WriteLine("Failed to translate {0}", file);
+//             if (!(ex is NotSupportedException))
+//             {
+//               Process.Start("timg", file).WaitForExit();
+//               Console.WriteLine(ex);
+//               return 1;
+//               // crash_count += 1;
+//             }
+//           }
+//         }
+//       }
+//     }
+//     finally
+//     {
+//       Console.WriteLine("{0} icons parsed successfully, of which {1} are not fully supported and of which {2} crashed.", count, unsupported_count, crash_count);
 
-      if (SvgConverter.unknown_styles.Count > 0)
-      {
-        Console.WriteLine("Found unknown style keys:");
-        foreach (var kvp in SvgConverter.unknown_styles)
-        {
-          Console.Write("\t{0} =>", kvp.Key);
-          foreach (var value in kvp.Value)
-          {
-            Console.Write(" '{0}'", value);
-          }
-          Console.WriteLine();
-        }
-      }
-      if (total_svg_size > 0)
-      {
-        Console.WriteLine("SVG: {0}\t(100%)\tTVG: {1}\t({2}%),\tPNG: {3}\t(%{4})",
-          total_svg_size,
-          total_tvg_size,
-          (100 * total_tvg_size / total_svg_size),
-          total_png_size,
-          (100 * total_png_size / total_svg_size)
-        );
-      }
-    }
-    return 0;
-  }
+//       if (SvgConverter.unknown_styles.Count > 0)
+//       {
+//         Console.WriteLine("Found unknown style keys:");
+//         foreach (var kvp in SvgConverter.unknown_styles)
+//         {
+//           Console.Write("\t{0} =>", kvp.Key);
+//           foreach (var value in kvp.Value)
+//           {
+//             Console.Write(" '{0}'", value);
+//           }
+//           Console.WriteLine();
+//         }
+//       }
+//       if (total_svg_size > 0)
+//       {
+//         Console.WriteLine("SVG: {0}\t(100%)\tTVG: {1}\t({2}%),\tPNG: {3}\t(%{4})",
+//           total_svg_size,
+//           total_tvg_size,
+//           (100 * total_tvg_size / total_svg_size),
+//           total_png_size,
+//           (100 * total_png_size / total_svg_size)
+//         );
+//       }
+//     }
+//     return 0;
+//   }
 
-}
+// }
 
 public static class SvgConverter
 {
@@ -374,7 +374,7 @@ public static class SvgConverter
     }
   }
 
-  public static byte[] ConvertToTvg(SvgDocument document)
+  public static string ConvertToTvgText(SvgDocument document)
   {
     var intermediate_buffer = new AnalyzeIntermediateBuffer();
 
@@ -393,45 +393,64 @@ public static class SvgConverter
     {
       try
       {
+        var sb = new StringBuilder();
+        var stream = new TvgStream(sb, result);
+
+        stream.WriteLine("(tvg 1");
+
         // Console.WriteLine("Use scale factor {0} for size limit {1}", 1 << scale_bits, coordinate_limit);
-        var ms = new MemoryStream();
 
-        ms.Write(new byte[] { 0x72, 0x56 }); // magic
-        ms.Write(new byte[] { 0x01 }); // version
+        stream.WriteLine("  ({0} {1} 1/{2} {3} {4})",
+          result.image_width,
+          result.image_height,
+          1 << result.scale_bits,
+          "u8888",
+          "default"
+        );
 
-        ms.Write(new byte[] {
-          (byte)(result. scale_bits & 0x0F),
-        });
+        stream.WriteLine("  (");
 
-        ms.Write(BitConverter.GetBytes((ushort)result.image_width));
-        ms.Write(BitConverter.GetBytes((ushort)result.image_height));
-        ms.Write(BitConverter.GetBytes((ushort)result.color_table.Length));
         foreach (var col in result.color_table)
         {
-          ms.Write(new byte[4]
+          if (col.A != 255)
           {
-            (byte)col.R,
-            (byte)col.G,
-            (byte)col.B,
-            (byte)col.A,
-          });
+            stream.WriteLine("    ({0} {1} {2} {3})",
+              col.R / 255.0,
+              col.G / 255.0,
+              col.B / 255.0,
+              col.A / 255.0
+            );
+          }
+          else
+          {
+            stream.WriteLine("    ({0} {1} {2})",
+              col.R / 255.0,
+              col.G / 255.0,
+              col.B / 255.0
+            );
+          }
         }
+
+        stream.WriteLine("  )");
+        stream.WriteLine("  (");
 
         // Console.WriteLine("Found {0} colors in {1} nodes!", result.color_table.Length, intermediate_buffer.node_count);
 
-        var pos_pre = ms.Position;
+        var pos_pre = sb.Length;
         {
-          var stream = new TvgStream { stream = ms, ar = result };
+          // var stream = new TvgStream { stream = ms, ar = result };
           TranslateNodes(result, stream, document);
         }
-        if (pos_pre == ms.Position)
+        if (pos_pre == sb.Length)
         {
-          throw new NotSupportedException("This SVG does not contain any supported elements!");
+          // throw new NotSupportedException("This SVG does not contain any supported elements!");
         }
 
-        ms.Write(new byte[] { 0x00 }); // end of document
+        stream.WriteLine("  )");
 
-        return ms.ToArray();
+        stream.WriteLine(")");
+
+        return sb.ToString();
       }
       catch (UnitRangeException ex)
       {
@@ -469,13 +488,18 @@ public static class SvgConverter
         .Select(a => new PointF(ToFloat(a[0]), ToFloat(a[1])))
         .ToArray();
 
+      stream.Write("(");
       stream.WriteCommand(TvgCommand.fill_polygon);
-      stream.WriteCountAndStyleType(points.Length, polygon.TvgFillStyle);
+      stream.Write(" ");
       stream.WriteStyle(polygon.TvgFillStyle);
+      stream.Write("(\n");
       foreach (var pt in points)
       {
+        stream.Write("(");
         stream.WritePoint(pt);
+        stream.Write(")\n");
       }
+      stream.Write(")");
     }
     else if (node is SvgPath path)
     {
@@ -509,14 +533,19 @@ public static class SvgConverter
 
       }
 
-
+      stream.Write("(");
       stream.WriteCommand(TvgCommand.fill_rectangles);
-      stream.WriteCountAndStyleType(1, rect.TvgFillStyle);
+      stream.Write(" ");
       stream.WriteStyle(rect.TvgFillStyle);
+      stream.Write("((");
       stream.WriteCoordX(rect.X);
+      stream.Write(" ");
       stream.WriteCoordY(rect.Y);
+      stream.Write(" ");
       stream.WriteSizeX(rect.Width);
+      stream.Write(" ");
       stream.WriteSizeY(rect.Height);
+      stream.Write("))");
 
     }
     else
@@ -543,9 +572,8 @@ public static class SvgConverter
     public TvgPathRenderer(TvgStream target, TvgStyle fill_style)
     {
       this.out_stream = target ?? throw new ArgumentNullException();
-      this.temp_stream = new TvgStream { stream = new MemoryStream(), ar = target.ar };
+      this.temp_stream = new TvgStream(new StringBuilder(), target.ar);
       this.fill_style = fill_style ?? throw new ArgumentNullException();
-      this.segments.Add(0);
     }
 
     public void Finish()
@@ -553,63 +581,85 @@ public static class SvgConverter
       var filled_segments = segments.Where(l => l > 0).ToArray();
       if (filled_segments.Length > 0)
       {
+        out_stream.Write("    (");
         out_stream.WriteCommand(TvgCommand.fill_path);
-        out_stream.WriteCountAndStyleType(filled_segments.Length, fill_style);
+        out_stream.WriteLine();
+        out_stream.Write("      ");
         out_stream.WriteStyle(fill_style);
-
-        foreach (var seg_len in filled_segments)
-        {
-          out_stream.WriteUnsignedInt((uint)seg_len);
-        }
-
-        out_stream.Write(((MemoryStream)temp_stream.stream).ToArray());
+        out_stream.WriteLine();
+        out_stream.WriteLine("      (");
+        out_stream.Write(this.temp_stream.ToString());
+        out_stream.WriteLine("        )");
+        out_stream.WriteLine("      )");
+        out_stream.WriteLine("    )");
       }
     }
 
     public void MoveTo(PointF pt)
     {
       //  Console.WriteLine("MoveTo({0},{1})", pt.X, pt.Y);
+      if (segments.Count > 0)
+      {
+        temp_stream.WriteLine("        )");
+      }
       segments.Add(0);
+      temp_stream.Write("        (");
       temp_stream.WritePoint(pt);
+      temp_stream.WriteLine(")");
+      temp_stream.WriteLine("        (");
     }
+
     public void LineTo(PointF pt)
     {
       // Console.WriteLine("LineTo({0},{1})", pt.X, pt.Y);
       CurrentSegmentPrimitives += 1;
-      temp_stream.WriteByte(0);
+      temp_stream.Write("          (line - ");
       temp_stream.WritePoint(pt);
+      temp_stream.WriteLine(")");
     }
+
     public void VerticalTo(float y)
     {
       // Console.WriteLine("VerticalTo({0})", y);
       CurrentSegmentPrimitives += 1;
-      temp_stream.WriteByte(2);
+      temp_stream.Write("          (vert - ");
       temp_stream.WriteCoordY(y);
+      temp_stream.WriteLine(")");
     }
+
     public void HorizontalTo(float x)
     {
       // Console.WriteLine("HorizontalTo({0})", x);
       CurrentSegmentPrimitives += 1;
-      temp_stream.WriteByte(1);
+      temp_stream.Write("          (horiz - ");
       temp_stream.WriteCoordX(x);
+      temp_stream.WriteLine(")");
     }
+
     public void QuadCurveTo(PointF pt1, PointF pt2)
     {
       // Console.WriteLine("QuadCurveTo({0},{1},{2},{3})", pt1.X, pt1.Y, pt2.X, pt2.Y);
       CurrentSegmentPrimitives += 1;
-      temp_stream.WriteByte(7);
+      temp_stream.Write("          (quadratic_bezier - (");
       temp_stream.WritePoint(pt1);
-      temp_stream.WritePoint(pt1);
+      temp_stream.Write(") (");
+      temp_stream.WritePoint(pt2);
+      temp_stream.WriteLine("))");
     }
+
     public void CurveTo(PointF pt1, PointF pt2, PointF pt3)
     {
       // Console.WriteLine("CurveTo({0},{1},{2},{3},{4},{5})", pt1.X, pt1.Y, pt2.X, pt2.Y, pt3.X, pt3.Y);
       CurrentSegmentPrimitives += 1;
-      temp_stream.WriteByte(3);
+      temp_stream.Write("          (bezier - (");
       temp_stream.WritePoint(pt1);
+      temp_stream.Write(") (");
       temp_stream.WritePoint(pt2);
+      temp_stream.Write(") (");
       temp_stream.WritePoint(pt3);
+      temp_stream.WriteLine("))");
     }
+
     public void ArcTo(PointF size, float angle, bool isLarge, bool sweep, PointF ep)
     {
       // Console.WriteLine("ArcTo()");
@@ -619,22 +669,26 @@ public static class SvgConverter
         return;
       }
       CurrentSegmentPrimitives += 1;
-      temp_stream.WriteByte(5);
-      temp_stream.WriteByte((byte)(0 |
-        (isLarge ? 1 : 0) |
-        (sweep ? 0 : 2)
-      ));
+      temp_stream.Write("          (arc_ellipse - ");
       temp_stream.WriteUnit(Math.Abs(size.X));
+      temp_stream.Write(" ");
       temp_stream.WriteUnit(Math.Abs(size.Y));
+      temp_stream.Write(" ");
       temp_stream.WriteUnit(angle);
+      temp_stream.Write(" ");
+      temp_stream.WriteBoolean(isLarge);
+      temp_stream.Write(" ");
+      temp_stream.WriteBoolean(sweep);
+      temp_stream.Write(" (");
       temp_stream.WritePoint(ep);
+      temp_stream.WriteLine("))");
     }
 
     public void ClosePath()
     {
       CurrentSegmentPrimitives += 1;
       // Console.WriteLine("ClosePath()");
-      temp_stream.WriteByte(6);
+      temp_stream.WriteLine("          (close -)");
     }
   }
 
@@ -1095,14 +1149,21 @@ public class SvgPolyline : SvgNode
   public string Points { get; set; }
 }
 
-public class TvgStream
+public class TvgStream : StringWriter
 {
-  public Stream stream;
-  public AnalyzeResult ar;
 
-  public void WriteByte(byte b)
+  public readonly AnalyzeResult ar;
+
+  public TvgStream(StringBuilder sb, AnalyzeResult ar) :
+    base(sb, CultureInfo.InvariantCulture)
   {
-    stream.WriteByte(b);
+    this.ar = ar ?? throw new ArgumentNullException(nameof(ar));
+  }
+
+
+  public void WriteBoolean(bool b)
+  {
+    Write("{0}", b ? "true" : "false");
   }
 
   public void WriteUnit(float value)
@@ -1113,7 +1174,7 @@ public class TvgStream
       int unit = (int)(value * scale + 0.5);
       if (unit < short.MinValue || unit > short.MaxValue)
         throw new UnitRangeException(value, unit, scale);
-      stream.Write(BitConverter.GetBytes((short)unit));
+      Write("{0}", value);
     }
   }
 
@@ -1140,6 +1201,7 @@ public class TvgStream
   public void WritePoint(float x, float y)
   {
     WriteCoordX(x);
+    Write(" ");
     WriteCoordY(y);
   }
 
@@ -1152,36 +1214,38 @@ public class TvgStream
 
   public void WriteUnsignedInt(uint val)
   {
-    if (val == 0)
-    {
-      stream.WriteByte(0);
-      return;
-    }
-    while (val != 0)
-    {
-      byte mask = 0x00;
-      if (val > 0x7F)
-        mask = 0x80;
-      stream.WriteByte((byte)((val & 0x7F) | mask));
-      val >>= 7;
-    }
+    Write("{0}", val);
+    // if (val == 0)
+    // {
+    //   stream.WriteByte(0);
+    //   return;
+    // }
+    // while (val != 0)
+    // {
+    //   byte mask = 0x00;
+    //   if (val > 0x7F)
+    //     mask = 0x80;
+    //   stream.WriteByte((byte)((val & 0x7F) | mask));
+    //   val >>= 7;
+    // }
   }
 
-  public void WriteCommand(TvgCommand cmd) => WriteByte((byte)cmd);
-  public void WriteCountAndStyleType(int count, TvgStyle style)
-  {
-    if (count > 64)
-      throw new NotSupportedException($"Cannot encode {count} elements!");
-    if (count == 0) throw new ArgumentOutOfRangeException("Cannot encode 0 path elements!");
-    WriteByte((byte)((style.GetStyleType() << 6) | ((count == 64) ? 0 : count)));
-  }
+  public void WriteCommand(TvgCommand cmd) => Write(cmd.ToString());
+
+  // public void WriteCountAndStyleType(int count, TvgStyle style)
+  // {
+  //   if (count > 64)
+  //     throw new NotSupportedException($"Cannot encode {count} elements!");
+  //   if (count == 0) throw new ArgumentOutOfRangeException("Cannot encode 0 path elements!");
+  //   WriteByte((byte)((style.GetStyleType() << 6) | ((count == 64) ? 0 : count)));
+  // }
 
   public void WriteStyle(TvgStyle style) => style.WriteData(ar, this);
 
-  public void Write(byte[] buffer)
-  {
-    stream.Write(buffer);
-  }
+  // public void Write(byte[] buffer)
+  // {
+  //   stream.Write(buffer);
+  // }
 }
 
 public abstract class TvgStyle
@@ -1198,7 +1262,7 @@ public class TvgFlatColor : TvgStyle
 
   public override void WriteData(AnalyzeResult ar, TvgStream stream)
   {
-    stream.WriteUnsignedInt(ar.GetColorIndex(Color));
+    stream.Write("(flat {0})", ar.GetColorIndex(Color));
   }
 
   public override string ToString() => Color.ToString();
@@ -1214,10 +1278,15 @@ public abstract class TvgGradient : TvgStyle
 
   public override void WriteData(AnalyzeResult ar, TvgStream stream)
   {
+    stream.Write("((");
     stream.WritePoint(StartPosition);
+    stream.Write(") (");
     stream.WritePoint(EndPosition);
+    stream.Write(")");
     stream.WriteUnsignedInt(ar.GetColorIndex(StartColor));
+    stream.Write(" ");
     stream.WriteUnsignedInt(ar.GetColorIndex(EndColor));
+    stream.Write(")");
   }
 }
 
