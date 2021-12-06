@@ -29,13 +29,13 @@ pub const rendering = @import("rendering.zig");
 /// Returns a stream of TVG commands as well as the document header.
 /// - `allocator` is used to allocate temporary data like the current set of vertices for *FillPolygon*. This can be a fixed-buffer allocator.
 /// - `reader` is a generic stream that provides the TVG byte data.
-pub fn parse(allocator: *std.mem.Allocator, reader: anytype) !parsing.Parser(@TypeOf(reader)) {
+pub fn parse(allocator: std.mem.Allocator, reader: anytype) !parsing.Parser(@TypeOf(reader)) {
     return try parsing.Parser(@TypeOf(reader)).init(allocator, reader);
 }
 
 pub fn renderStream(
     /// Allocator for temporary allocations
-    allocator: *std.mem.Allocator,
+    allocator: std.mem.Allocator,
     /// A struct that exports a single function `setPixel(x: isize, y: isize, color: [4]u8) void` as well as two fields width and height
     framebuffer: anytype,
     /// The icon data
@@ -56,7 +56,7 @@ pub fn renderStream(
 
 pub fn render(
     /// Allocator for temporary allocations
-    allocator: *std.mem.Allocator,
+    allocator: std.mem.Allocator,
     /// A struct that exports a single function `setPixel(x: isize, y: isize, color: [4]u8) void` as well as two fields width and height
     framebuffer: anytype,
     /// The icon data

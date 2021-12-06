@@ -60,7 +60,7 @@ pub fn main() !u8 {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
 
-    const allocator = &arena.allocator;
+    const allocator = arena.allocator();
 
     const cli = args.parseForCurrentProcess(CliOptions, allocator, .print) catch return 1;
     defer cli.deinit();
@@ -440,7 +440,7 @@ fn renderStyle(line_prefix: []const u8, writer: anytype, style: tvg.Style) !void
     }
 }
 
-fn parseTvgText(allocator: *std.mem.Allocator, writer: std.ArrayList(u8).Writer, source: []const u8) !void {
+fn parseTvgText(allocator: std.mem.Allocator, writer: std.ArrayList(u8).Writer, source: []const u8) !void {
     var builder = tvg.builder.create(writer);
     const Builder = @TypeOf(builder);
 
@@ -480,7 +480,7 @@ fn parseTvgText(allocator: *std.mem.Allocator, writer: std.ArrayList(u8).Writer,
 
         builder: *Builder,
         tokenizer: Tokenizer,
-        allocator: *std.mem.Allocator,
+        allocator: std.mem.Allocator,
 
         fn next(self: *Parser) !?Token {
             while (true) {
@@ -563,7 +563,7 @@ fn parseTvgText(allocator: *std.mem.Allocator, writer: std.ArrayList(u8).Writer,
             else if (std.mem.eql(u8, text, "false"))
                 false
             else
-                return return unexpectedText(text);
+                return unexpectedText(text);
         }
 
         fn parseOptionalNumber(self: *Parser) !?f32 {
@@ -757,7 +757,7 @@ fn parseTvgText(allocator: *std.mem.Allocator, writer: std.ArrayList(u8).Writer,
             var arena = std.heap.ArenaAllocator.init(self.allocator);
             errdefer arena.deinit();
 
-            var segments = std.ArrayList(tvg.Path.Segment).init(&arena.allocator);
+            var segments = std.ArrayList(tvg.Path.Segment).init(arena.allocator());
 
             try self.expectBegin();
 
@@ -777,7 +777,7 @@ fn parseTvgText(allocator: *std.mem.Allocator, writer: std.ArrayList(u8).Writer,
 
                         try self.expectBegin();
 
-                        var elements = std.ArrayList(tvg.Path.Node).init(&arena.allocator);
+                        var elements = std.ArrayList(tvg.Path.Node).init(arena.allocator());
                         while (true) {
                             const cmd_start = try self.expectAny();
                             switch (cmd_start) {

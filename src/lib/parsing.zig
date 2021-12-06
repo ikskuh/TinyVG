@@ -99,14 +99,14 @@ pub fn Parser(comptime Reader: type) type {
         const Self = @This();
 
         reader: Reader,
-        allocator: *std.mem.Allocator,
+        allocator: std.mem.Allocator,
         temp_buffer: std.ArrayList(u8),
         end_of_document: bool = false,
 
         header: Header,
         color_table: []tvg.Color,
 
-        pub fn init(allocator: *std.mem.Allocator, reader: Reader) (Reader.Error || ParseHeaderError)!Self {
+        pub fn init(allocator: std.mem.Allocator, reader: Reader) (Reader.Error || ParseHeaderError)!Self {
             var actual_magic_number: [2]u8 = undefined;
             reader.readNoEof(&actual_magic_number) catch return error.InvalidData;
             if (!std.mem.eql(u8, &actual_magic_number, &tvg.magic_number))

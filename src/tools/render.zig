@@ -6,7 +6,7 @@ pub fn main() !u8 {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
 
-    const allocator = &arena.allocator;
+    const allocator = arena.allocator();
 
     const cli = args.parseForCurrentProcess(CliOptions, allocator, .print) catch return 1;
     defer cli.deinit();
