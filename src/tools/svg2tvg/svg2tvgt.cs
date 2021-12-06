@@ -678,7 +678,7 @@ public static class SvgConverter
       temp_stream.Write(" ");
       temp_stream.WriteBoolean(isLarge);
       temp_stream.Write(" ");
-      temp_stream.WriteBoolean(sweep);
+      temp_stream.WriteBoolean(!sweep); // SVG sweep is inverse to TVG sweep
       temp_stream.Write(" (");
       temp_stream.WritePoint(ep);
       temp_stream.WriteLine("))");
