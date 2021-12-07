@@ -94,6 +94,7 @@ pub fn main() !u8 {
     var fb = Framebuffer{
         .slice = render_buffer,
         .stride = render_geometry.width,
+        .scale = super_scale,
         .width = render_geometry.width,
         .height = render_geometry.height,
     };
@@ -222,7 +223,7 @@ const Framebuffer = struct {
     stride: usize,
 
     // public API
-
+    scale: usize,
     width: usize,
     height: usize,
 

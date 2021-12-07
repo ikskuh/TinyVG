@@ -20,16 +20,10 @@ pub fn isFramebuffer(comptime T: type) bool {
         std.meta.Child(T)
     else
         T;
-    // @compileLog(
-    //     T,
-    //     Framebuffer,
-    //     std.meta.trait.hasFn("setPixel")(Framebuffer),
-    //     std.meta.trait.hasField("width")(Framebuffer),
-    //     std.meta.trait.hasField("height")(Framebuffer),
-    // );
     return std.meta.trait.hasFn("setPixel")(Framebuffer) and
         std.meta.trait.hasField("width")(Framebuffer) and
-        std.meta.trait.hasField("height")(Framebuffer);
+        std.meta.trait.hasField("height")(Framebuffer) and
+        std.meta.trait.hasField("scale")(Framebuffer);
 }
 
 const IndexSlice = struct { offset: usize, len: usize };
@@ -51,7 +45,7 @@ pub fn render(
         @compileError("framebuffer needs fields width, height and function setPixel!");
     const fb_width = @intToFloat(f32, framebuffer.width);
     const fb_height = @intToFloat(f32, framebuffer.height);
-    // std.debug.print("render {}\n", .{cmd});
+    // std.debug.print("render {}\n", .{cmd});#
 
     var painter = Painter{
         .scale_x = fb_width / @intToFloat(f32, header.width),
@@ -498,50 +492,6 @@ fn getProjectedPointOnLine(v1: Point, v2: Point, p: Point) Point {
     return add(v1, scale(l1, proj));
 }
 
-fn sampleStlye(color_table: []const Color, style: Style, x: i16, y: i16) Color {
-    return switch (style) {
-        .flat => |index| color_table[index],
-        .linear => |grad| blk: {
-            const c0 = color_table[grad.color_0];
-            const c1 = color_table[grad.color_1];
-
-            const p0 = grad.point_0;
-            const p1 = grad.point_1;
-            const pt = pointFromInts(x, y);
-
-            const direction = sub(p1, p0);
-            const delta_pt = sub(pt, p0);
-
-            const dot_0 = dot(direction, delta_pt);
-            if (dot_0 <= 0.0)
-                break :blk c0;
-
-            const dot_1 = dot(direction, sub(pt, p1));
-            if (dot_1 >= 0.0)
-                break :blk c1;
-
-            const len_grad = length(direction);
-
-            const pos_grad = length(getProjectedPointOnLine(
-                Point{ .x = 0, .y = 0 },
-                direction,
-                delta_pt,
-            ));
-
-            break :blk lerp_sRGB(c0, c1, pos_grad / len_grad);
-        },
-        .radial => |grad| blk: {
-            const dist_max = distance(grad.point_0, grad.point_1);
-            const dist_is = distance(grad.point_0, pointFromInts(x, y));
-
-            const c0 = color_table[grad.color_0];
-            const c1 = color_table[grad.color_1];
-
-            break :blk lerp_sRGB(c0, c1, dist_is / dist_max);
-        },
-    };
-}
-
 const Painter = struct {
     scale_x: f32,
     scale_y: f32,
@@ -611,7 +561,7 @@ const Painter = struct {
                     .even_odd => (inside_count % 2) == 1,
                 };
                 if (set) {
-                    framebuffer.setPixel(x, y, sampleStlye(color_table, style, x, y).toRgba8());
+                    framebuffer.setPixel(x, y, self.sampleStlye(color_table, style, x, y).toRgba8());
                 }
             }
         }
@@ -625,7 +575,7 @@ const Painter = struct {
         while (py < ylimit) : (py += 1) {
             var px = @floatToInt(i16, std.math.floor(self.scale_x * x));
             while (px < xlimit) : (px += 1) {
-                framebuffer.setPixel(px, py, sampleStlye(color_table, style, px, py).toRgba8());
+                framebuffer.setPixel(px, py, self.sampleStlye(color_table, style, px, py).toRgba8());
             }
         }
     }
@@ -674,19 +624,68 @@ const Painter = struct {
             while (y <= bottom) : (y += 1) {
                 var x: i16 = left;
                 while (x <= right) : (x += 1) {
-                    const pt = pointFromInts(x, y);
+                    const pt = self.mapPointToImage(pointFromInts(x, y));
                     var delta = sub(pt, location);
-                    delta.x /= self.scale_x;
-                    delta.y /= self.scale_y;
                     const dist = length2(delta);
                     if (dist <= r2)
-                        framebuffer.setPixel(x, y, sampleStlye(color_table, style, x, y).toRgba8());
+                        framebuffer.setPixel(x, y, self.sampleStlye(color_table, style, x, y).toRgba8());
                 }
             }
         } else {
             const pt = pointToInts(location);
-            framebuffer.setPixel(pt.x, pt.y, sampleStlye(color_table, style, pt.x, pt.y).toRgba8());
+            framebuffer.setPixel(pt.x, pt.y, self.sampleStlye(color_table, style, pt.x, pt.y).toRgba8());
         }
+    }
+
+    fn mapPointToImage(self: Painter, pt: Point) Point {
+        return Point{
+            .x = pt.x / self.scale_x,
+            .y = pt.y / self.scale_y,
+        };
+    }
+
+    fn sampleStlye(self: Painter, color_table: []const Color, style: Style, x: i16, y: i16) Color {
+        return switch (style) {
+            .flat => |index| color_table[index],
+            .linear => |grad| blk: {
+                const c0 = color_table[grad.color_0];
+                const c1 = color_table[grad.color_1];
+
+                const p0 = grad.point_0;
+                const p1 = grad.point_1;
+                const pt = self.mapPointToImage(pointFromInts(x, y));
+
+                const direction = sub(p1, p0);
+                const delta_pt = sub(pt, p0);
+
+                const dot_0 = dot(direction, delta_pt);
+                if (dot_0 <= 0.0)
+                    break :blk c0;
+
+                const dot_1 = dot(direction, sub(pt, p1));
+                if (dot_1 >= 0.0)
+                    break :blk c1;
+
+                const len_grad = length(direction);
+
+                const pos_grad = length(getProjectedPointOnLine(
+                    Point{ .x = 0, .y = 0 },
+                    direction,
+                    delta_pt,
+                ));
+
+                break :blk lerp_sRGB(c0, c1, pos_grad / len_grad);
+            },
+            .radial => |grad| blk: {
+                const dist_max = distance(grad.point_0, grad.point_1);
+                const dist_is = distance(grad.point_0, self.mapPointToImage(pointFromInts(x, y)));
+
+                const c0 = color_table[grad.color_0];
+                const c1 = color_table[grad.color_1];
+
+                break :blk lerp_sRGB(c0, c1, dist_is / dist_max);
+            },
+        };
     }
 };
 
