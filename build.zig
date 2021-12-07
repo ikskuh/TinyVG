@@ -67,7 +67,7 @@ pub fn build(b: *std.build.Builder) !void {
         const tvg_conversion = render.run();
         tvg_conversion.addArg(file);
         tvg_conversion.addArg("--super-sampling");
-        tvg_conversion.addArg("8");
+        tvg_conversion.addArg("4"); // 16 times multisampling
         tvg_conversion.addArg("--output");
         tvg_conversion.addArg(file[0 .. file.len - 3] ++ "tga");
         tvg_conversion.cwd = "examples";

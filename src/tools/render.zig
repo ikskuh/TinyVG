@@ -111,6 +111,11 @@ pub fn main() !u8 {
         const x = i % image_geometry.width;
         const y = i / image_geometry.width;
 
+        // stores premultiplied rgb + linear alpha
+        // premultiplication is necessary as
+        // (1,1,1,50%) over (0,0,0,0%) must result in (1,1,1,25%) and not (0.5,0.5,0.5,25%).
+        // This will only happen if we fully ignore the fraction of transparent colors in the final result.
+        // The average must also be computed in linear space, as we would get invalid color blending otherwise.
         var color = std.mem.zeroes([4]f32);
 
         var dy: usize = 0;
@@ -121,34 +126,46 @@ pub fn main() !u8 {
                 const sy = y * super_scale + dy;
 
                 const src_color = render_buffer[sy * render_geometry.width + sx];
-                color[0] += mapToLinear(src_color.r);
-                color[1] += mapToLinear(src_color.g);
-                color[2] += mapToLinear(src_color.b);
-                color[3] += @intToFloat(f32, src_color.a);
+
+                const a = @intToFloat(f32, src_color.a) / 255.0;
+
+                // Create premultiplied linear colors
+                color[0] += a * mapToLinear(src_color.r);
+                color[1] += a * mapToLinear(src_color.g);
+                color[2] += a * mapToLinear(src_color.b);
+                color[3] += a;
             }
         }
 
+        // Compute average
         for (color) |*chan| {
             chan.* = chan.* / @intToFloat(f32, super_scale * super_scale);
         }
 
-        pixel.* = Color{
-            .r = mapToGamma(color[0]),
-            .g = mapToGamma(color[1]),
-            .b = mapToGamma(color[2]),
-            .a = @floatToInt(u8, color[3]),
-        };
+        const final_a = color[3];
+
+        if (final_a > 0.0) {
+            pixel.* = Color{
+                // unmultiply the alpha and apply the gamma
+                .r = mapToGamma(color[0] / final_a),
+                .g = mapToGamma(color[1] / final_a),
+                .b = mapToGamma(color[2] / final_a),
+                .a = @floatToInt(u8, 255.0 * color[3]),
+            };
+        } else {
+            pixel.* = Color{ .r = 0xFF, .g = 0x00, .b = 0xFF, .a = 0x00 };
+        }
     }
 
-    // {
-    //     var file = try std.fs.cwd().createFile("/tmp/test.tga", .{});
-    //     defer file.close();
+    {
+        var file = try std.fs.cwd().createFile("/tmp/test.tga", .{});
+        defer file.close();
 
-    //     const width = try std.math.cast(u16, render_geometry.width);
-    //     const height = try std.math.cast(u16, render_geometry.height);
+        const width = try std.math.cast(u16, render_geometry.width);
+        const height = try std.math.cast(u16, render_geometry.height);
 
-    //     try dumpTga(file.writer(), width, height, render_buffer);
-    // }
+        try dumpTga(file.writer(), width, height, render_buffer);
+    }
 
     {
         const width = try std.math.cast(u16, image_geometry.width);
@@ -269,12 +286,12 @@ const Framebuffer = struct {
     }
 
     fn lerp(src: u8, dst: u8, src_alpha: f32, dst_alpha: f32, fin_alpha: f32) u8 {
-        const srcf = @intToFloat(f32, src);
-        const dstf = @intToFloat(f32, dst);
+        const src_val = mapToLinear(src);
+        const dst_val = mapToLinear(dst);
 
-        const value = (1.0 / fin_alpha) * (src_alpha * srcf + (1.0 - src_alpha) * dst_alpha * dstf);
+        const value = (1.0 / fin_alpha) * (src_alpha * src_val + (1.0 - src_alpha) * dst_alpha * dst_val);
 
-        return @floatToInt(u8, value);
+        return mapToGamma(value);
     }
 };
 
