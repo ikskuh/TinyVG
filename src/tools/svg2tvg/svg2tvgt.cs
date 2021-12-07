@@ -27,7 +27,7 @@ class Application
 
       if (arg == "--output")
       {
-        out_file_name = positionals[i + 1];
+        out_file_name = args[i + 1];
         i += 1;
       }
       else if (arg == "--help")
@@ -361,7 +361,8 @@ public static class SvgConverter
         fully_supported = false;
         return;
       }
-      throw new InvalidOperationException(string.Format("Unknown attribute {0}", e.Attr.Name));
+      // throw new InvalidOperationException(string.Format("Unknown attribute {0}", e.Attr.Name));
+      Console.Error.WriteLine("Unknown attribute {0}", e.Attr.Name);
     });
     using (var reader = XmlReader.Create(text_reader, new XmlReaderSettings
     {
