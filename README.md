@@ -77,13 +77,18 @@ See also this image to have a preview of what is already implemented:
   - [x] Add extended coordinate space (32 bit coordinates)
   - [ ] Expand opcode space for mirrored/repeated splines in paths
   - [x] Encode primary style in command, reduces command to 63 variants, allows bigger encoding
+- [ ] Improve rendering
+  - [x] Add anti-aliasing
+  - [ ] Add missing line width modifier for path rendering
+  - [ ] Improve rendering performance
+  - [ ] Move anti-aliased rendering into core library
 - [ ] Implement textual representation
   - [x] Convert to TVG
   - [x] Convert to text
   - [x] Format text
   - [ ] Convert to SVG
 - [ ] Add auxiliary tools
-  - [ ] C Library
+  - [ ] C Library frontend
   - [ ] Wasm Polyfill
   - [ ] Inkscape Plugin
 - [ ] Benchmark Suite
