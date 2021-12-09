@@ -83,7 +83,7 @@ See also this image to have a preview of what is already implemented:
   - [ ] Improve rendering performance
   - [ ] Move anti-aliased rendering into core library
 - [ ] Implement textual representation
-  - [x] Convert to TVG
+  - [x] Convert to `.tvg`
   - [x] Convert to text
   - [x] Format text
   - [ ] Convert to SVG
@@ -92,14 +92,14 @@ See also this image to have a preview of what is already implemented:
   - [ ] Wasm Polyfill
   - [ ] Inkscape Plugin
 - [ ] Benchmark Suite
-  - [ ] File Size (SVG vs. TVG)
+  - [ ] File Size (SVG vs. TinyVG)
 - [ ] Write specification
 - [ ] Review specification
 - [ ] Lock the specification into _Version 1_.
 
 ## Considerations
 
-- Which color format does TVG use?
+- Which color format does TinyVG use?
   - Linear color space?
   - sRGB?
 - What is the default color depth?
