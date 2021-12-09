@@ -86,7 +86,7 @@ See also this image to have a preview of what is already implemented:
   - [x] Convert to `.tvg`
   - [x] Convert to text
   - [x] Format text
-  - [ ] Convert to SVG
+  - [x] Convert to SVG
 - [ ] Add auxiliary tools
   - [ ] C Library frontend
   - [ ] Wasm Polyfill
