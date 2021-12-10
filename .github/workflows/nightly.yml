@@ -1,0 +1,103 @@
+name: Nightly Build
+
+on:
+  push:
+    branches: [master]
+  schedule:
+    - cron: '0 5 * * *' # run at 5 AM UTC
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install imagemagick p7zip-full
+
+      - name: Setup Zig
+        uses: goto-bus-stop/setup-zig@v1
+        with:
+          version: master
+
+      - name: Compile
+        run: zig build install
+
+      - name: Testsuite
+        run: zig build test
+
+      - name: Generate Test files
+        run: zig build generate
+
+      - name: Compile outputs
+        run: |
+          zig build -Drelease -Dtarget=x86_64-windows --prefix release/x86_64-windows
+          zig build -Drelease -Dtarget=x86_64-linux --prefix release/x86_64-linux
+          zig build -Drelease -Dtarget=x86_64-macos --prefix release/x86_64-macos
+          zig build -Drelease -Dtarget=aarch64-linux --prefix release/aarch64-linux
+          zig build -Drelease -Dtarget=aarch64-macos --prefix release/aarch64-macos
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: x86_64-windows
+          path: release/x86_64-windows/
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: x86_64-linux
+          path: release/x86_64-linux/
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: x86_64-macos
+          path: release/x86_64-macos/
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: aarch64-linux
+          path: release/aarch64-linux/
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: aarch64-macos
+          path: release/aarch64-macos/
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
+
+      - name: Setup Zig
+        uses: goto-bus-stop/setup-zig@v1
+        with:
+          version: master
+
+      - name: Compile
+        run: zig build install
+
+      - name: Testsuite
+        run: zig build test
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
+
+      - name: Setup Zig
+        uses: goto-bus-stop/setup-zig@v1
+        with:
+          version: master
+
+      - name: Compile
+        run: zig build install
+
+      - name: Testsuite
+        run: zig build test

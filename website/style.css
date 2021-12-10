@@ -27,6 +27,7 @@ body {
   background: #ccccccdd;
   color: #2b0245;
   border-radius: 1rem;
+  line-height: 1.25;
 }
 
 .page-end-spacer {

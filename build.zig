@@ -17,8 +17,10 @@ const pkgs = struct {
 };
 
 pub fn build(b: *std.build.Builder) !void {
+    const is_release = b.option(bool, "release", "Prepares a release build") orelse false;
+
     const target = b.standardTargetOptions(.{});
-    const mode = b.standardReleaseOptions();
+    const mode = if (is_release) .ReleaseSafe else b.standardReleaseOptions();
 
     const enable_dotnet = b.option(bool, "enable-dotnet", "Enables building the .NET based tools.") orelse false;
     if (enable_dotnet) {
@@ -52,7 +54,9 @@ pub fn build(b: *std.build.Builder) !void {
     ground_truth_generator.setBuildMode(mode);
     ground_truth_generator.setTarget(target);
     ground_truth_generator.addPackage(pkgs.tvg);
-    ground_truth_generator.install();
+    if (!is_release) {
+        ground_truth_generator.install();
+    }
 
     const generate_ground_truth = ground_truth_generator.run();
 
