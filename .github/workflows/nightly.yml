@@ -17,7 +17,10 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install imagemagick p7zip-full
+          sudo apt-get install \
+            imagemagick p7zip-full \
+            npm
+          sudo npm install -g markdown-pdf
 
       - name: Setup Zig
         uses: goto-bus-stop/setup-zig@v1
@@ -44,27 +47,62 @@ jobs:
       - uses: actions/upload-artifact@v2
         with:
           name: x86_64-windows
-          path: release/x86_64-windows/
+          path: release/x86_64-windows/bin/
 
       - uses: actions/upload-artifact@v2
         with:
           name: x86_64-linux
-          path: release/x86_64-linux/
+          path: release/x86_64-linux/bin/
 
       - uses: actions/upload-artifact@v2
         with:
           name: x86_64-macos
-          path: release/x86_64-macos/
+          path: release/x86_64-macos/bin/
 
       - uses: actions/upload-artifact@v2
         with:
           name: aarch64-linux
-          path: release/aarch64-linux/
+          path: release/aarch64-linux/bin/
 
       - uses: actions/upload-artifact@v2
         with:
           name: aarch64-macos
-          path: release/aarch64-macos/
+          path: release/aarch64-macos/bin/
+
+      - name: Render Specification
+        run: |
+          mkdir -p dist
+          markdown-pdf documents/specification.md -o dist/specification.pdf
+
+      - name: Pack Downloads Bundles
+        run: |
+          mkdir -p dist
+
+          pushd release/x86_64-windows/bin
+          7z a ../../../dist/tvg-x86_64-windows.zip *
+          popd
+          pushd release/x86_64-linux/bin
+          7z a ../../../dist/tvg-x86_64-linux.zip *
+          popd
+          pushd release/x86_64-macos/bin
+          7z a ../../../dist/tvg-x86_64-macos.zip *
+          popd
+          pushd release/aarch64-linux/bin
+          7z a ../../../dist/tvg-aarch64-linux.zip *
+          popd
+          pushd release/aarch64-macos/bin
+          7z a ../../../dist/tvg-aarch64-macos.zip *
+          popd
+
+      - name: Deploy to Server
+        uses: easingthemes/ssh-deploy@v2.1.1
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_KEY }}
+          ARGS: '-rltgoDzvO'
+          SOURCE: 'dist/'
+          REMOTE_HOST: ${{ secrets.DEPLOY_HOST }}
+          REMOTE_USER: ${{ secrets.DEPLOY_USERNAME }}
+          TARGET: '/home/${{ secrets.DEPLOY_USERNAME }}/tinyvg/download'
 
   build-macos:
     runs-on: macos-latest
