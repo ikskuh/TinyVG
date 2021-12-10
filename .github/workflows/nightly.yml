@@ -72,37 +72,38 @@ jobs:
       - name: Render Specification
         run: |
           mkdir -p dist
-          markdown-pdf documents/specification.md -o dist/specification.pdf
+          markdown-pdf documents/specification.md -o website/download/specification.pdf
+          cp documents/specification.md website/download/specification.md
 
       - name: Pack Downloads Bundles
         run: |
           mkdir -p dist
 
           pushd release/x86_64-windows/bin
-          7z a ../../../dist/tvg-x86_64-windows.zip *
+          7z a ../../../website/download/tvg-x86_64-windows.zip *
           popd
           pushd release/x86_64-linux/bin
-          7z a ../../../dist/tvg-x86_64-linux.zip *
+          7z a ../../../website/download/tvg-x86_64-linux.zip *
           popd
           pushd release/x86_64-macos/bin
-          7z a ../../../dist/tvg-x86_64-macos.zip *
+          7z a ../../../website/download/tvg-x86_64-macos.zip *
           popd
           pushd release/aarch64-linux/bin
-          7z a ../../../dist/tvg-aarch64-linux.zip *
+          7z a ../../../website/download/tvg-aarch64-linux.zip *
           popd
           pushd release/aarch64-macos/bin
-          7z a ../../../dist/tvg-aarch64-macos.zip *
+          7z a ../../../website/download/tvg-aarch64-macos.zip *
           popd
 
       - name: Deploy to Server
         uses: easingthemes/ssh-deploy@v2.1.1
         env:
           SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_KEY }}
-          ARGS: '-rltgoDzvO'
-          SOURCE: 'dist/'
+          ARGS: '-rltgoDzvO --delete'
+          SOURCE: 'website/'
           REMOTE_HOST: ${{ secrets.DEPLOY_HOST }}
           REMOTE_USER: ${{ secrets.DEPLOY_USERNAME }}
-          TARGET: '/home/${{ secrets.DEPLOY_USERNAME }}/tinyvg/download'
+          TARGET: '/home/${{ secrets.DEPLOY_USERNAME }}/tinyvg'
 
   build-macos:
     runs-on: macos-latest
