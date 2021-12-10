@@ -3,7 +3,7 @@
 }
 
 body {
-  position: fixed;
+  position: absolute;
   margin: 0;
   padding: 0;
   top: 0;
@@ -15,29 +15,37 @@ body {
   font-family: sans-serif;
   background-size: 2rem;
   image-rendering: pixelated;
+  overflow-y: auto;
 }
 
 .body {
   margin: 1rem;
   padding: 2rem;
-  max-width: 35rem;
+  max-width: 45rem;
   margin-left: auto;
   margin-right: auto;
   background: #ccccccdd;
   color: #2b0245;
   border-radius: 1rem;
-
-  overflow-y: auto;
-  max-height: 100%;
 }
 
-@media (max-width: 37rem) {
+.page-end-spacer {
+  height: 1px;
+  padding: 0;
+  margin: 0;
+  display: block;
+}
+
+@media (max-width: 47rem) {
   .body {
     margin: 0;
     padding: 3rem;
     border-radius: 0;
-    max-width: 37rem;
-    height: 100%;
+    max-width: 47rem;
+    height: unset;
+  }
+  .page-end-spacer {
+    display: none;
   }
 }
 
@@ -76,4 +84,38 @@ ul {
   font-weight: bold;
   font-size: 5rem;
   white-space: nowrap;
+}
+
+table.benchmark {
+  border-collapse: collapse;
+  border: 1px solid black;
+  width: 100%;
+}
+table.benchmark td,
+table.benchmark th {
+  font-size: 90%;
+  padding: 0.25rem;
+  border-collapse: collapse;
+  border-left: 1px solid black;
+  border-right: 1px solid black;
+}
+table.benchmark tr:nth-child(1) {
+  border: 1px solid black;
+}
+table.benchmark th:not(:nth-child(1)) {
+  width: 20%;
+}
+table.benchmark tr:nth-child(even) {
+  background-color: rgba(255, 255, 255, 0.4);
+}
+table.benchmark tr:not(:nth-child(1)) th:nth-child(1) {
+  text-align: right;
+}
+table.benchmark td {
+  font-family: monospace;
+  text-align: right;
+}
+
+.body h1 {
+  margin-top: 0;
 }

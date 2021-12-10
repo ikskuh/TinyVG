@@ -25,6 +25,7 @@ which convert tvg-text svgo svg2tvgt tvg-render > /dev/null
 
 [ -f "$1" ] || panic "file not found!"
 
+rm -rf "${WORKDIR}}"
 mkdir -p "${WORKDIR}"
 
 cp "$1" "${WORKDIR}/input.svg"
@@ -40,12 +41,12 @@ tvg-text "${WORKDIR}/output.tvgt" --output "${WORKDIR}/output.tvg"
 tvg-text "${WORKDIR}/output.tvg" --output "${WORKDIR}/output.svg"
 svgo --quiet --config "${ROOT}/svgo.config.js" "${WORKDIR}/output.svg" >&2
 
-tvg-render "${WORKDIR}/output.tvg" --output "${WORKDIR}/output.tga" # --super-sampling 4
+tvg-render "${WORKDIR}/output.tvg" --output "${WORKDIR}/output.tga" --super-sampling 4
 convert "${WORKDIR}/output.tga" "${WORKDIR}/output.png"
 
 # compare -similarity-threshold 0.5 "${WORKDIR}/input.png" "${WORKDIR}/output.png" "${WORKDIR}/diff.png"
 
 SVG_SIZE=$(cat "${WORKDIR}/input.svg" | wc -c)
-TVG_SIZE=$(cat "${WORKDIR}/temp.tvg" | wc -c)
+TVG_SIZE=$(cat "${WORKDIR}/output.tvg" | wc -c)
 
 echo -e "$1\t${SVG_SIZE}\t${TVG_SIZE}"

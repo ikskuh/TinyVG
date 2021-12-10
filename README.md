@@ -87,13 +87,16 @@ See also this image to have a preview of what is already implemented:
   - [x] Convert to text
   - [x] Format text
   - [x] Convert to SVG
-  - [x] Convert from SVG (via external tool)
+  - [ ] Convert from SVG (via external tool)
+    - [ ] SVG `<circle>`
+    - [ ] SVG `<ellipse>`
+    - [ ] SVG `<rect rx="?">`
 - [ ] Add auxiliary tools
   - [ ] C Library frontend
   - [ ] Wasm Polyfill
   - [ ] Inkscape Plugin
-- [ ] Benchmark Suite
-  - [ ] File Size (SVG vs. TinyVG)
+- [x] Benchmark Suite
+  - [x] File Size (SVG vs. TinyVG)
 - [ ] Write specification
 - [ ] Review specification
 - [ ] Lock the specification into _Version 1_.

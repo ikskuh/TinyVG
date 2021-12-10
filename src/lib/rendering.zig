@@ -108,11 +108,11 @@ pub fn render(
         },
         .draw_line_path => |data| {
             var point_store = FixedBufferList(Point, temp_buffer_size){};
-            var slice_store = FixedBufferList(IndexSlice, 64){}; // known upper bound
+            var slice_store = FixedBufferList(IndexSlice, 128){}; // known upper bound
 
             try renderPath(&point_store, &slice_store, data.path);
 
-            var slices: [64][]const Point = undefined;
+            var slices: [slice_store.buffer.len][]const Point = undefined;
             for (slice_store.items()) |src, i| {
                 slices[i] = point_store.items()[src.offset..][0..src.len];
             }
@@ -468,6 +468,10 @@ fn dot(p1: Point, p2: Point) f32 {
     return p1.x * p2.x + p1.y * p2.y;
 }
 
+fn cross(a: Point, b: Point) f32 {
+    return a.x * b.y - a.y * b.x;
+}
+
 fn scale(a: Point, s: f32) Point {
     return .{ .x = a.x * s, .y = a.y * s };
 }
@@ -532,9 +536,7 @@ const Painter = struct {
             while (x <= max_x) : (x += 1) {
 
                 // compute "center" of the pixel
-                var p = pointFromInts(x, y);
-                p.x /= self.scale_x;
-                p.y /= self.scale_y;
+                var p = self.mapPointToImage(pointFromInts(x, y));
 
                 var inside_count: usize = 0;
                 for (points_lists) |points| {
@@ -580,31 +582,100 @@ const Painter = struct {
         }
     }
 
+    fn sdUnevenCapsule(_p: Point, pa: Point, _pb: Point, ra: f32, rb: f32) f32 {
+        const p = sub(_p, pa);
+        const pb = sub(_pb, pa);
+        const h = dot(pb, pb);
+        var q = scale(tvg.point(dot(p, tvg.point(pb.y, -pb.x)), dot(p, pb)), 1.0 / h);
+
+        //-----------
+
+        q.x = std.math.fabs(q.x);
+
+        const b = ra - rb;
+        const c = tvg.point(std.math.sqrt(h - b * b), b);
+
+        const k = cross(c, q);
+        const m = dot(c, q);
+        const n = dot(q, q);
+
+        if (k < 0.0) {
+            return std.math.sqrt(h * (n)) - ra;
+        } else if (k > c.x) {
+            return std.math.sqrt(h * (n + 1.0 - 2.0 * q.y)) - rb;
+        } else {
+            return m - ra;
+        }
+    }
+
+    /// render round-capped line via SDF: https://iquilezles.org/www/articles/distfunctions2d/distfunctions2d.htm (Uneven Capsule - exact )
+    /// ```
+    /// float sdUnevenCapsule( in vec2 p, in vec2 pa, in vec2 pb, in float ra, in float rb )
+    /// {
+    ///     p  -= pa;
+    ///     pb -= pa;
+    ///     float h = dot(pb,pb);
+    ///     vec2  q = vec2( dot(p,vec2(pb.y,-pb.x)), dot(p,pb) )/h;
+    ///     
+    ///     //-----------
+    ///     
+    ///     q.x = abs(q.x);
+    ///     
+    ///     float b = ra-rb;
+    ///     vec2  c = vec2(sqrt(h-b*b),b);
+    ///     
+    ///     float k = cro(c,q);
+    ///     float m = dot(c,q);
+    ///     float n = dot(q,q);
+    ///     
+    ///          if( k < 0.0 ) return sqrt(h*(n            )) - ra;
+    ///     else if( k > c.x ) return sqrt(h*(n+1.0-2.0*q.y)) - rb;
+    ///                        return m                       - ra;
+    /// }
+    /// ```
     fn drawLine(self: Painter, framebuffer: anytype, color_table: []const Color, style: Style, width_start: f32, width_end: f32, line: tvg.Line) void {
-        const len_fract = distance(line.start, line.end);
+        var min_x: i16 = std.math.maxInt(i16);
+        var min_y: i16 = std.math.maxInt(i16);
+        var max_x: i16 = std.math.minInt(i16);
+        var max_y: i16 = std.math.minInt(i16);
 
-        const num_dots = @floatToInt(usize, std.math.ceil(len_fract));
+        const max_width = std.math.max(width_start, width_end);
 
-        if (num_dots == 0)
-            return;
+        const points = [_]tvg.Point{ line.start, line.end };
+        for (points) |pt| {
+            min_x = std.math.min(min_x, @floatToInt(i16, std.math.floor(self.scale_x * (pt.x - max_width))));
+            min_y = std.math.min(min_y, @floatToInt(i16, std.math.floor(self.scale_y * (pt.y - max_width))));
+            max_x = std.math.max(max_x, @floatToInt(i16, std.math.ceil(self.scale_x * (pt.x + max_width))));
+            max_y = std.math.max(max_y, @floatToInt(i16, std.math.ceil(self.scale_y * (pt.y + max_width))));
+        }
 
-        var i: usize = 0;
-        while (i <= num_dots) : (i += 1) {
-            const f = @intToFloat(f32, i) / @intToFloat(f32, num_dots);
+        // limit to valid screen area
+        min_x = std.math.max(min_x, 0);
+        min_y = std.math.max(min_y, 0);
 
-            const pos = Point{
-                .x = lerp(line.start.x, line.end.x, f),
-                .y = lerp(line.start.y, line.end.y, f),
-            };
-            const width = lerp(width_start, width_end, f);
+        max_x = std.math.min(max_x, @intCast(i16, framebuffer.width - 1));
+        max_y = std.math.min(max_y, @intCast(i16, framebuffer.height - 1));
 
-            self.drawCircle(
-                framebuffer,
-                color_table,
-                style,
-                pos,
-                width / 2.0, // circle uses radius, we use width/diameter
-            );
+        var y: i16 = min_y;
+        while (y <= max_y) : (y += 1) {
+            var x: i16 = min_x;
+            while (x <= max_x) : (x += 1) {
+
+                // compute "center" of the pixel
+                var p = self.mapPointToImage(pointFromInts(x, y));
+
+                const dist = sdUnevenCapsule(
+                    p,
+                    line.start,
+                    line.end,
+                    std.math.max(0.35, width_start / 2),
+                    std.math.max(0.35, width_end / 2),
+                );
+
+                if (dist <= 0.0) {
+                    framebuffer.setPixel(x, y, self.sampleStlye(color_table, style, x, y).toRgba8());
+                }
+            }
         }
     }
 

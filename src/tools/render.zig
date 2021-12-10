@@ -4,7 +4,7 @@ const args = @import("args");
 
 fn printUsage(stream: anytype) !void {
     try stream.writeAll(
-        \\tvg-render [-o file] [-g geometry] [-a] [--super-sampling <scale>] source.tvg
+        \\tvg-render [-o file] [-g geometry] [-a] [-s <scale>] source.tvg
         \\
     );
 }
@@ -27,6 +27,7 @@ const CliOptions = struct {
         .h = "help",
         .b = "background",
         .a = "anti-alias",
+        .s = "super-sampling",
     };
 };
 

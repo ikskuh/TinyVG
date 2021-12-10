@@ -841,7 +841,7 @@ public static class SvgConverter
     {
       if (!no_fill && node.TvgFillStyle == null)
       {
-        node.TvgFillStyle = new TvgFlatColor { Color = buf.InsertColor("#000", 1.0f) };
+        node.TvgFillStyle = new TvgFlatColor { Color = buf.InsertColor("#000", opacity) };
       }
     }
 
@@ -932,8 +932,8 @@ public class AnalyzeIntermediateBuffer
 
     if (width == 0 && height == 0)
     {
-      width = (int)(viewport[2] - viewport[0]);
-      height = (int)(viewport[3] - viewport[1]);
+      width = (int)(viewport[2] + 0.5);
+      height = (int)(viewport[3] + 0.5);
     }
 
     // determine the maximum precision for the given image size
