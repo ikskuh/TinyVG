@@ -1,34 +1,36 @@
 const std = @import("std");
 const builtin = @import("builtin");
-const painterz = @import("painterz");
 
-/// This is the TVG magic number which recognizes the icon format.
+/// This is the TinyVG magic number which recognizes the icon format.
 /// Magic numbers might seem unnecessary, but they will be the first
 /// guard in line against bad input and prevent unnecessary cycles
 /// to detect those.
 pub const magic_number = [2]u8{ 0x72, 0x56 };
 
-/// This is the latest TVG version supported by this library.
+/// This is the latest TinyVG version supported by this library.
 pub const current_version = 1;
 
 // submodules
 
-/// A generic module that provides functions for assembling TVG graphics at comptime.
-// pub const comptime_builder = @import("comptime_builder.zig").create;
-
 /// This module provides a runtime usable builder
 pub const builder = @import("builder.zig");
 
-/// Module that provides a generic purpose TVG parser. This parser exports all data as
+/// Module that provides a generic purpose TinyVG parser. This parser exports all data as
 /// pre-scaled `f32` values.
 pub const parsing = @import("parsing.zig");
 
-/// A TVG software renderer based on the parsing module. Takes a parser stream as input.
+/// A TinyVG software renderer based on the parsing module. Takes a parser stream as input.
 pub const rendering = @import("rendering.zig");
 
-/// Returns a stream of TVG commands as well as the document header.
+/// This module provides means to render SVG files from TinyVG.
+pub const svg = @import("svg.zig");
+
+/// This module provides means to render and parse TinyVG text.
+pub const text = @import("text.zig");
+
+/// Returns a stream of TinyVG commands as well as the document header.
 /// - `allocator` is used to allocate temporary data like the current set of vertices for *FillPolygon*. This can be a fixed-buffer allocator.
-/// - `reader` is a generic stream that provides the TVG byte data.
+/// - `reader` is a generic stream that provides the TinyVG byte data.
 pub fn parse(allocator: std.mem.Allocator, reader: anytype) !parsing.Parser(@TypeOf(reader)) {
     return try parsing.Parser(@TypeOf(reader)).init(allocator, reader);
 }
@@ -86,7 +88,7 @@ pub const Range = enum(u2) {
     enhanced = 2,
 };
 
-/// The color encoding used in a TVG file. This enum describes how the data in the color table section of the format looks like.
+/// The color encoding used in a TinyVG file. This enum describes how the data in the color table section of the format looks like.
 pub const ColorEncoding = enum(u2) {
     /// A classic 4-tuple with 8 bit unsigned channels.
     /// Encodes red, green, blue and alpha. If not specified otherwise (via external means) the color channels encode sRGB color data
@@ -119,7 +121,7 @@ pub const ColorEncoding = enum(u2) {
     custom = 3,
 };
 
-/// A TVG scale value. Defines the scale for all units inside a graphic.
+/// A TinyVG scale value. Defines the scale for all units inside a graphic.
 /// The scale is defined by the number of decimal bits in a `i32`, thus scaling
 /// can be trivially implemented by shifting the integers right by the scale bits.
 pub const Scale = enum(u4) {
@@ -371,29 +373,6 @@ pub const Gradient = struct {
     color_0: u32,
     color_1: u32,
 };
-
-// brainstorming
-
-// path nodes (u3)
-//   line x,y
-//   horiz x
-//   vert y
-//   bezier c0x,c0y,c1x,c1y,x,y
-//   arc_circ r,x,y
-//   arc_ellipse rx,ry,x,y
-//   close
-// flags:
-//   [ ] has line width (prepend)
-
-// primitive types (both fill and outline)
-// - rectangle
-// - circle
-// - circle sector
-// - polygon
-// - path
-// primitive types (other)
-// - line strip
-// - lines
 
 test {
     _ = builder;

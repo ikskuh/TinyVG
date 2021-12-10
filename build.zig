@@ -4,6 +4,7 @@ const pkgs = struct {
     const tvg = std.build.Pkg{
         .name = "tvg",
         .path = .{ .path = "src/lib/tvg.zig" },
+        .dependencies = &.{ptk},
     };
     const args = std.build.Pkg{
         .name = "args",
