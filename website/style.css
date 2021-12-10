@@ -71,7 +71,8 @@ a:hover {
   font-weight: bold;
 }
 
-ul {
+ul,
+ol {
   padding-left: 1em;
 }
 

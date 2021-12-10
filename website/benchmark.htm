@@ -37,7 +37,17 @@
 
       <h2>Process</h2>
 
-      To create a comparable data set, the 
+      <p>To create a comparable data set, a <a href="https://github.com/MasterQ32/TinyVG/blob/master/benchmark/bench-from-svg.sh">script</a> was created which does the following process:</p>
+      <ol>
+        <li>Optimize the input SVG with <a href="https://github.com/svg/svgo">SVGO</a> to have comparably small files</li>
+        <li>Convert SVG to TinyVG text</li>
+        <li>Convert TinyVG text to TinyVG binary</li>
+        <li>Render TinyVG binary to PNG file</li>
+        <li>Render TinyVG binary to SVG file</li>
+        <li>Optimize the output SVG with to have comparably small files</li>
+      </ol>
+
+      <p>The outputs of step 1, 4 and 6 are displayed in the comparison rendering, the outputs of step 1 and 3 are compared in the benchmark.</p>
 
       <h2>Datasets</h2>
 
