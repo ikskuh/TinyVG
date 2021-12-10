@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TVG/SVG comparison</title>
+<style>
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    border-left: 2px solid black;
+    border-right: 2px solid black;
+  }
+  tr {
+    border-top: 2px solid black;
+    border-bottom: 2px solid black;
+  }
+  td {
+    padding: 0.5em;
+  }
+  td:nth-child(2), td:nth-child(3), td:nth-child(4) {
+    width: 3em;
+  }
+  td:nth-child(5),td:nth-child(6),td:nth-child(7) {
+    background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAYAAAAGCAYAAADgzO9IAAAAAXNSR0IArs4c6QAAACVJREFUGFdjbGlp+c8ABRwcHDAmAyPpEj09PXCjfvz4gTCKZAkAdiwYkcJjNOsAAAAASUVORK5CYII=);
+    background-size: 10%;
+    image-rendering: pixelated;
+    max-width: 25%;
+  }
+  td img {
+    height: 6em;
+    max-width: 40em;
+  }
+  </style>
+</head>
+<body>
+<table>
+<tr>
+<th>File Path</th>
+<th>SVG Size</th>
+<th>TVG Size</th>
+<th>TVG/SVG Ratio</th>
+<th>SVG Original</th>
+<th>TVG Rendering</th>
+<th>TVG Data</th>
+</tr>

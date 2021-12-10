@@ -82,11 +82,12 @@ See also this image to have a preview of what is already implemented:
   - [ ] Add missing line width modifier for path rendering
   - [ ] Improve rendering performance
   - [ ] Move anti-aliased rendering into core library
-- [ ] Implement textual representation
+- [x] Implement textual representation
   - [x] Convert to `.tvg`
   - [x] Convert to text
   - [x] Format text
   - [x] Convert to SVG
+  - [x] Convert from SVG (via external tool)
 - [ ] Add auxiliary tools
   - [ ] C Library frontend
   - [ ] Wasm Polyfill

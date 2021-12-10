@@ -310,6 +310,13 @@ public static class SvgConverter
       "vector-effect",
       "display",
       "preserveAspectRatio",
+      "filter",
+      "font-size",
+      "font-family",
+      "font-stretch",
+      "text-anchor",
+      "baseProfile",
+      "enable-background",
     };
 
     var ignored_elements = new HashSet<string>
@@ -383,10 +390,10 @@ public static class SvgConverter
 
     var result = intermediate_buffer.Finalize(document);
 
-    document.TvgFillStyle = new TvgFlatColor
-    {
-      Color = Color.Magenta,
-    };
+    // document.TvgFillStyle = new TvgFlatColor
+    // {
+    //   Color = Color.Magenta,
+    // };
 
     // this loop will only execute when a coordinate won't fit the target range.
     // The next lower scale is then selected and it's retried.
@@ -457,7 +464,7 @@ public static class SvgConverter
       {
         if (result.scale_bits == 0)
           throw;
-        Console.WriteLine("Reducing bit range trying to fit {0}", ex.Value);
+        Console.Error.WriteLine("Reducing bit range trying to fit {0}", ex.Value);
         result.scale_bits -= 1;
       }
     }
@@ -466,6 +473,34 @@ public static class SvgConverter
   public static float ToFloat(string s)
   {
     return float.Parse(s, CultureInfo.InvariantCulture);
+  }
+
+  public static void WriteCommandHeader(TvgStream stream, SvgNode node, TvgCommand[] cmds)
+  {
+    if (node.TvgFillStyle != null && node.TvgLineStyle != null)
+    {
+      stream.WriteCommand(cmds[2]);
+    }
+    else if (node.TvgFillStyle != null)
+    {
+      stream.WriteCommand(cmds[0]);
+    }
+    else
+    {
+      stream.WriteCommand(cmds[1]);
+    }
+    if (node.TvgFillStyle != null)
+    {
+      stream.Write(" ");
+      stream.WriteStyle(node.TvgFillStyle);
+    }
+    if (node.TvgLineStyle != null)
+    {
+      stream.Write(" ");
+      stream.WriteStyle(node.TvgLineStyle);
+      stream.Write(" ");
+      stream.WriteUnit(node.StrokeWidth);
+    }
   }
 
   static void TranslateNodes(AnalyzeResult data, TvgStream stream, SvgNode node)
@@ -490,9 +525,9 @@ public static class SvgConverter
         .ToArray();
 
       stream.Write("(");
-      stream.WriteCommand(TvgCommand.fill_polygon);
-      stream.Write(" ");
-      stream.WriteStyle(polygon.TvgFillStyle);
+
+      WriteCommandHeader(stream, node, new[] { TvgCommand.fill_polygon, TvgCommand.draw_line_loop, TvgCommand.outline_fill_polygon });
+
       stream.Write("(\n");
       foreach (var pt in points)
       {
@@ -504,7 +539,7 @@ public static class SvgConverter
     }
     else if (node is SvgPath path)
     {
-      var renderer = new TvgPathRenderer(stream, node.TvgFillStyle);
+      var renderer = new TvgPathRenderer(stream, node);
       // SvgPathParser.Parse(path.Data, new SvgDebugRenderer());
       SvgPathParser.Parse(path.Data, renderer);
       renderer.Finish();
@@ -523,14 +558,14 @@ public static class SvgConverter
           var rx5 = 0.5f * rx;
           var ry5 = 0.5f * ry;
 
-          var renderer = new TvgPathRenderer(stream, node.TvgFillStyle);
+          var renderer = new TvgPathRenderer(stream, node);
           // SvgPathParser.Parse(path.Data, new SvgDebugRenderer());
           SvgPathParser.Parse($"M {rect.X + rx} {rect.Y} h {dx} c {rx5} 0 {rx} 0 {rx} {ry} v {dy} c 0 {ry} -{rx} {ry} -{rx} {ry} h -{dx} c -{rx5} 0 -{rx} 0 -{rx} -{ry} v -{dy} c 0 -{ry} {rx5} -{ry} {rx} -{ry}", renderer);
           renderer.Finish();
           return;
         }
 
-        Console.WriteLine("Rounded rectangles not supported yet!");
+        Console.Error.WriteLine("Rounded rectangles not supported yet!");
 
       }
 
@@ -551,7 +586,7 @@ public static class SvgConverter
     }
     else
     {
-      Console.WriteLine("Not implemented: {0}", node.GetType().Name);
+      Console.Error.WriteLine("Not implemented: {0}", node.GetType().Name);
     }
   }
 
@@ -560,7 +595,7 @@ public static class SvgConverter
     TvgStream out_stream;
 
     TvgStream temp_stream;
-    TvgStyle fill_style;
+    SvgNode node;
 
     List<int> segments = new List<int>();
 
@@ -570,11 +605,11 @@ public static class SvgConverter
       set => segments[segments.Count - 1] = value;
     }
 
-    public TvgPathRenderer(TvgStream target, TvgStyle fill_style)
+    public TvgPathRenderer(TvgStream target, SvgNode node)
     {
       this.out_stream = target ?? throw new ArgumentNullException();
       this.temp_stream = new TvgStream(new StringBuilder(), target.ar);
-      this.fill_style = fill_style ?? throw new ArgumentNullException();
+      this.node = node ?? throw new ArgumentNullException();
     }
 
     public void Finish()
@@ -583,10 +618,14 @@ public static class SvgConverter
       if (filled_segments.Length > 0)
       {
         out_stream.Write("    (");
-        out_stream.WriteCommand(TvgCommand.fill_path);
-        out_stream.WriteLine();
-        out_stream.Write("      ");
-        out_stream.WriteStyle(fill_style);
+
+        SvgConverter.WriteCommandHeader(
+          out_stream,
+          node,
+          new[] {
+            TvgCommand.fill_path, TvgCommand.draw_line_path, TvgCommand.outline_fill_path
+          });
+
         out_stream.WriteLine();
         out_stream.WriteLine("      (");
         out_stream.Write(this.temp_stream.ToString());
@@ -697,10 +736,17 @@ public static class SvgConverter
   {
     if (fill.StartsWith("#"))
       return buf.InsertColor(fill, opacity);
-    else if (fill != "none")
-      throw new NotSupportedException();
-    else
+    if (fill == "none")
       return null;
+
+    var c = Color.FromName(fill);
+    if (c != Color.Transparent)
+    {
+      var text = string.Format("#{0:X2}{0:X2}{0:X2}", c.R, c.G, c.B);
+      return buf.InsertColor(text, opacity * c.A / 255.0f);
+    }
+
+    throw new NotSupportedException("A unsupported fill was supplied: " + (fill ?? "<null>"));
 
   }
   public static Dictionary<string, HashSet<string>> unknown_styles = new Dictionary<string, HashSet<string>>();
@@ -723,6 +769,8 @@ public static class SvgConverter
 
     if (node.Fill != null)
       style["fill"] = node.Fill;
+    if (node.Stroke != null)
+      style["stroke"] = node.Stroke;
     if (node.Opacity != 1)
       style["opacity"] = node.Opacity.ToString();
 
@@ -738,6 +786,7 @@ public static class SvgConverter
         case "stroke":
         case "fill-opacity":
         case "stroke-opacity":
+        case "color":
           break;
         default:
           if (!unknown_styles.TryGetValue(key, out var set))
@@ -747,18 +796,25 @@ public static class SvgConverter
       }
     }
 
+    var no_fill = false;
+    var no_stroke = false;
+
     var fill = style["fill"];
     if (fill != null)
     {
-      float fill_opacity = opacity * ToFloat(style["fill-opacity"] ?? "1");
+      float fill_opacity = opacity * node.FillOpacity * ToFloat(style["fill-opacity"] ?? "1");
       var color = AnalyzeStyleDef(buf, fill, fill_opacity);
       if (color != null)
       {
         node.TvgFillStyle = new TvgFlatColor { Color = color.Value };
       }
+      else
+      {
+        no_fill = true;
+      }
     }
 
-    var stroke = style["stroke"];
+    var stroke = style["stroke"] ?? style["color"];
     if (stroke != null)
     {
       float stroke_opacity = opacity * ToFloat(style["stroke-opacity"] ?? "1");
@@ -766,6 +822,10 @@ public static class SvgConverter
       if (color != null)
       {
         node.TvgLineStyle = new TvgFlatColor { Color = color.Value };
+      }
+      else
+      {
+        no_stroke = true;
       }
     }
 
@@ -779,7 +839,7 @@ public static class SvgConverter
     }
     else
     {
-      if (node.TvgFillStyle == null)
+      if (!no_fill && node.TvgFillStyle == null)
       {
         node.TvgFillStyle = new TvgFlatColor { Color = buf.InsertColor("#000", 1.0f) };
       }
@@ -797,9 +857,9 @@ public static class SvgConverter
   {
     return Color.FromArgb(
       (int)(c.A * a),
-      (int)(c.R * a),
-      (int)(c.G * a),
-      (int)(c.B * a));
+      (int)(c.R),
+      (int)(c.G),
+      (int)(c.B));
   }
 
   public static void Assert(bool b)
@@ -835,6 +895,7 @@ public class AnalyzeIntermediateBuffer
 
   public Color InsertColor(string text, float opacity)
   {
+    // Console.Error.WriteLine("insertColor({0}, {1})", text, opacity);
     Color color;
     switch (text)
     {
@@ -852,10 +913,10 @@ public class AnalyzeIntermediateBuffer
 
   int ParseSvgSize(string src)
   {
-    if (src == null)
+    if (string.IsNullOrWhiteSpace(src))
       return 0;
     src = new string(src.TakeWhile(c => char.IsDigit(c) || (c == '.')).ToArray());
-    return int.Parse(src);
+    return (int)(SvgConverter.ToFloat(src) + 0.5f);
   }
 
   public AnalyzeResult Finalize(SvgDocument doc)
@@ -871,8 +932,8 @@ public class AnalyzeIntermediateBuffer
 
     if (width == 0 && height == 0)
     {
-      width = (int)viewport[2];
-      height = (int)viewport[3];
+      width = (int)(viewport[2] - viewport[0]);
+      height = (int)(viewport[3] - viewport[1]);
     }
 
     // determine the maximum precision for the given image size
@@ -1043,7 +1104,14 @@ public class SvgGroup : SvgNode
   [XmlElement("polygon", typeof(SvgPolygon))]
   [XmlElement("polyline", typeof(SvgPolyline))]
   [XmlElement("g", typeof(SvgGroup))]
+  [XmlElement("a", typeof(SvgLink))]
   public SvgNode[] Nodes { get; set; }
+}
+
+
+public class SvgLink : SvgGroup
+{
+
 }
 
 // fill="#fff" opacity=".2"
@@ -1354,7 +1422,7 @@ public class SvgPathParser
   {
     var len = path_text.Length - char_offset;
     var rest = (len > 40) ? path_text.Substring(char_offset, 40) + "…" : path_text.Substring(char_offset);
-    Console.WriteLine("{0}: '{1}\u0332{2}'", prefix, path_text.Substring(0, char_offset), rest);
+    Console.Error.WriteLine("{0}: '{1}\u0332{2}'", prefix, path_text.Substring(0, char_offset), rest);
   }
 
   char? PeekChar()
@@ -1897,7 +1965,7 @@ public class SvgPathParser
     }
     catch
     {
-      Console.WriteLine("Float Context: '{0}'", str);
+      Console.Error.WriteLine("Float Context: '{0}'", str);
       throw;
     }
   }

@@ -4,10 +4,31 @@ const args = @import("args");
 
 fn printUsage(stream: anytype) !void {
     try stream.writeAll(
-        \\tvg-render [-o file] [-g geometry] [-a] [--super-scale <scale>] source.tvg
+        \\tvg-render [-o file] [-g geometry] [-a] [--super-sampling <scale>] source.tvg
         \\
     );
 }
+
+const CliOptions = struct {
+    help: bool = false,
+
+    output: ?[]const u8 = null,
+
+    geometry: ?Geometry = null,
+
+    background: Color = Color{ .r = 0x00, .g = 0x00, .b = 0x00, .a = 0x00 },
+
+    @"anti-alias": bool = false,
+    @"super-sampling": ?u32 = null,
+
+    pub const shorthands = .{
+        .o = "output",
+        .g = "geometry",
+        .h = "help",
+        .b = "background",
+        .a = "anti-alias",
+    };
+};
 
 pub fn main() !u8 {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
@@ -327,27 +348,6 @@ const Color = extern struct {
             else => return error.InvalidColor,
         }
     }
-};
-
-const CliOptions = struct {
-    help: bool = false,
-
-    output: ?[]const u8 = null,
-
-    geometry: ?Geometry = null,
-
-    background: Color = Color{ .r = 0x00, .g = 0x00, .b = 0x00, .a = 0x00 },
-
-    @"anti-alias": bool = false,
-    @"super-sampling": ?u32 = null,
-
-    pub const shorthands = .{
-        .o = "output",
-        .g = "geometry",
-        .h = "help",
-        .b = "background",
-        .a = "anti-alias",
-    };
 };
 
 const Geometry = struct {
