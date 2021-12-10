@@ -12,10 +12,10 @@
       <p class="intro">An alternative binary encoded vector graphics format.</p>
       <h2>Why another format?</h2>
       <p><a href="https://www.w3.org/TR/SVG2/">SVG</a> is a horribly complex format and an overkill for most projects. The specification includes way too many edge cases so implementing a new SVG renderer will always have drawbacks or missing pieces.</p>
-      <p>TinyVG tries to be simpler. Less features, but powerful enough to cover 90% of use cases.</p>
+      <p>TinyVG tries to be simpler. Fewer features, but powerful enough to cover 90% of use cases.</p>
       <h2>Features</h2>
       <ul>
-        <li>Compact binary encoding (39% size of a comparable SVG file)</li>
+        <li>Compact binary encoding (39% size of a comparable SVG file on average)</li>
         <li>Comprehensible specification</li>
         <li>Paths, lines, rectangles</li>
         <li>Two-point gradient support</li>
@@ -24,7 +24,7 @@
       <h2>Real World Data</h2>
       <p>TinyVG is benchmarked against a huge set of test images from <a href="https://github.com/Templarian/MaterialDesign">MaterialDesign</a>, <a href="https://github.com/PapirusDevelopmentTeam/papirus-icon-theme">Papirus</a>, <a href="https://dev.w3.org/SVG/tools/svgweb/samples/svg-files/">W3C</a>, <a href="https://github.com/ziglang/logo">Zig</a> and <a href="https://freesvg.org/">freesvg.org</a></p>
       <p>A short summary is that TVG is typically between 20% and 50% of the equivalent SVG file in size and <i>way easier</i> to parse or render.</p>
-      <p><a href="benchmark.htm">See the benchmark results</a></p>
+      <p><a href="benchmark.htm"><b>See the benchmark results</b></a></p>
       <h2>Downloads</h2>
       <h3>Specification</h3>
       <ul>
@@ -34,12 +34,13 @@
       </ul>
       <h3>Tooling</h3>
       <a href="https://github.com/MasterQ32/TinyVG/actions/workflows/nightly.yml"><img style="float: right" src="https://github.com/MasterQ32/TinyVG/actions/workflows/nightly.yml/badge.svg"></a>
+      <p>The tools provide a TinyVG renderer as well as a text format converter for TinyVG text and SVG.</p>
       <ul>
         <li><a href="download/tvg-x86_64-windows.zip">Windows x86_64</a></li>
         <li><a href="download/tvg-x86_64-linux.zip">Linux x86_64</a></li>
         <li><a href="download/tvg-aarch64-linux.zip">Linux aarch64</a></li>
         <li><a href="download/tvg-x86_64-macos.zip">macOS x86_64</a></li>
-        <li><a href="download/tvg-aarch64-macos.zip">macOS aarch64</a></li>
+        <li><a href="download/tvg-aarch64-macos.zip">macOS aarch64</a> (Missing <code>svg2tvgt</code>)</li>
       </ul>
       <h2>Contribution</h2>
       <p>The main work is done at <a href="https://github.com/MasterQ32/TinyVG">GitHub</a>, but feel free to send a email to <a href="mailto:contact@tinyvg.tech">contact@tinyvg.tech</a>.

@@ -95,6 +95,8 @@ See also this image to have a preview of what is already implemented:
   - [ ] C Library frontend
   - [ ] Wasm Polyfill
   - [ ] Inkscape Plugin
+- [ ] Improve website
+  - [ ] Add manual to tools
 - [x] Benchmark Suite
   - [x] File Size (SVG vs. TinyVG)
 - [ ] Write specification

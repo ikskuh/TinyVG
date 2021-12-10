@@ -21,6 +21,10 @@ jobs:
             imagemagick p7zip-full \
             npm
           sudo npm install -g markdown-pdf
+      - name: Install dotnet sdk
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: '5.0.x'
 
       - name: Setup Zig
         uses: goto-bus-stop/setup-zig@v1
@@ -36,13 +40,14 @@ jobs:
       - name: Generate Test files
         run: zig build generate
 
-      - name: Compile outputs
+      - name: Compile releases
         run: |
           zig build -Drelease -Dtarget=x86_64-windows --prefix release/x86_64-windows
           zig build -Drelease -Dtarget=x86_64-linux --prefix release/x86_64-linux
           zig build -Drelease -Dtarget=x86_64-macos --prefix release/x86_64-macos
           zig build -Drelease -Dtarget=aarch64-linux --prefix release/aarch64-linux
           zig build -Drelease -Dtarget=aarch64-macos --prefix release/aarch64-macos
+          make -C src/tools/svg2tvg/ publish
 
       - uses: actions/upload-artifact@v2
         with:
