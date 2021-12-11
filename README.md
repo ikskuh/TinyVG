@@ -76,6 +76,7 @@ See also this image to have a preview of what is already implemented:
   - [x] Add color space information (the color space is defined as sRGB)
   - [x] Add extended coordinate space (32 bit coordinates)
   - [ ] Expand opcode space for mirrored/repeated splines in paths
+  - [ ] Consider Circle/Ellipse opcode?
   - [x] Encode primary style in command, reduces command to 63 variants, allows bigger encoding
 - [ ] Improve rendering
   - [x] Add anti-aliasing
@@ -99,8 +100,10 @@ See also this image to have a preview of what is already implemented:
   - [ ] Add manual to tools
 - [x] Benchmark Suite
   - [x] File Size (SVG vs. TinyVG)
+- [ ] Sort github issues
 - [ ] Write specification
 - [ ] Review specification
+- [ ] Release!
 - [ ] Lock the specification into _Version 1_.
 
 ## Considerations

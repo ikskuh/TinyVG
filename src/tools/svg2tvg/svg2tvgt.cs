@@ -15,90 +15,100 @@ class Application
   static int Main(string[] args)
   {
     CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
-
-    string out_file_name = null;
-    string input_file_name = null;
-
-    var positionals = new List<string>();
-
-    for (int i = 0; i < args.Length; i++)
+    try
     {
-      var arg = args[i];
 
-      if (arg == "--output")
+      string out_file_name = null;
+      string input_file_name = null;
+
+      var positionals = new List<string>();
+
+      for (int i = 0; i < args.Length; i++)
       {
-        out_file_name = args[i + 1];
-        i += 1;
+        var arg = args[i];
+
+        if (arg == "--output")
+        {
+          out_file_name = args[i + 1];
+          i += 1;
+        }
+        else if (arg == "--help")
+        {
+          Console.WriteLine("svg2tvgt [--output <file_name>] <input_file>");
+          return 0;
+        }
+        else if (arg.StartsWith("-") && arg != "-")
+        {
+          Console.Error.WriteLine("Unknown command line arg: {0}", arg);
+          return 1;
+        }
+        else
+        {
+          positionals.Add(arg);
+        }
       }
-      else if (arg == "--help")
+
+      switch (positionals.Count)
       {
-        Console.WriteLine("svg2tvgt [--output <file_name>] <input_file>");
-        return 0;
+        case 0:
+          Console.Error.WriteLine("svg2tvgt [--output <file_name>] <input_file>");
+          return 1;
+        case 1:
+          break;
+        default:
+          Console.Error.WriteLine("svg2tvgt requires exactly one positional argument");
+          return 1;
       }
-      else if (arg.StartsWith("-") && arg != "-")
+      input_file_name = positionals[0];
+
+      if (out_file_name != "-")
       {
-        Console.Error.WriteLine("Unknown command line arg: {0}", arg);
-        return 1;
+        out_file_name = out_file_name ?? Path.ChangeExtension(input_file_name, "tvgt");
+      }
+
+      SvgDocument doc;
+      if (input_file_name == "-")
+      {
+        doc = SvgConverter.ParseDocument(Console.In);
       }
       else
       {
-        positionals.Add(arg);
-      }
-    }
-
-    switch (positionals.Count)
-    {
-      case 0:
-        Console.Error.WriteLine("svg2tvgt [--output <file_name>] <input_file>");
-        return 1;
-      case 1:
-        break;
-      default:
-        Console.Error.WriteLine("svg2tvgt requires exactly one positional argument");
-        return 1;
-    }
-    input_file_name = positionals[0];
-
-    if (out_file_name != "-")
-    {
-      out_file_name = out_file_name ?? Path.ChangeExtension(input_file_name, "tvgt");
-    }
-
-    SvgDocument doc;
-    if (input_file_name == "-")
-    {
-      doc = SvgConverter.ParseDocument(Console.In);
-    }
-    else
-    {
-      try
-      {
-        using (var stream = File.OpenRead(input_file_name))
+        try
         {
-          doc = SvgConverter.ParseDocument(stream);
+          using (var stream = File.OpenRead(input_file_name))
+          {
+            doc = SvgConverter.ParseDocument(stream);
+          }
+        }
+        catch (System.IO.FileNotFoundException)
+        {
+          Console.Error.WriteLine("Could not open '{0}'", input_file_name);
+          return 1;
         }
       }
-      catch (System.IO.FileNotFoundException)
-      {
-        Console.Error.WriteLine("Could not open '{0}'", input_file_name);
-        return 1;
-      }
-    }
 
-    var text_tvg = SvgConverter.ConvertToTvgText(doc);
-    if (out_file_name == "-")
-    {
-      Console.Write(text_tvg);
-    }
-    else
-    {
-      using (var stream = File.Open(out_file_name, FileMode.Create, FileAccess.Write))
+      var text_tvg = SvgConverter.ConvertToTvgText(doc);
+      if (out_file_name == "-")
       {
-        using (var sw = new StreamWriter(stream, new UTF8Encoding(false)))
+        Console.Write(text_tvg);
+      }
+      else
+      {
+        using (var stream = File.Open(out_file_name, FileMode.Create, FileAccess.Write))
         {
-          sw.Write(text_tvg);
+          using (var sw = new StreamWriter(stream, new UTF8Encoding(false)))
+          {
+            sw.Write(text_tvg);
+          }
         }
       }
+
+    }
+    catch (Exception ex)
+    {
+      Console.Error.WriteLine("Unhandled exception:");
+      Console.Error.WriteLine(ex.ToString());
+      return 1;
     }
 
     return 0;
@@ -915,6 +925,8 @@ public class AnalyzeIntermediateBuffer
   {
     if (string.IsNullOrWhiteSpace(src))
       return 0;
+    if (src.ToLower() == "auto")
+      return 0;
     src = new string(src.TakeWhile(c => char.IsDigit(c) || (c == '.')).ToArray());
     return (int)(SvgConverter.ToFloat(src) + 0.5f);
   }
@@ -934,6 +946,14 @@ public class AnalyzeIntermediateBuffer
     {
       width = (int)(viewport[2] + 0.5);
       height = (int)(viewport[3] + 0.5);
+    }
+    else if (width == 0)
+    {
+      height = width;
+    }
+    else if (height == 0)
+    {
+      height = width;
     }
 
     // determine the maximum precision for the given image size
@@ -1237,13 +1257,20 @@ public class TvgStream : StringWriter
 
   public void WriteUnit(float value)
   {
-    checked
+    int scale = (1 << ar.scale_bits);
+    try
     {
-      int scale = (1 << ar.scale_bits);
-      int unit = (int)(value * scale + 0.5);
-      if (unit < short.MinValue || unit > short.MaxValue)
-        throw new UnitRangeException(value, unit, scale);
-      Write("{0}", value);
+      checked
+      {
+        int unit = (int)(value * scale + 0.5);
+        if (unit < short.MinValue || unit > short.MaxValue)
+          throw new UnitRangeException(value, unit, scale);
+        Write("{0}", value);
+      }
+    }
+    catch (OverflowException)
+    {
+      throw new UnitRangeException(value, scale);
     }
   }
 
@@ -2055,12 +2082,18 @@ class SvgDebugRenderer : IPathRenderer
 [System.Serializable]
 public class UnitRangeException : System.Exception
 {
-
-  public UnitRangeException(float value, int unit, int scale) :
-  base(string.Format("{0} is out of range when encoded as {1} with scale {2}", value, unit, scale))
+  public UnitRangeException(float value, int scale) :
+    base(string.Format("{0} is out of range when encoded with scale {1}", value, scale))
   {
     this.Value = value;
   }
+
+  public UnitRangeException(float value, int unit, int scale) :
+    base(string.Format("{0} is out of range when encoded as {1} with scale {2}", value, unit, scale))
+  {
+    this.Value = value;
+  }
+
   protected UnitRangeException(
       System.Runtime.Serialization.SerializationInfo info,
       System.Runtime.Serialization.StreamingContext context) : base(info, context) { }
