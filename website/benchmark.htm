@@ -46,6 +46,7 @@
         <li>Render TinyVG binary to SVG file</li>
         <li>Optimize the output SVG with to have comparably small files</li>
       </ol>
+      <p>If step 2 fails, we will skip the file as we cannot perfom comparison.</p>
 
       <p>The outputs of step 1, 4 and 6 are displayed in the comparison rendering, the outputs of step 1 and 3 are compared in the benchmark.</p>
 
@@ -55,6 +56,7 @@
 
       <h3><a href="https://github.com/Templarian/MaterialDesign">Material Design Icons</a></h3>
       <p>This dataset mostly contains single-path icons with otherwise identical files. The result here documents the raw path compression.</p>
+      <p>For the benchmark, the first 1000 successfully converted icons are compared, while 442 icons were skipped in the process. This means that we have roughly 70% conversion success rate.</p>
 
       <ul>
         <li><a href="benchmark/material-design.csv">Result Data</a></li>
@@ -62,7 +64,8 @@
       </ul>
 
       <h3><a href="https://github.com/PapirusDevelopmentTeam/papirus-icon-theme">Papirus</a></h3>
-      <p> This icon theme was chosen as a colorful alternative to the <i>Material Design Icons</i> and proved itself as a wild hodgepodge of very different SVG files.</p>
+      <p>This icon theme was chosen as a colorful alternative to the <i>Material Design Icons</i> and proved itself as a wild hodgepodge of very different SVG files.</p>
+      <p>For the benchmark, the first 1000 successfully converted icons are compared, while 315 icons were skipped in the process. This means that we have roughly 75% conversion success rate.</p>
 
       <ul>
         <li><a href="benchmark/papirus.csv">Result Data</a></li>

@@ -5,9 +5,14 @@ set -eo pipefail
 DST="$1"
 DIR="$2"
 OUT="$3"
+LIMIT="$4"
 ROOT="$(realpath $(dirname $(realpath $0)))"
 
 [ ! -e "${DST}" ] || [ -f "${DST}" ]
+
+if [ ! -z "${LIMIT}" ]; then
+  LIMIT=$((${LIMIT} + 0))
+fi
 
 if [ -z "${DIR}" ]; then
   DIR="."
@@ -66,6 +71,13 @@ for file in $(find "${DIR}" -name "*.svg"); do
   else
     echo -e "\b\b\bFAILED"
   fi
+
+  if [ ! -z "${LIMIT}" ]; then
+    if [ $(cat "${DST}" | wc -l) -ge $((${LIMIT} + 1)) ]; then
+      break 
+    fi
+  fi
+
 done
 
 if [ ! -z "${OUT}" ]; then

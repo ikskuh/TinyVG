@@ -32,9 +32,10 @@ cp "$1" "${WORKDIR}/input.svg"
 
 svgo --quiet --config "${ROOT}/svgo.config.js" "${WORKDIR}/input.svg" >&2
 
-convert -background none "${WORKDIR}/input.svg" "${WORKDIR}/input.png"
+# WARNING: This invokes inkscape and is ultimatively slow
+# convert -background none "${WORKDIR}/input.svg" "${WORKDIR}/input.png"
 
-svg2tvgt "${WORKDIR}/input.svg" --output "${WORKDIR}/output.tvgt"
+svg2tvgt --strict "${WORKDIR}/input.svg" --output "${WORKDIR}/output.tvgt"
 
 tvg-text "${WORKDIR}/output.tvgt" --output "${WORKDIR}/output.tvg"
 

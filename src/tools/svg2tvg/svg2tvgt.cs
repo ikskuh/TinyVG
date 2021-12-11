@@ -12,6 +12,27 @@ using System.Globalization;
 
 class Application
 {
+  static bool strict_mode = false;
+  static bool verbose_mode = false;
+
+  public static void ReportError(string msg)
+  {
+    Console.Error.WriteLine(msg);
+    if (strict_mode)
+      Environment.Exit(1);
+  }
+
+  public static void ReportError(string msg, params object[] args) => ReportError(string.Format(msg, args));
+
+  public static void Report(string msg)
+  {
+    if (!verbose_mode)
+      return;
+    Console.Error.WriteLine(msg);
+  }
+
+  public static void Report(string msg, params object[] args) => ReportError(string.Format(msg, args));
+
   static int Main(string[] args)
   {
     CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
@@ -27,15 +48,23 @@ class Application
       {
         var arg = args[i];
 
-        if (arg == "--output")
+        if (arg == "-o" || arg == "--output")
         {
           out_file_name = args[i + 1];
           i += 1;
         }
         else if (arg == "--help")
         {
-          Console.WriteLine("svg2tvgt [--output <file_name>] <input_file>");
+          Console.WriteLine("svg2tvgt [--output <file_name>] [--strict] [--verbose] <input_file>");
           return 0;
+        }
+        else if (arg == "--strict")
+        {
+          strict_mode = true;
+        }
+        else if (arg == "--verbose" || arg == "-v")
+        {
+          strict_mode = true;
         }
         else if (arg.StartsWith("-") && arg != "-")
         {
@@ -327,6 +356,7 @@ public static class SvgConverter
       "text-anchor",
       "baseProfile",
       "enable-background",
+      "image-rendering",
     };
 
     var ignored_elements = new HashSet<string>
@@ -339,6 +369,7 @@ public static class SvgConverter
       "use",
       "symbol",
       "linearGradient",
+      "radialGradient",
     };
 
     var fully_supported = true;
@@ -356,10 +387,11 @@ public static class SvgConverter
       }
       if (unsupported_elements.Contains(e.Element.Name))
       {
+        Application.ReportError("Unsupported element {0}", e.Element.Name);
         fully_supported = false;
         return;
       }
-      Console.Error.WriteLine("Unknown element {0}", e.Element.Name);
+      Application.ReportError("Unknown element {0}", e.Element.Name);
       // throw new InvalidOperationException(string.Format("Unknown element {0}", e.Element.Name));
     });
     events.OnUnknownAttribute = new XmlAttributeEventHandler((object sender, XmlAttributeEventArgs e) =>
@@ -370,6 +402,11 @@ public static class SvgConverter
         return;
       if (e.Attr.Prefix == "sodipodi")
         return;
+      if (e.Attr.Name.StartsWith("aria-"))
+      {
+        // Ignore accessibility
+        return;
+      }
       if (ignored_attribs.Contains(e.Attr.Name))
       {
         return;
@@ -380,7 +417,7 @@ public static class SvgConverter
         return;
       }
       // throw new InvalidOperationException(string.Format("Unknown attribute {0}", e.Attr.Name));
-      Console.Error.WriteLine("Unknown attribute {0}", e.Attr.Name);
+      Application.ReportError("Unknown attribute {0}", e.Attr.Name);
     });
     using (var reader = XmlReader.Create(text_reader, new XmlReaderSettings
     {
@@ -429,24 +466,16 @@ public static class SvgConverter
 
         stream.WriteLine("  (");
 
+        // color table
         foreach (var col in result.color_table)
         {
-          if (col.A != 255)
+          if (col.A != 1.0)
           {
-            stream.WriteLine("    ({0} {1} {2} {3})",
-              col.R / 255.0,
-              col.G / 255.0,
-              col.B / 255.0,
-              col.A / 255.0
-            );
+            stream.WriteLine("    ({0} {1} {2} {3})", col.R, col.G, col.B, col.A);
           }
           else
           {
-            stream.WriteLine("    ({0} {1} {2})",
-              col.R / 255.0,
-              col.G / 255.0,
-              col.B / 255.0
-            );
+            stream.WriteLine("    ({0} {1} {2})", col.R, col.G, col.B);
           }
         }
 
@@ -475,7 +504,7 @@ public static class SvgConverter
       {
         if (result.scale_bits == 0)
           throw;
-        Console.Error.WriteLine("Reducing bit range trying to fit {0}", ex.Value);
+        Application.Report("Reducing bit range trying to fit {0}", ex.Value);
         result.scale_bits -= 1;
       }
     }
@@ -516,6 +545,10 @@ public static class SvgConverter
 
   static void TranslateNodes(AnalyzeResult data, TvgStream stream, SvgNode node)
   {
+    if (!string.IsNullOrWhiteSpace(node.Transform))
+    {
+      Application.ReportError("Node has unsupported transform: {0}", node.Transform);
+    }
     if (node is SvgGroup group)
     {
       foreach (var child in group.Nodes ?? new SvgNode[0])
@@ -576,28 +609,66 @@ public static class SvgConverter
           return;
         }
 
-        Console.Error.WriteLine("Rounded rectangles not supported yet!");
-
+        Application.ReportError("Found invalid rounded rectangles: width=\"{0}\" height=\"{1}\" rx=\"{2}\" ry=\"{3}\"",
+          rect.Width,
+          rect.Height,
+          rect.RadiusX,
+          rect.RadiusY
+        );
       }
 
-      stream.Write("(");
-      stream.WriteCommand(TvgCommand.fill_rectangles);
-      stream.Write(" ");
-      stream.WriteStyle(rect.TvgFillStyle);
-      stream.Write("((");
-      stream.WriteCoordX(rect.X);
-      stream.Write(" ");
-      stream.WriteCoordY(rect.Y);
-      stream.Write(" ");
-      stream.WriteSizeX(rect.Width);
-      stream.Write(" ");
-      stream.WriteSizeY(rect.Height);
-      stream.Write("))");
-
+      if (node.TvgFillStyle == null && node.TvgLineStyle != null)
+      {
+        // pure line drawing
+      }
+      else
+      {
+        stream.Write("(");
+        WriteCommandHeader(stream, node, new[] { TvgCommand.fill_rectangles, TvgCommand.end_of_document, TvgCommand.outline_fill_rectangles });
+        stream.Write(" ");
+        stream.Write("((");
+        stream.WriteCoordX(rect.X);
+        stream.Write(" ");
+        stream.WriteCoordY(rect.Y);
+        stream.Write(" ");
+        stream.WriteSizeX(rect.Width);
+        stream.Write(" ");
+        stream.WriteSizeY(rect.Height);
+        stream.Write("))");
+      }
     }
+    else if (node is SvgCircle circle)
+    {
+      var x = circle.X;
+      var y = circle.Y;
+      var r = Math.Abs(circle.Radius);
+
+      stream.Write("(");
+      WriteCommandHeader(stream, node, new[] { TvgCommand.fill_path, TvgCommand.draw_line_path, TvgCommand.outline_fill_path });
+      stream.Write(" (");
+      stream.Write("({0} {1}) (", x, y - r);
+      stream.Write("(arc_circle - {0} false false ({1} {2}))", r, x, y + r);
+      stream.Write("(arc_circle - {0} false false ({1} {2}))", r, x, y - r);
+      stream.Write(")))");
+    }
+    // else if (node is SvgEllipse ellipse)
+    // {
+    //   var x = ellipse.X;
+    //   var y = ellipse.Y;
+    //   var rx = Math.Abs(ellipse.RadiusX);
+    //   var ry = Math.Abs(ellipse.RadiusY);
+
+    //   stream.Write("(");
+    //   WriteCommandHeader(stream, node, new[] { TvgCommand.fill_path, TvgCommand.draw_line_path, TvgCommand.outline_fill_path });
+    //   stream.Write(" (");
+    //   stream.Write("({0} {1}) (", x, y - r);
+    //   stream.Write("(arc_ellipse - {0} {1} 0.0 false false ({2} {3}))", rx, ry, x, y + ry);
+    //   stream.Write("(arc_ellipse - {0} {1} 0.0 false false ({2} {3}))", rx, ry, x, y - ry);
+    //   stream.Write(")))");
+    // }
     else
     {
-      Console.Error.WriteLine("Not implemented: {0}", node.GetType().Name);
+      Application.ReportError("Not implemented: {0}", node.GetType().Name);
     }
   }
 
@@ -745,20 +816,9 @@ public static class SvgConverter
 
   static Color? AnalyzeStyleDef(AnalyzeIntermediateBuffer buf, string fill, float opacity)
   {
-    if (fill.StartsWith("#"))
-      return buf.InsertColor(fill, opacity);
     if (fill == "none")
       return null;
-
-    var c = Color.FromName(fill);
-    if (c != Color.Transparent)
-    {
-      var text = string.Format("#{0:X2}{0:X2}{0:X2}", c.R, c.G, c.B);
-      return buf.InsertColor(text, opacity * c.A / 255.0f);
-    }
-
-    throw new NotSupportedException("A unsupported fill was supplied: " + (fill ?? "<null>"));
-
+    return buf.InsertColor(fill, opacity);
   }
   public static Dictionary<string, HashSet<string>> unknown_styles = new Dictionary<string, HashSet<string>>();
 
@@ -786,7 +846,6 @@ public static class SvgConverter
       style["opacity"] = node.Opacity.ToString();
 
     float opacity = ToFloat(style["opacity"] ?? "1");
-
 
     foreach (string key in style.AllKeys)
     {
@@ -864,14 +923,6 @@ public static class SvgConverter
     //   indent);
   }
 
-  public static Color AdjustColor(Color c, float a)
-  {
-    return Color.FromArgb(
-      (int)(c.A * a),
-      (int)(c.R),
-      (int)(c.G),
-      (int)(c.B));
-  }
 
   public static void Assert(bool b)
   {
@@ -898,27 +949,155 @@ public enum TvgCommand : byte
 
 };
 
+public struct Color
+{
+  public float R, G, B, A;
+
+  public static Color Placeholder = new Color { R = 1.0f, G = 0.0f, B = 1.0f, A = 1.0f };
+  public static Color Transparent = new Color { R = 1.0f, G = 0.0f, B = 1.0f, A = 0.0f };
+
+  public Color(float gray) : this(gray, gray, gray) { }
+
+  public Color(float r, float g, float b) : this(r, g, b, 1.0f) { }
+
+  public Color(float r, float g, float b, float a)
+  {
+    this.R = r;
+    this.G = g;
+    this.B = b;
+    this.A = a;
+  }
+
+  public static Color FromArgb(int a, int r, int g, int b)
+  {
+    return new Color(r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f);
+  }
+
+  public static Color FromArgb(int r, int g, int b)
+  {
+    return new Color(r / 255.0f, g / 255.0f, b / 255.0f);
+  }
+
+  public override int GetHashCode()
+  {
+    return base.GetHashCode();
+  }
+
+  static bool ApproxEq(float a, float b)
+  {
+    return Math.Abs(a - b) < (1.0 / 4096.0); // 12 bit color depth
+  }
+
+  public bool Equals(Color c)
+  {
+    return ApproxEq(R, c.R) && ApproxEq(G, c.G) && ApproxEq(B, c.B) && ApproxEq(A, c.A);
+  }
+
+  public override bool Equals(object obj)
+  {
+    if (obj is Color c)
+    {
+      return Equals(c);
+    }
+    else
+    {
+      return false;
+    }
+  }
+
+  public override string ToString()
+  {
+    return string.Format("{0:0.00} {1:0.00} {2:0.00} {3:0.00}", R, G, B, A);
+  }
+}
+
 public class AnalyzeIntermediateBuffer
 {
-  HashSet<Color> colors = new HashSet<Color>();
+  List<Color> colors = new List<Color>();
 
   public int node_count = 0;
 
-  public Color InsertColor(string text, float opacity)
+  private static byte ScaleColorValue(int val, int digits)
   {
-    // Console.Error.WriteLine("insertColor({0}, {1})", text, opacity);
-    Color color;
+    switch (digits)
+    {
+      case 0: throw new NotSupportedException();
+      case 1: return (byte)(val | (val << 4));
+      case 2: return (byte)val;
+      default: return (byte)((double)val * (256 / Math.Pow(16, digits)));
+    }
+  }
+
+  private static Color TranslateColor(string text)
+  {
+    var named_color = WebColors.Get(text);
+    if (named_color != null)
+      return named_color.Value;
+
     switch (text)
     {
-      case "#value_dark": color = Color.Black; break;
-      case "#value_middle": color = Color.Silver; break;
-      case "#value_light": color = Color.White; break;
-      default:
-        color = ColorTranslator.FromHtml(text);
-        break;
+      case "#value_dark": return new Color(0.0f);
+      case "#value_middle": return new Color(0.5f);
+      case "#value_light": return new Color(1.0f);
     }
-    color = SvgConverter.AdjustColor(color, opacity);
-    colors.Add(color);
+
+    if (text.StartsWith("#") && text.Length > 1)
+    {
+      int components_rgb = (text.Length - 1) / 3;
+      int components_rgba = (text.Length - 1) / 4;
+
+      bool is_rgb = (3 * components_rgb + 1 == text.Length);
+      bool is_rgba = (4 * components_rgba + 1 == text.Length);
+      SvgConverter.Assert(is_rgb == false || is_rgba == false); // must both be false
+
+      if (is_rgb)
+      {
+        string text_r = text.Substring(1 + 0 * components_rgb, components_rgb);
+        string text_g = text.Substring(1 + 1 * components_rgb, components_rgb);
+        string text_b = text.Substring(1 + 2 * components_rgb, components_rgb);
+
+        int r = ScaleColorValue(Convert.ToInt32(text_r, 16), components_rgb);
+        int g = ScaleColorValue(Convert.ToInt32(text_g, 16), components_rgb);
+        int b = ScaleColorValue(Convert.ToInt32(text_b, 16), components_rgb);
+        return Color.FromArgb(r, g, b);
+      }
+      else if (is_rgb)
+      {
+        string text_r = text.Substring(1 + 0 * components_rgb, components_rgb);
+        string text_g = text.Substring(1 + 1 * components_rgb, components_rgb);
+        string text_b = text.Substring(1 + 2 * components_rgb, components_rgb);
+        string text_a = text.Substring(1 + 3 * components_rgb, components_rgb);
+
+        int r = ScaleColorValue(Convert.ToInt32(text_r, 16), components_rgb);
+        int g = ScaleColorValue(Convert.ToInt32(text_g, 16), components_rgb);
+        int b = ScaleColorValue(Convert.ToInt32(text_b, 16), components_rgb);
+        int a = ScaleColorValue(Convert.ToInt32(text_a, 16), components_rgb);
+        return Color.FromArgb(a, r, g, b);
+      }
+    }
+
+    // var html_color = ColorTranslator.FromHtml(text);
+    // if (html_color == Color.Empty)
+
+    Application.ReportError("Failed to translate color spec '{0}'", text);
+    return Color.Placeholder;
+  }
+
+  private static Color TranslateColor(string text, float opacity)
+  {
+    var color = TranslateColor(text);
+    color.A *= opacity;
+    return color;
+  }
+
+  public Color InsertColor(string text, float opacity)
+  {
+    var color = TranslateColor(text, opacity);
+    // Console.Error.WriteLine("insertColor({0}, {1}) => {2}", text, opacity, color);
+    if (!this.colors.Contains(color))
+    {
+      this.colors.Add(color);
+    }
     return color;
   }
 
@@ -1005,7 +1184,7 @@ public class AnalyzeResult
   {
     for (ushort i = 0; i < color_table.Length; i++)
     {
-      if (color_table[i] == color)
+      if (color_table[i].Equals(color))
         return i;
     }
     throw new ArgumentOutOfRangeException("color", $"color {color} was not previously registered!");
@@ -1067,7 +1246,7 @@ public class SvgNode
   public string Stroke { get; set; }
 
   [XmlAttribute("stroke-width")]
-  public float StrokeWidth { get; set; }
+  public float StrokeWidth { get; set; } = 1.0f;
 
   [XmlAttribute("stroke-miterlimit")]
   public float StrokeMiterLimit { get; set; }
@@ -1197,7 +1376,6 @@ public class SvgCircle : SvgNode
 
   [XmlAttribute("r")]
   public float Radius { get; set; }
-
 }
 // cx="-10.418" cy="28.824" rx="4.856" ry="8.454" transform="matrix(0.70812504,-0.70608705,0.51863379,0.85499649,0,0)"
 public class SvgEllipse : SvgNode
@@ -1450,7 +1628,7 @@ public class SvgPathParser
   {
     var len = path_text.Length - char_offset;
     var rest = (len > 40) ? path_text.Substring(char_offset, 40) + "…" : path_text.Substring(char_offset);
-    Console.Error.WriteLine("{0}: '{1}\u0332{2}'", prefix, path_text.Substring(0, char_offset), rest);
+    Application.Report("{0}: '{1}\u0332{2}'", prefix, path_text.Substring(0, char_offset), rest);
   }
 
   char? PeekChar()
@@ -1614,6 +1792,7 @@ public class SvgPathParser
   void ParseClosePath()
   {
     AcceptChar('Z', 'z');
+    renderer.ClosePath();
     SkipWhitespace();
   }
 
@@ -1993,7 +2172,7 @@ public class SvgPathParser
     }
     catch
     {
-      Console.Error.WriteLine("Float Context: '{0}'", str);
+      Application.Report("Float Context: '{0}'", str);
       throw;
     }
   }
@@ -2100,4 +2279,167 @@ public class UnitRangeException : System.Exception
       System.Runtime.Serialization.StreamingContext context) : base(info, context) { }
 
   public float Value { get; }
+}
+
+static class WebColors
+{
+  public static Color? Get(string name)
+  {
+    Color res;
+    if (predefined_colors.TryGetValue(name.ToLower(), out res))
+      return res;
+    return null;
+  }
+
+  // see https://drafts.csswg.org/css-color/#named-colors
+  static readonly Dictionary<string, Color> predefined_colors = new Dictionary<string, Color> {
+    { "aliceblue", Color.FromArgb(240, 248, 255) },
+    { "antiquewhite", Color.FromArgb(250, 235, 215) },
+    { "aqua", Color.FromArgb(0, 255, 255) },
+    { "aquamarine", Color.FromArgb(127, 255, 212) },
+    { "azure", Color.FromArgb(240, 255, 255) },
+    { "beige", Color.FromArgb(245, 245, 220) },
+    { "bisque", Color.FromArgb(255, 228, 196) },
+    { "black", Color.FromArgb(0, 0, 0) },
+    { "blanchedalmond", Color.FromArgb(255, 235, 205) },
+    { "blue", Color.FromArgb(0, 0, 255) },
+    { "blueviolet", Color.FromArgb(138, 43, 226) },
+    { "brown", Color.FromArgb(165, 42, 42) },
+    { "burlywood", Color.FromArgb(222, 184, 135) },
+    { "cadetblue", Color.FromArgb(95, 158, 160) },
+    { "chartreuse", Color.FromArgb(127, 255, 0) },
+    { "chocolate", Color.FromArgb(210, 105, 30) },
+    { "coral", Color.FromArgb(255, 127, 80) },
+    { "cornflowerblue", Color.FromArgb(100, 149, 237) },
+    { "cornsilk", Color.FromArgb(255, 248, 220) },
+    { "crimson", Color.FromArgb(220, 20, 60) },
+    { "cyan", Color.FromArgb(0, 255, 255) },
+    { "darkblue", Color.FromArgb(0, 0, 139) },
+    { "darkcyan", Color.FromArgb(0, 139, 139) },
+    { "darkgoldenrod", Color.FromArgb(184, 134, 11) },
+    { "darkgray", Color.FromArgb(169, 169, 169) },
+    { "darkgreen", Color.FromArgb(0, 100, 0) },
+    { "darkgrey", Color.FromArgb(169, 169, 169) },
+    { "darkkhaki", Color.FromArgb(189, 183, 107) },
+    { "darkmagenta", Color.FromArgb(139, 0, 139) },
+    { "darkolivegreen", Color.FromArgb(85, 107, 47) },
+    { "darkorange", Color.FromArgb(255, 140, 0) },
+    { "darkorchid", Color.FromArgb(153, 50, 204) },
+    { "darkred", Color.FromArgb(139, 0, 0) },
+    { "darksalmon", Color.FromArgb(233, 150, 122) },
+    { "darkseagreen", Color.FromArgb(143, 188, 143) },
+    { "darkslateblue", Color.FromArgb(72, 61, 139) },
+    { "darkslategray", Color.FromArgb(47, 79, 79) },
+    { "darkslategrey", Color.FromArgb(47, 79, 79) },
+    { "darkturquoise", Color.FromArgb(0, 206, 209) },
+    { "darkviolet", Color.FromArgb(148, 0, 211) },
+    { "deeppink", Color.FromArgb(255, 20, 147) },
+    { "deepskyblue", Color.FromArgb(0, 191, 255) },
+    { "dimgray", Color.FromArgb(105, 105, 105) },
+    { "dimgrey", Color.FromArgb(105, 105, 105) },
+    { "dodgerblue", Color.FromArgb(30, 144, 255) },
+    { "firebrick", Color.FromArgb(178, 34, 34) },
+    { "floralwhite", Color.FromArgb(255, 250, 240) },
+    { "forestgreen", Color.FromArgb(34, 139, 34) },
+    { "fuchsia", Color.FromArgb(255, 0, 255) },
+    { "gainsboro", Color.FromArgb(220, 220, 220) },
+    { "ghostwhite", Color.FromArgb(248, 248, 255) },
+    { "gold", Color.FromArgb(255, 215, 0) },
+    { "goldenrod", Color.FromArgb(218, 165, 32) },
+    { "gray", Color.FromArgb(128, 128, 128) },
+    { "green", Color.FromArgb(0, 128, 0) },
+    { "greenyellow", Color.FromArgb(173, 255, 47) },
+    { "grey", Color.FromArgb(128, 128, 128) },
+    { "honeydew", Color.FromArgb(240, 255, 240) },
+    { "hotpink", Color.FromArgb(255, 105, 180) },
+    { "indianred", Color.FromArgb(205, 92, 92) },
+    { "indigo", Color.FromArgb(75, 0, 130) },
+    { "ivory", Color.FromArgb(255, 255, 240) },
+    { "khaki", Color.FromArgb(240, 230, 140) },
+    { "lavender", Color.FromArgb(230, 230, 250) },
+    { "lavenderblush", Color.FromArgb(255, 240, 245) },
+    { "lawngreen", Color.FromArgb(124, 252, 0) },
+    { "lemonchiffon", Color.FromArgb(255, 250, 205) },
+    { "lightblue", Color.FromArgb(173, 216, 230) },
+    { "lightcoral", Color.FromArgb(240, 128, 128) },
+    { "lightcyan", Color.FromArgb(224, 255, 255) },
+    { "lightgoldenrodyellow", Color.FromArgb(250, 250, 210) },
+    { "lightgray", Color.FromArgb(211, 211, 211) },
+    { "lightgreen", Color.FromArgb(144, 238, 144) },
+    { "lightgrey", Color.FromArgb(211, 211, 211) },
+    { "lightpink", Color.FromArgb(255, 182, 193) },
+    { "lightsalmon", Color.FromArgb(255, 160, 122) },
+    { "lightseagreen", Color.FromArgb(32, 178, 170) },
+    { "lightskyblue", Color.FromArgb(135, 206, 250) },
+    { "lightslategray", Color.FromArgb(119, 136, 153) },
+    { "lightslategrey", Color.FromArgb(119, 136, 153) },
+    { "lightsteelblue", Color.FromArgb(176, 196, 222) },
+    { "lightyellow", Color.FromArgb(255, 255, 224) },
+    { "lime", Color.FromArgb(0, 255, 0) },
+    { "limegreen", Color.FromArgb(50, 205, 50) },
+    { "linen", Color.FromArgb(250, 240, 230) },
+    { "magenta", Color.FromArgb(255, 0, 255) },
+    { "maroon", Color.FromArgb(128, 0, 0) },
+    { "mediumaquamarine", Color.FromArgb(102, 205, 170) },
+    { "mediumblue", Color.FromArgb(0, 0, 205) },
+    { "mediumorchid", Color.FromArgb(186, 85, 211) },
+    { "mediumpurple", Color.FromArgb(147, 112, 219) },
+    { "mediumseagreen", Color.FromArgb(60, 179, 113) },
+    { "mediumslateblue", Color.FromArgb(123, 104, 238) },
+    { "mediumspringgreen", Color.FromArgb(0, 250, 154) },
+    { "mediumturquoise", Color.FromArgb(72, 209, 204) },
+    { "mediumvioletred", Color.FromArgb(199, 21, 133) },
+    { "midnightblue", Color.FromArgb(25, 25, 112) },
+    { "mintcream", Color.FromArgb(245, 255, 250) },
+    { "mistyrose", Color.FromArgb(255, 228, 225) },
+    { "moccasin", Color.FromArgb(255, 228, 181) },
+    { "navajowhite", Color.FromArgb(255, 222, 173) },
+    { "navy", Color.FromArgb(0, 0, 128) },
+    { "oldlace", Color.FromArgb(253, 245, 230) },
+    { "olive", Color.FromArgb(128, 128, 0) },
+    { "olivedrab", Color.FromArgb(107, 142, 35) },
+    { "orange", Color.FromArgb(255, 165, 0) },
+    { "orangered", Color.FromArgb(255, 69, 0) },
+    { "orchid", Color.FromArgb(218, 112, 214) },
+    { "palegoldenrod", Color.FromArgb(238, 232, 170) },
+    { "palegreen", Color.FromArgb(152, 251, 152) },
+    { "paleturquoise", Color.FromArgb(175, 238, 238) },
+    { "palevioletred", Color.FromArgb(219, 112, 147) },
+    { "papayawhip", Color.FromArgb(255, 239, 213) },
+    { "peachpuff", Color.FromArgb(255, 218, 185) },
+    { "peru", Color.FromArgb(205, 133, 63) },
+    { "pink", Color.FromArgb(255, 192, 203) },
+    { "plum", Color.FromArgb(221, 160, 221) },
+    { "powderblue", Color.FromArgb(176, 224, 230) },
+    { "purple", Color.FromArgb(128, 0, 128) },
+    { "rebeccapurple", Color.FromArgb(102, 51, 153) },
+    { "red", Color.FromArgb(255, 0, 0) },
+    { "rosybrown", Color.FromArgb(188, 143, 143) },
+    { "royalblue", Color.FromArgb(65, 105, 225) },
+    { "saddlebrown", Color.FromArgb(139, 69, 19) },
+    { "salmon", Color.FromArgb(250, 128, 114) },
+    { "sandybrown", Color.FromArgb(244, 164, 96) },
+    { "seagreen", Color.FromArgb(46, 139, 87) },
+    { "seashell", Color.FromArgb(255, 245, 238) },
+    { "sienna", Color.FromArgb(160, 82, 45) },
+    { "silver", Color.FromArgb(192, 192, 192) },
+    { "skyblue", Color.FromArgb(135, 206, 235) },
+    { "slateblue", Color.FromArgb(106, 90, 205) },
+    { "slategray", Color.FromArgb(112, 128, 144) },
+    { "slategrey", Color.FromArgb(112, 128, 144) },
+    { "snow", Color.FromArgb(255, 250, 250) },
+    { "springgreen", Color.FromArgb(0, 255, 127) },
+    { "steelblue", Color.FromArgb(70, 130, 180) },
+    { "tan", Color.FromArgb(210, 180, 140) },
+    { "teal", Color.FromArgb(0, 128, 128) },
+    { "thistle", Color.FromArgb(216, 191, 216) },
+    { "tomato", Color.FromArgb(255, 99, 71) },
+    { "turquoise", Color.FromArgb(64, 224, 208) },
+    { "violet", Color.FromArgb(238, 130, 238) },
+    { "wheat", Color.FromArgb(245, 222, 179) },
+    { "white", Color.FromArgb(255, 255, 255) },
+    { "whitesmoke", Color.FromArgb(245, 245, 245) },
+    { "yellow", Color.FromArgb(255, 255, 0) },
+    { "yellowgreen", Color.FromArgb(154, 205, 5) },
+  };
 }
