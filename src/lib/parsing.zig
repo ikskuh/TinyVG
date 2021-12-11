@@ -414,7 +414,7 @@ pub fn Parser(comptime Reader: type) type {
         }
 
         fn readPath(self: *Self, path_length: usize) !Path {
-            var segment_lengths: [64]usize = undefined;
+            var segment_lengths: [1024]usize = undefined;
             std.debug.assert(path_length <= segment_lengths.len);
 
             var total_node_count: usize = 0;

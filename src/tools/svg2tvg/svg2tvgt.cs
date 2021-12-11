@@ -359,7 +359,8 @@ public static class SvgConverter
         fully_supported = false;
         return;
       }
-      throw new InvalidOperationException(string.Format("Unknown element {0}", e.Element.Name));
+      Console.Error.WriteLine("Unknown element {0}", e.Element.Name);
+      // throw new InvalidOperationException(string.Format("Unknown element {0}", e.Element.Name));
     });
     events.OnUnknownAttribute = new XmlAttributeEventHandler((object sender, XmlAttributeEventArgs e) =>
     {

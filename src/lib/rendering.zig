@@ -15,6 +15,8 @@ const Style = tvg.Style;
 const circle_divs = 100;
 const bezier_divs = 16;
 
+const max_path_len = 512;
+
 pub fn isFramebuffer(comptime T: type) bool {
     const Framebuffer = if (@typeInfo(T) == .Pointer)
         std.meta.Child(T)
@@ -63,11 +65,11 @@ pub fn render(
         },
         .fill_path => |data| {
             var point_store = FixedBufferList(Point, temp_buffer_size){};
-            var slice_store = FixedBufferList(IndexSlice, 64){}; // known upper bound
+            var slice_store = FixedBufferList(IndexSlice, max_path_len){}; // known upper bound
 
             try renderPath(&point_store, &slice_store, data.path);
 
-            var slices: [64][]const Point = undefined;
+            var slices: [max_path_len][]const Point = undefined;
             for (slice_store.items()) |src, i| {
                 slices[i] = point_store.items()[src.offset..][0..src.len];
             }
@@ -108,7 +110,7 @@ pub fn render(
         },
         .draw_line_path => |data| {
             var point_store = FixedBufferList(Point, temp_buffer_size){};
-            var slice_store = FixedBufferList(IndexSlice, 128){}; // known upper bound
+            var slice_store = FixedBufferList(IndexSlice, max_path_len){}; // known upper bound
 
             try renderPath(&point_store, &slice_store, data.path);
 
@@ -157,11 +159,11 @@ pub fn render(
         },
         .outline_fill_path => |data| {
             var point_store = FixedBufferList(Point, temp_buffer_size){};
-            var slice_store = FixedBufferList(IndexSlice, 64){}; // known upper bound
+            var slice_store = FixedBufferList(IndexSlice, max_path_len){}; // known upper bound
 
             try renderPath(&point_store, &slice_store, data.path);
 
-            var slices: [64][]const Point = undefined;
+            var slices: [max_path_len][]const Point = undefined;
             for (slice_store.items()) |src, i| {
                 slices[i] = point_store.items()[src.offset..][0..src.len];
             }
@@ -300,14 +302,22 @@ pub fn renderPath(point_list: anytype, slice_list: anytype, path: tvg.Path) !voi
     }
 }
 
-fn toRadians(a: f32) f32 {
+inline fn toRadians(a: f32) f32 {
     return std.math.pi / 180.0 * a;
 }
 
-const cos = std.math.cos;
-const sin = std.math.sin;
-const sqrt = std.math.sqrt;
-const abs = std.math.fabs;
+inline fn cos(val: anytype) @TypeOf(val) {
+    return @cos(val);
+}
+inline fn sin(val: anytype) @TypeOf(val) {
+    return @sin(val);
+}
+inline fn sqrt(val: anytype) @TypeOf(val) {
+    return @sqrt(val);
+}
+inline fn abs(val: anytype) @TypeOf(val) {
+    return @fabs(val);
+}
 
 pub fn renderEllipse(
     point_list: anytype,
@@ -363,7 +373,10 @@ fn renderCircle(
     const midpoint = add(p0, delta);
 
     // Vector from midpoint to center, but incorrect length
-    const radius_vec = if (left_side) Point{ .x = -delta.y, .y = delta.x } else Point{ .x = delta.y, .y = -delta.x };
+    const radius_vec = if (left_side)
+        Point{ .x = -delta.y, .y = delta.x }
+    else
+        Point{ .x = delta.y, .y = -delta.x };
     const len_squared = length2(radius_vec);
     if (len_squared - 0.03 > r * r or r < 0) {
         std.log.err("{d} > {d}", .{ std.math.sqrt(len_squared), std.math.sqrt(r * r) });
@@ -375,13 +388,12 @@ fn renderCircle(
 
     const angle = std.math.asin(sqrt(len_squared) / r) * 2;
     const arc = if (large_arc) (std.math.tau - angle) else angle;
-    const step_mat = rotationMat((if (turn_left) -arc else arc) / circle_divs);
 
     var pos = sub(p0, center);
     var i: usize = 0;
     while (i < circle_divs - 1) : (i += 1) {
-        pos = applyMat(step_mat, pos);
-        const point = add(pos, center);
+        const step_mat = rotationMat(@intToFloat(f32, i) * (if (turn_left) -arc else arc) / circle_divs);
+        const point = add(applyMat(step_mat, pos), center);
 
         try point_list.append(point);
     }
@@ -409,10 +421,11 @@ fn pointFromInts(x: i16, y: i16) Point {
     return Point{ .x = @intToFloat(f32, x) + 0.5, .y = @intToFloat(f32, y) + 0.5 };
 }
 
-fn pointToInts(point: Point) struct { x: i16, y: i16 } {
-    return .{
-        .x = @floatToInt(i16, std.math.round(point.x)),
-        .y = @floatToInt(i16, std.math.round(point.y)),
+const IntPoint = struct { x: i16, y: i16 };
+fn pointToInts(point: Point) !IntPoint {
+    return IntPoint{
+        .x = try floatToInt(i16, std.math.round(point.x)),
+        .y = try floatToInt(i16, std.math.round(point.y)),
     };
 }
 
@@ -516,10 +529,10 @@ const Painter = struct {
         for (points_lists) |points| {
             // std.debug.assert(points.len >= 3);
             for (points) |pt| {
-                min_x = std.math.min(min_x, @floatToInt(i16, std.math.floor(self.scale_x * pt.x)));
-                min_y = std.math.min(min_y, @floatToInt(i16, std.math.floor(self.scale_y * pt.y)));
-                max_x = std.math.max(max_x, @floatToInt(i16, std.math.ceil(self.scale_x * pt.x)));
-                max_y = std.math.max(max_y, @floatToInt(i16, std.math.ceil(self.scale_y * pt.y)));
+                min_x = std.math.min(min_x, floatToIntClamped(i16, std.math.floor(self.scale_x * pt.x)));
+                min_y = std.math.min(min_y, floatToIntClamped(i16, std.math.floor(self.scale_y * pt.y)));
+                max_x = std.math.max(max_x, floatToIntClamped(i16, std.math.ceil(self.scale_x * pt.x)));
+                max_y = std.math.max(max_y, floatToIntClamped(i16, std.math.ceil(self.scale_y * pt.y)));
             }
         }
 
@@ -590,19 +603,19 @@ const Painter = struct {
 
         //-----------
 
-        q.x = std.math.fabs(q.x);
+        q.x = @fabs(q.x);
 
         const b = ra - rb;
-        const c = tvg.point(std.math.sqrt(h - b * b), b);
+        const c = tvg.point(@sqrt(h - b * b), b);
 
         const k = cross(c, q);
         const m = dot(c, q);
         const n = dot(q, q);
 
         if (k < 0.0) {
-            return std.math.sqrt(h * (n)) - ra;
+            return @sqrt(h * (n)) - ra;
         } else if (k > c.x) {
-            return std.math.sqrt(h * (n + 1.0 - 2.0 * q.y)) - rb;
+            return @sqrt(h * (n + 1.0 - 2.0 * q.y)) - rb;
         } else {
             return m - ra;
         }
@@ -842,4 +855,22 @@ pub fn FixedBufferList(comptime T: type, comptime N: usize) type {
             return self.buffer[self.length - 1];
         }
     };
+}
+
+fn floatToInt(comptime I: type, f: anytype) error{Overflow}!I {
+    if (f < std.math.minInt(I))
+        return error.Overflow;
+    if (f > std.math.maxInt(I))
+        return error.Overflow;
+    return @floatToInt(I, f);
+}
+
+fn floatToIntClamped(comptime I: type, f: anytype) I {
+    if (std.math.isNan(f))
+        @panic("NaN passed to floatToIntClamped!");
+    if (f < std.math.minInt(I))
+        return std.math.minInt(I);
+    if (f > std.math.maxInt(I))
+        return std.math.maxInt(I);
+    return @floatToInt(I, f);
 }
