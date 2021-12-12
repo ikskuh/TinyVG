@@ -3,6 +3,7 @@
 //!
 
 const std = @import("std");
+const builtin = @import("builtin");
 const tvg = @import("tvg.zig");
 const parsing = tvg.parsing;
 
@@ -321,10 +322,21 @@ inline fn toRadians(a: f32) f32 {
 }
 
 inline fn cos(val: anytype) @TypeOf(val) {
-    return @cos(val);
+    // Workaround for https://github.com/ziglang/zig/issues/10318
+    if (builtin.os.tag.isDarwin()) {
+        return std.math.cos(val);
+    } else {
+        return @cos(val);
+    }
 }
+
 inline fn sin(val: anytype) @TypeOf(val) {
-    return @sin(val);
+    // Workaround for https://github.com/ziglang/zig/issues/10318
+    if (builtin.os.tag.isDarwin()) {
+        return std.math.sin(val);
+    } else {
+        return @sin(val);
+    }
 }
 inline fn sqrt(val: anytype) @TypeOf(val) {
     return @sqrt(val);
