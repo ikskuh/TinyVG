@@ -191,10 +191,18 @@ pub fn renderPath(point_list: anytype, slice_list: anytype, path: tvg.Path) !voi
         last: Point,
         count: usize,
 
+        // Discard when point is in the vicinity of the last point (same pixel)
+        const delta = 0.25;
+
+        fn approxEqual(p0: Point, p1: Point) bool {
+            return std.math.approxEqAbs(f32, p0.x, p1.x, delta) and std.math.approxEqAbs(f32, p0.y, p1.y, delta);
+        }
+
         fn append(self: *@This(), pt: Point) !void {
-            // Discard when point is in the vicinity of the last point (same pixel)
-            const delta = 0.25;
-            if (std.math.approxEqAbs(f32, pt.x, self.last.x, delta) and std.math.approxEqAbs(f32, pt.y, self.last.y, delta))
+            std.debug.assert(!std.math.isNan(pt.x));
+            std.debug.assert(!std.math.isNan(pt.y));
+
+            if (approxEqual(self.last, pt))
                 return;
 
             try self.list.append(pt);
@@ -261,6 +269,9 @@ pub fn renderPath(point_list: anytype, slice_list: anytype, path: tvg.Path) !voi
                 },
                 // /home/felix/projects/forks/svg-curve-lib/src/js/svg-curve-lib.js
                 .arc_circle => |circle| {
+                    // Filter out too-tiny ellipses so we don't go into NaN land
+                    if (Helper.approxEqual(point_store.back(), circle.data.target))
+                        continue;
                     try renderCircle(
                         &point_store,
                         point_store.back(),
@@ -271,6 +282,9 @@ pub fn renderPath(point_list: anytype, slice_list: anytype, path: tvg.Path) !voi
                     );
                 },
                 .arc_ellipse => |ellipse| {
+                    // Filter out too-tiny ellipses so we don't go into NaN land
+                    if (Helper.approxEqual(point_store.back(), ellipse.data.target))
+                        continue;
                     try renderEllipse(
                         &point_store,
                         point_store.back(),
@@ -329,6 +343,18 @@ pub fn renderEllipse(
     large_arc: bool,
     turn_left: bool,
 ) !void {
+    // std.debug.print("renderEllipse(({d:.3} {d:.3}), ({d:.3} {d:.3}), {d:.2}, {d:.2}, {d:.4}, large={}, left={})\n", .{
+    //     p0.x,
+    //     p0.y,
+    //     p1.x,
+    //     p1.y,
+    //     radius_x,
+    //     radius_y,
+    //     rotation,
+    //     large_arc,
+    //     turn_left,
+    // });
+
     const radius_min = distance(p0, p1) / 2.0;
     const radius_lim = std.math.min(std.math.fabs(radius_x), std.math.fabs(radius_y));
 
@@ -336,6 +362,8 @@ pub fn renderEllipse(
         radius_min / radius_lim
     else
         1.0;
+
+    // std.debug.print("radius_min={d} radius_lim={d} up_scale={d}\n", .{ radius_min, radius_lim, up_scale });
 
     // std.log.warn("{d} {d} {d}, {d} => {d}", .{ radius_x, radius_y, radius_lim, radius_min, up_scale });
 
@@ -366,6 +394,7 @@ fn renderCircle(
     large_arc: bool,
     turn_left: bool,
 ) !void {
+
     // Whether the center should be to the left of the vector from p0 to p1
     const left_side = (turn_left and large_arc) or (!turn_left and !large_arc);
 
@@ -377,16 +406,17 @@ fn renderCircle(
         Point{ .x = -delta.y, .y = delta.x }
     else
         Point{ .x = delta.y, .y = -delta.x };
+
     const len_squared = length2(radius_vec);
     if (len_squared - 0.03 > r * r or r < 0) {
         std.log.err("{d} > {d}", .{ std.math.sqrt(len_squared), std.math.sqrt(r * r) });
         return error.InvalidRadius;
     }
 
-    const to_center = scale(radius_vec, sqrt(r * r / len_squared - 1));
+    const to_center = scale(radius_vec, sqrt(std.math.max(0, r * r / len_squared - 1)));
     const center = add(midpoint, to_center);
 
-    const angle = std.math.asin(sqrt(len_squared) / r) * 2;
+    const angle = std.math.asin(std.math.clamp(sqrt(len_squared) / r, -1.0, 1.0)) * 2;
     const arc = if (large_arc) (std.math.tau - angle) else angle;
 
     var pos = sub(p0, center);
