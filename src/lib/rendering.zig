@@ -193,9 +193,9 @@ pub fn renderPath(point_list: anytype, slice_list: anytype, path: tvg.Path) !voi
         count: usize,
 
         // Discard when point is in the vicinity of the last point (same pixel)
-        const delta = 0.25;
+        const pixel_delta = 0.25;
 
-        fn approxEqual(p0: Point, p1: Point) bool {
+        fn approxEqual(p0: Point, p1: Point, delta: f32) bool {
             return std.math.approxEqAbs(f32, p0.x, p1.x, delta) and std.math.approxEqAbs(f32, p0.y, p1.y, delta);
         }
 
@@ -203,7 +203,7 @@ pub fn renderPath(point_list: anytype, slice_list: anytype, path: tvg.Path) !voi
             std.debug.assert(!std.math.isNan(pt.x));
             std.debug.assert(!std.math.isNan(pt.y));
 
-            if (approxEqual(self.last, pt))
+            if (approxEqual(self.last, pt, pixel_delta))
                 return;
 
             try self.list.append(pt);
@@ -271,7 +271,7 @@ pub fn renderPath(point_list: anytype, slice_list: anytype, path: tvg.Path) !voi
                 // /home/felix/projects/forks/svg-curve-lib/src/js/svg-curve-lib.js
                 .arc_circle => |circle| {
                     // Filter out too-tiny ellipses so we don't go into NaN land
-                    if (Helper.approxEqual(point_store.back(), circle.data.target))
+                    if (Helper.approxEqual(point_store.back(), circle.data.target, 1e-5))
                         continue;
                     try renderCircle(
                         &point_store,
@@ -284,7 +284,7 @@ pub fn renderPath(point_list: anytype, slice_list: anytype, path: tvg.Path) !voi
                 },
                 .arc_ellipse => |ellipse| {
                     // Filter out too-tiny ellipses so we don't go into NaN land
-                    if (Helper.approxEqual(point_store.back(), ellipse.data.target))
+                    if (Helper.approxEqual(point_store.back(), ellipse.data.target, 1e-5))
                         continue;
                     try renderEllipse(
                         &point_store,
@@ -380,7 +380,7 @@ pub fn renderEllipse(
     // std.debug.print("{d} {d} {d}, {d} => {d}\n", .{ radius_x, radius_y, radius_lim, radius_min, up_scale });
 
     const ratio = radius_x / radius_y;
-    const rot = rotationMat(toRadians(rotation));
+    const rot = rotationMat(toRadians(-rotation));
     const transform = [2][2]f32{
         .{ rot[0][0] / up_scale, rot[0][1] / up_scale },
         .{ rot[1][0] / up_scale * ratio, rot[1][1] / up_scale * ratio },

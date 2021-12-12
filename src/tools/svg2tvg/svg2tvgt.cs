@@ -792,9 +792,9 @@ public static class SvgConverter
       }
       CurrentSegmentPrimitives += 1;
       temp_stream.Write("          (arc_ellipse - ");
-      temp_stream.WriteUnit(Math.Abs(size.Y));
-      temp_stream.Write(" ");
       temp_stream.WriteUnit(Math.Abs(size.X));
+      temp_stream.Write(" ");
+      temp_stream.WriteUnit(Math.Abs(size.Y));
       temp_stream.Write(" ");
       temp_stream.WriteUnit(angle);
       temp_stream.Write(" ");

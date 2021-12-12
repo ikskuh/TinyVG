@@ -71,12 +71,10 @@ See also this image to have a preview of what is already implemented:
 ### Milestones
 
 - [x] Create prototype implementation
-- [ ] Finalize prototype
+- [x] Finalize prototype
   - [x] Add smaller/bigger colors (16 bit, 30 bit)
   - [x] Add color space information (the color space is defined as sRGB)
   - [x] Add extended coordinate space (32 bit coordinates)
-  - [ ] Expand opcode space for mirrored/repeated splines in paths
-  - [ ] Consider Circle/Ellipse opcode?
   - [x] Encode primary style in command, reduces command to 63 variants, allows bigger encoding
 - [ ] Improve rendering
   - [x] Add anti-aliasing
@@ -88,10 +86,6 @@ See also this image to have a preview of what is already implemented:
   - [x] Convert to text
   - [x] Format text
   - [x] Convert to SVG
-  - [ ] Convert from SVG (via external tool)
-    - [ ] SVG `<circle>`
-    - [ ] SVG `<ellipse>`
-    - [ ] SVG `<rect rx="?">`
 - [ ] Add auxiliary tools
   - [ ] C Library frontend
   - [ ] Wasm Polyfill
@@ -100,11 +94,20 @@ See also this image to have a preview of what is already implemented:
   - [ ] Add manual to tools
 - [x] Benchmark Suite
   - [x] File Size (SVG vs. TinyVG)
+  - [ ] Update final benchmark
 - [ ] Sort github issues
 - [ ] Write specification
 - [ ] Review specification
 - [ ] Release!
 - [ ] Lock the specification into _Version 1_.
+- [ ] Future versions
+  - [ ] (Fill|Draw|Fill Outlined) Ellipse/Circle opcode
+  - [ ] Smooth Bezier (via mirror behaviour)
+
+### Future Tasks
+
+- [ ] Convert from SVG (via external tool)
+  - [ ] SVG `<ellipse>`
 
 ## Considerations
 
