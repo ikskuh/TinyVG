@@ -80,7 +80,7 @@ See also this image to have a preview of what is already implemented:
   - [x] Add anti-aliasing
   - [ ] Add missing line width modifier for path rendering
   - [ ] Improve rendering performance
-  - [ ] Move anti-aliased rendering into core library
+  - [x] Move anti-aliased rendering into core library
 - [x] Implement textual representation
   - [x] Convert to `.tvg`
   - [x] Convert to text
@@ -92,6 +92,8 @@ See also this image to have a preview of what is already implemented:
   - [ ] Inkscape Plugin
 - [ ] Improve website
   - [ ] Add manual to tools
+  - [ ] Add `tiger.tvg` example file
+  - [ ] Add text file spec/examples
 - [x] Benchmark Suite
   - [x] File Size (SVG vs. TinyVG)
   - [ ] Update final benchmark

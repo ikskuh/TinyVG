@@ -7,6 +7,266 @@ const builtin = @import("builtin");
 const tvg = @import("tvg.zig");
 const parsing = tvg.parsing;
 
+/// Renders a TinyVG graphic and returns the rendered image.
+/// - `temporary_allocator` is used for temporary allocations.
+/// - `image_allocator` is used to allocate the final image.
+/// - `size_hint` determines the way how the final graphic is specified
+/// - `anti_alias` determines the level of anti-aliasing if not `null`
+/// - `data` is a slice providing the TinyVG graphic
+pub fn renderBuffer(
+    temporary_allocator: std.mem.Allocator,
+    image_allocator: std.mem.Allocator,
+    size_hint: SizeHint,
+    anti_alias: ?AntiAliasing,
+    data: []const u8,
+) !Image {
+    var stream = std.io.fixedBufferStream(data);
+    return try renderStream(
+        temporary_allocator,
+        image_allocator,
+        size_hint,
+        anti_alias,
+        stream.reader(),
+    );
+}
+
+/// Renders a TinyVG graphic and returns the rendered image.
+/// - `temporary_allocator` is used for temporary allocations.
+/// - `image_allocator` is used to allocate the final image.
+/// - `size_hint` determines the way how the final graphic is specified
+/// - `anti_alias` determines the level of anti-aliasing if not `null`
+/// - `reader` is a stream providing the TinyVG graphic
+pub fn renderStream(
+    temporary_allocator: std.mem.Allocator,
+    image_allocator: std.mem.Allocator,
+    size_hint: SizeHint,
+    anti_alias: ?AntiAliasing,
+    reader: anytype,
+) !Image {
+    var parser = try tvg.parse(temporary_allocator, reader);
+    defer parser.deinit();
+
+    const target_size: Size = switch (size_hint) {
+        .inherit => Size{ .width = parser.header.width, .height = parser.header.height },
+        .size => |size| size,
+        .width => |width| Size{
+            .width = width,
+            .height = (parser.header.width * parser.header.height) / width,
+        },
+        .height => |height| Size{
+            .width = (parser.header.height * parser.header.width) / height,
+            .height = height,
+        },
+    };
+
+    const super_scale: u32 = if (anti_alias) |factor|
+        @enumToInt(factor)
+    else
+        1;
+
+    const render_size = Size{
+        .width = target_size.width * super_scale,
+        .height = target_size.height * super_scale,
+    };
+
+    const target_pixel_count = @as(usize, target_size.width) * @as(usize, target_size.height);
+    const render_pixel_count = @as(usize, render_size.width) * @as(usize, render_size.height);
+
+    const framebuffer = Framebuffer{
+        .slice = try temporary_allocator.alloc(Color, render_pixel_count),
+        .stride = render_size.width,
+        .width = render_size.width,
+        .height = render_size.height,
+    };
+    defer temporary_allocator.free(framebuffer.slice);
+
+    // Fill the destination buffer with magic magenta. None if this will be visible
+    // in the end, but it will show users where they do wrong alpha interpolation
+    // by bleeding in magenta
+    std.mem.set(Color, framebuffer.slice, Color{ .r = 1, .g = 0, .b = 1, .a = 0 });
+
+    while (try parser.next()) |cmd| {
+        try renderCommand(&framebuffer, parser.header, parser.color_table, cmd);
+    }
+
+    var image = Image{
+        .pixels = try image_allocator.alloc(Color8, target_pixel_count),
+        .width = target_size.width,
+        .height = target_size.height,
+    };
+    errdefer image_allocator.free(image.pixels);
+
+    // resolve anti-aliasing
+    for (image.pixels) |*pixel, i| {
+        const x = i % image.width;
+        const y = i / image.width;
+
+        // stores premultiplied rgb + linear alpha
+        // premultiplication is necessary as
+        // (1,1,1,50%) over (0,0,0,0%) must result in (1,1,1,25%) and not (0.5,0.5,0.5,25%).
+        // This will only happen if we fully ignore the fraction of transparent colors in the final result.
+        // The average must also be computed in linear space, as we would get invalid color blending otherwise.
+        var color = std.mem.zeroes([4]f32);
+
+        var dy: usize = 0;
+        while (dy < super_scale) : (dy += 1) {
+            var dx: usize = 0;
+            while (dx < super_scale) : (dx += 1) {
+                const sx = x * super_scale + dx;
+                const sy = y * super_scale + dy;
+
+                const src_color = framebuffer.slice[sy * framebuffer.stride + sx];
+
+                const a = src_color.a;
+
+                // Create premultiplied linear colors
+                color[0] += a * mapToLinear(src_color.r);
+                color[1] += a * mapToLinear(src_color.g);
+                color[2] += a * mapToLinear(src_color.b);
+                color[3] += a;
+            }
+        }
+
+        // Compute average
+        for (color) |*chan| {
+            chan.* = chan.* / @intToFloat(f32, super_scale * super_scale);
+        }
+
+        const final_a = color[3];
+
+        if (final_a > 0.0) {
+            pixel.* = Color8{
+                // unmultiply the alpha and apply the gamma
+                .r = mapToGamma8(color[0] / final_a),
+                .g = mapToGamma8(color[1] / final_a),
+                .b = mapToGamma8(color[2] / final_a),
+                .a = @floatToInt(u8, 255.0 * color[3]),
+            };
+        } else {
+            pixel.* = Color8{ .r = 0xFF, .g = 0x00, .b = 0xFF, .a = 0x00 };
+        }
+    }
+
+    return image;
+}
+
+const gamma = 2.2;
+
+fn mapToLinear(val: f32) f32 {
+    return std.math.pow(f32, val, gamma);
+}
+
+fn mapToGamma(val: f32) f32 {
+    return std.math.pow(f32, val, 1.0 / gamma);
+}
+
+fn mapToGamma8(val: f32) u8 {
+    return @floatToInt(u8, 255.0 * mapToGamma(val));
+}
+
+const Framebuffer = struct {
+    const Self = @This();
+
+    // private API
+
+    slice: []Color,
+    stride: usize,
+
+    // public API
+    width: usize,
+    height: usize,
+
+    pub fn setPixel(self: Self, x: isize, y: isize, src_color: tvg.Color) void {
+        if (x < 0 or y < 0)
+            return;
+        if (x >= self.width or y >= self.height)
+            return;
+        const offset = (std.math.cast(usize, y) catch return) * self.stride + (std.math.cast(usize, x) catch return);
+
+        const destination_pixel = &self.slice[offset];
+
+        const dst_color = destination_pixel.*;
+
+        if (src_color.a == 0) {
+            return;
+        }
+        if (src_color.a == 255) {
+            destination_pixel.* = src_color;
+            return;
+        }
+
+        // src over dst
+        //   a over b
+
+        const src_alpha = src_color.a;
+        const dst_alpha = dst_color.a;
+
+        const fin_alpha = src_alpha + (1.0 - src_alpha) * dst_alpha;
+
+        destination_pixel.* = Color{
+            .r = lerpColor(src_color.r, dst_color.r, src_alpha, dst_alpha, fin_alpha),
+            .g = lerpColor(src_color.g, dst_color.g, src_alpha, dst_alpha, fin_alpha),
+            .b = lerpColor(src_color.b, dst_color.b, src_alpha, dst_alpha, fin_alpha),
+            .a = fin_alpha,
+        };
+    }
+
+    fn lerpColor(src: f32, dst: f32, src_alpha: f32, dst_alpha: f32, fin_alpha: f32) f32 {
+        const src_val = mapToLinear(src);
+        const dst_val = mapToLinear(dst);
+
+        const value = (1.0 / fin_alpha) * (src_alpha * src_val + (1.0 - src_alpha) * dst_alpha * dst_val);
+
+        return mapToGamma(value);
+    }
+};
+
+pub const Color8 = extern struct { r: u8, g: u8, b: u8, a: u8 };
+
+pub const SizeHint = union(enum) {
+    inherit,
+    width: u32,
+    height: u32,
+    size: Size,
+};
+
+pub const Size = struct {
+    width: u32,
+    height: u32,
+};
+
+pub const AntiAliasing = enum(u32) {
+    x1 = 1,
+    x4 = 2,
+    x9 = 3,
+    x16 = 4,
+    x25 = 6,
+    x49 = 7,
+    x64 = 8,
+    _,
+};
+
+pub const Image = struct {
+    width: u32,
+    height: u32,
+    pixels: []Color8,
+
+    pub fn deinit(self: *Image, allocator: std.mem.Allocator) void {
+        allocator.free(self.pixels);
+        self.* = undefined;
+    }
+};
+
+pub fn isFramebuffer(comptime T: type) bool {
+    const FbType = if (@typeInfo(T) == .Pointer)
+        std.meta.Child(T)
+    else
+        T;
+    return std.meta.trait.hasFn("setPixel")(FbType) and
+        std.meta.trait.hasField("width")(FbType) and
+        std.meta.trait.hasField("height")(FbType);
+}
+
 const Point = tvg.Point;
 const Rectangle = tvg.Rectangle;
 const Color = tvg.Color;
@@ -18,21 +278,14 @@ const bezier_divs = 16;
 
 const max_path_len = 512;
 
-pub fn isFramebuffer(comptime T: type) bool {
-    const Framebuffer = if (@typeInfo(T) == .Pointer)
-        std.meta.Child(T)
-    else
-        T;
-    return std.meta.trait.hasFn("setPixel")(Framebuffer) and
-        std.meta.trait.hasField("width")(Framebuffer) and
-        std.meta.trait.hasField("height")(Framebuffer) and
-        std.meta.trait.hasField("scale")(Framebuffer);
-}
-
 const IndexSlice = struct { offset: usize, len: usize };
 
-/// Renders a command for TVG icon.
-pub fn render(
+/// Renders a single TinyVG command. Performs no aliasing, super sampling or blending.
+/// - `framebuffer` implements the backing storage for rendering, must provide function `setPixel(x:usize,y:usize,TvgColor)` and fields `width` and `height`.
+/// - `header` is the TinyVG header
+/// - `color_table` is the color table that is used for rendering.
+/// - `cmd` is the draw command that should be rendered.
+pub fn renderCommand(
     /// A struct that exports a single function `setPixel(x: isize, y: isize, color: [4]u8) void` as well as two fields width and height
     framebuffer: anytype,
     /// The parsed header of a TVG
@@ -627,7 +880,7 @@ const Painter = struct {
                     .even_odd => (inside_count % 2) == 1,
                 };
                 if (set) {
-                    framebuffer.setPixel(x, y, self.sampleStlye(color_table, style, x, y).toRgba8());
+                    framebuffer.setPixel(x, y, self.sampleStlye(color_table, style, x, y));
                 }
             }
         }
@@ -641,7 +894,7 @@ const Painter = struct {
         while (py < ylimit) : (py += 1) {
             var px = @floatToInt(i16, std.math.floor(self.scale_x * x));
             while (px < xlimit) : (px += 1) {
-                framebuffer.setPixel(px, py, self.sampleStlye(color_table, style, px, py).toRgba8());
+                framebuffer.setPixel(px, py, self.sampleStlye(color_table, style, px, py));
             }
         }
     }
@@ -737,7 +990,7 @@ const Painter = struct {
                 );
 
                 if (dist <= 0.0) {
-                    framebuffer.setPixel(x, y, self.sampleStlye(color_table, style, x, y).toRgba8());
+                    framebuffer.setPixel(x, y, self.sampleStlye(color_table, style, x, y));
                 }
             }
         }
