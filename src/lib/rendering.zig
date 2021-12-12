@@ -368,7 +368,7 @@ pub fn renderEllipse(
     // });
 
     const radius_min = distance(p0, p1) / 2.0;
-    const radius_lim = std.math.min(std.math.fabs(radius_x), std.math.fabs(radius_y));
+    const radius_lim = sqrt(radius_x * radius_x + radius_y * radius_y); // std.math.min(std.math.fabs(radius_x), std.math.fabs(radius_y));
 
     const up_scale = if (radius_lim < radius_min)
         radius_min / radius_lim
@@ -377,10 +377,10 @@ pub fn renderEllipse(
 
     // std.debug.print("radius_min={d} radius_lim={d} up_scale={d}\n", .{ radius_min, radius_lim, up_scale });
 
-    // std.log.warn("{d} {d} {d}, {d} => {d}", .{ radius_x, radius_y, radius_lim, radius_min, up_scale });
+    // std.debug.print("{d} {d} {d}, {d} => {d}\n", .{ radius_x, radius_y, radius_lim, radius_min, up_scale });
 
     const ratio = radius_x / radius_y;
-    const rot = rotationMat(toRadians(rotation - 90));
+    const rot = rotationMat(toRadians(rotation));
     const transform = [2][2]f32{
         .{ rot[0][0] / up_scale, rot[0][1] / up_scale },
         .{ rot[1][0] / up_scale * ratio, rot[1][1] / up_scale * ratio },
@@ -391,7 +391,14 @@ pub fn renderEllipse(
     };
 
     var tmp = FixedBufferList(Point, circle_divs){};
-    renderCircle(&tmp, applyMat(transform, p0), applyMat(transform, p1), radius_x * up_scale, large_arc, turn_left) catch unreachable; // buffer is correctly sized
+    renderCircle(
+        &tmp,
+        applyMat(transform, p0),
+        applyMat(transform, p1),
+        radius_x * up_scale,
+        large_arc,
+        turn_left,
+    ) catch unreachable; // buffer is correctly sized
 
     for (tmp.buffer) |p| {
         try point_list.append(applyMat(transform_back, p));
@@ -402,10 +409,11 @@ fn renderCircle(
     point_list: anytype,
     p0: Point,
     p1: Point,
-    r: f32,
+    radius: f32,
     large_arc: bool,
     turn_left: bool,
 ) !void {
+    var r = radius;
 
     // Whether the center should be to the left of the vector from p0 to p1
     const left_side = (turn_left and large_arc) or (!turn_left and !large_arc);
@@ -421,8 +429,9 @@ fn renderCircle(
 
     const len_squared = length2(radius_vec);
     if (len_squared - 0.03 > r * r or r < 0) {
+        r = @sqrt(len_squared);
         std.log.err("{d} > {d}", .{ std.math.sqrt(len_squared), std.math.sqrt(r * r) });
-        return error.InvalidRadius;
+        // return error.InvalidRadius;
     }
 
     const to_center = scale(radius_vec, sqrt(std.math.max(0, r * r / len_squared - 1)));

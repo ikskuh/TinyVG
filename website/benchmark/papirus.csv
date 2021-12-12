@@ -55,6 +55,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/folder-nordic-videos-open.svg	865	593
 /home/felix/projects/datasets/vectors/papirus/piwigo.svg	847	436
 /home/felix/projects/datasets/vectors/papirus/com.github.lainsce.yishu.svg	685	339
+/home/felix/projects/datasets/vectors/papirus/folder-magenta-syncthing.svg	1081	698
 /home/felix/projects/datasets/vectors/papirus/protonmail-desktop.svg	3168	1195
 /home/felix/projects/datasets/vectors/papirus/folder-teal-mail-cloud.svg	938	650
 /home/felix/projects/datasets/vectors/papirus/folder-deeporange-backup.svg	1254	750
@@ -63,6 +64,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/folder-cyan-download.svg	778	555
 /home/felix/projects/datasets/vectors/papirus/webby.svg	882	395
 /home/felix/projects/datasets/vectors/papirus/blender.svg	1992	786
+/home/felix/projects/datasets/vectors/papirus/folder-white-important.svg	815	587
 /home/felix/projects/datasets/vectors/papirus/bootstrap-studio.svg	855	675
 /home/felix/projects/datasets/vectors/papirus/com.github.kmal-kenneth.monilet.svg	1497	538
 /home/felix/projects/datasets/vectors/papirus/audiobook.svg	1118	549
@@ -87,6 +89,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/folder-green-video.svg	874	601
 /home/felix/projects/datasets/vectors/papirus/folder-darkcyan-templates.svg	1029	785
 /home/felix/projects/datasets/vectors/papirus/vim.svg	2008	822
+/home/felix/projects/datasets/vectors/papirus/folder-teal-mail.svg	971	674
 /home/felix/projects/datasets/vectors/papirus/folder-carmine-photo.svg	918	624
 /home/felix/projects/datasets/vectors/papirus/mx-conky.svg	2023	1315
 /home/felix/projects/datasets/vectors/papirus/opentyrian.svg	5920	2754
@@ -97,6 +100,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/ADLplug.svg	2461	1047
 /home/felix/projects/datasets/vectors/papirus/folder-breeze-backup.svg	1254	750
 /home/felix/projects/datasets/vectors/papirus/full-throttle-remastered.svg	7403	2502
+/home/felix/projects/datasets/vectors/papirus/ice-store.svg	4096	1589
 /home/felix/projects/datasets/vectors/papirus/winemine.svg	3426	1529
 /home/felix/projects/datasets/vectors/papirus/tor-browser-nightly.svg	1116	559
 /home/felix/projects/datasets/vectors/papirus/folder-custom-kde.svg	1731	918
@@ -118,11 +122,13 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/folder-violet-documents-open.svg	827	571
 /home/felix/projects/datasets/vectors/papirus/folder-violet-private.svg	892	605
 /home/felix/projects/datasets/vectors/papirus/preferences-system-services.svg	14975	4929
+/home/felix/projects/datasets/vectors/papirus/folder-cyan-network.svg	2165	997
 /home/felix/projects/datasets/vectors/papirus/folder-breeze-download-open.svg	778	555
 /home/felix/projects/datasets/vectors/papirus/minetest.svg	2497	884
 /home/felix/projects/datasets/vectors/papirus/distributor-logo-manjaro.svg	595	352
 /home/felix/projects/datasets/vectors/papirus/folder-grey-documents.svg	830	574
 /home/felix/projects/datasets/vectors/papirus/inkscape.svg	4426	1483
+/home/felix/projects/datasets/vectors/papirus/folder-palebrown-syncthing.svg	1081	698
 /home/felix/projects/datasets/vectors/papirus/openoffice4-draw.svg	1049	341
 /home/felix/projects/datasets/vectors/papirus/folder-paleorange-remote-open.svg	858	593
 /home/felix/projects/datasets/vectors/papirus/folder-violet-photo.svg	918	624
@@ -135,6 +141,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/folder-paleorange-projects.svg	1287	792
 /home/felix/projects/datasets/vectors/papirus/xcom-enemy-unknown.svg	1943	752
 /home/felix/projects/datasets/vectors/papirus/folder-white-dropbox.svg	879	630
+/home/felix/projects/datasets/vectors/papirus/folder-bluegrey-mail.svg	971	674
 /home/felix/projects/datasets/vectors/papirus/seahorse.svg	5033	2234
 /home/felix/projects/datasets/vectors/papirus/folder-black-onedrive.svg	1261	803
 /home/felix/projects/datasets/vectors/papirus/ibus-bopomofo.svg	698	306
@@ -149,10 +156,12 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/weather-few-clouds-night.svg	3938	1681
 /home/felix/projects/datasets/vectors/papirus/text-x-install.svg	697	334
 /home/felix/projects/datasets/vectors/papirus/psi.svg	2623	882
+/home/felix/projects/datasets/vectors/papirus/folder-paleorange-mega.svg	818	589
 /home/felix/projects/datasets/vectors/papirus/folder-red-download.svg	778	555
 /home/felix/projects/datasets/vectors/papirus/non-starred.svg	2235	810
 /home/felix/projects/datasets/vectors/papirus/folder-custom-music.svg	897	606
 /home/felix/projects/datasets/vectors/papirus/ghex.svg	3927	1436
+/home/felix/projects/datasets/vectors/papirus/folder-breeze-mail.svg	971	674
 /home/felix/projects/datasets/vectors/papirus/folder-white-photo.svg	912	624
 /home/felix/projects/datasets/vectors/papirus/kali-undercover.svg	1713	773
 /home/felix/projects/datasets/vectors/papirus/clockify.svg	1301	600
@@ -167,9 +176,11 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/kipi-panorama.svg	1452	622
 /home/felix/projects/datasets/vectors/papirus/playonlinux.svg	3659	1194
 /home/felix/projects/datasets/vectors/papirus/coypu.svg	4034	1490
+/home/felix/projects/datasets/vectors/papirus/folder-paleorange-syncthing.svg	1081	698
 /home/felix/projects/datasets/vectors/papirus/folder-deeporange-onedrive.svg	1261	803
 /home/felix/projects/datasets/vectors/papirus/8bitmmo.svg	908	631
 /home/felix/projects/datasets/vectors/papirus/folder-red-activities.svg	838	581
+/home/felix/projects/datasets/vectors/papirus/folder-carmine-torrent.svg	969	688
 /home/felix/projects/datasets/vectors/papirus/gnome-sudoku.svg	6290	2432
 /home/felix/projects/datasets/vectors/papirus/org.kde.plasma.vault.svg	987	658
 /home/felix/projects/datasets/vectors/papirus/folder-red-publicshare-open.svg	1507	793
@@ -180,6 +191,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/sqldeveloper.svg	1144	536
 /home/felix/projects/datasets/vectors/papirus/conky.svg	12821	4363
 /home/felix/projects/datasets/vectors/papirus/obdautodoctor.svg	4288	1732
+/home/felix/projects/datasets/vectors/papirus/folder-cyan-important.svg	821	587
 /home/felix/projects/datasets/vectors/papirus/spacemacs.svg	3231	1179
 /home/felix/projects/datasets/vectors/papirus/nvim.svg	588	275
 /home/felix/projects/datasets/vectors/papirus/gnome-subtitles.svg	788	407
@@ -205,6 +217,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/system-suspend.svg	821	443
 /home/felix/projects/datasets/vectors/papirus/void-wizard.svg	2575	1162
 /home/felix/projects/datasets/vectors/papirus/AdobeFresco.svg	766	420
+/home/felix/projects/datasets/vectors/papirus/folder-custom-mega.svg	827	589
 /home/felix/projects/datasets/vectors/papirus/jclicauthor.svg	1081	440
 /home/felix/projects/datasets/vectors/papirus/user-carmine-home.svg	773	550
 /home/felix/projects/datasets/vectors/papirus/folder-grey-nextcloud.svg	1152	836
@@ -218,6 +231,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/folder-paleorange-games.svg	1843	927
 /home/felix/projects/datasets/vectors/papirus/application-x-virtualbox-ova.svg	762	421
 /home/felix/projects/datasets/vectors/papirus/revolt.svg	4197	2158
+/home/felix/projects/datasets/vectors/papirus/easyeda.svg	2130	926
 /home/felix/projects/datasets/vectors/papirus/com.github.bharatkalluri.easypass.svg	672	344
 /home/felix/projects/datasets/vectors/papirus/folder-palebrown-gitlab.svg	1096	673
 /home/felix/projects/datasets/vectors/papirus/dottrace.svg	1412	482
@@ -238,6 +252,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/com.endlessnetwork.fablemaker.svg	539	338
 /home/felix/projects/datasets/vectors/papirus/folder-grey-remote.svg	858	593
 /home/felix/projects/datasets/vectors/papirus/rkward.svg	5836	2065
+/home/felix/projects/datasets/vectors/papirus/vidcutter.svg	1521	944
 /home/felix/projects/datasets/vectors/papirus/security-medium.svg	1999	782
 /home/felix/projects/datasets/vectors/papirus/texmaker.svg	1561	933
 /home/felix/projects/datasets/vectors/papirus/folder-violet-games.svg	1843	927
@@ -251,6 +266,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/folder-grey-steam.svg	1194	750
 /home/felix/projects/datasets/vectors/papirus/deltachat.svg	3767	1217
 /home/felix/projects/datasets/vectors/papirus/face-crying.svg	2083	755
+/home/felix/projects/datasets/vectors/papirus/dissenter-browser.svg	776	374
 /home/felix/projects/datasets/vectors/papirus/system-users.svg	770	406
 /home/felix/projects/datasets/vectors/papirus/microsoft-edge-dev.svg	4044	1455
 /home/felix/projects/datasets/vectors/papirus/eu.scarpetta.PDFMixTool.svg	1155	521
@@ -274,6 +290,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/folder-yaru-backup.svg	1254	750
 /home/felix/projects/datasets/vectors/papirus/application-pgp-keys.svg	690	373
 /home/felix/projects/datasets/vectors/papirus/easystroke.svg	1235	449
+/home/felix/projects/datasets/vectors/papirus/folder-green-torrent.svg	969	688
 /home/felix/projects/datasets/vectors/papirus/folder-cyan-locked.svg	987	658
 /home/felix/projects/datasets/vectors/papirus/yubikey-personalization-gui.svg	1507	592
 /home/felix/projects/datasets/vectors/papirus/folder-red-development.svg	1290	730
@@ -293,6 +310,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/kbreakout.svg	902	523
 /home/felix/projects/datasets/vectors/papirus/distributor-logo-knoppix.svg	4430	2125
 /home/felix/projects/datasets/vectors/papirus/wine.svg	1908	653
+/home/felix/projects/datasets/vectors/papirus/transmageddon.svg	1218	735
 /home/felix/projects/datasets/vectors/papirus/magnatune.svg	1418	769
 /home/felix/projects/datasets/vectors/papirus/application-x-virtualbox-vhd.svg	762	421
 /home/felix/projects/datasets/vectors/papirus/folder-custom-templates.svg	1038	785
@@ -326,6 +344,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/folder-violet-image-people.svg	1507	793
 /home/felix/projects/datasets/vectors/papirus/folder-brown-videos-open.svg	865	593
 /home/felix/projects/datasets/vectors/papirus/tamtam-app.svg	966	528
+/home/felix/projects/datasets/vectors/papirus/torrenttools.svg	8172	3324
 /home/felix/projects/datasets/vectors/papirus/ryujinx.svg	1706	834
 /home/felix/projects/datasets/vectors/papirus/folder-red-photo.svg	918	624
 /home/felix/projects/datasets/vectors/papirus/folder-carmine-locked.svg	987	658
@@ -344,12 +363,15 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/edge-game.svg	3230	1224
 /home/felix/projects/datasets/vectors/papirus/folder-violet-drag-accept.svg	628	429
 /home/felix/projects/datasets/vectors/papirus/phoronix-test-suite.svg	1029	547
+/home/felix/projects/datasets/vectors/papirus/folder-custom-torrent.svg	978	688
+/home/felix/projects/datasets/vectors/papirus/folder-paleorange-mail.svg	971	674
 /home/felix/projects/datasets/vectors/papirus/rto-proxy.svg	2069	753
 /home/felix/projects/datasets/vectors/papirus/folder-green-books.svg	1003	768
 /home/felix/projects/datasets/vectors/papirus/chrome-fljalecfjciodhpcledpamjachpmelml-Default.svg	1365	584
 /home/felix/projects/datasets/vectors/papirus/user-teal-desktop.svg	517	297
 /home/felix/projects/datasets/vectors/papirus/komodo-edit.svg	7445	2417
 /home/felix/projects/datasets/vectors/papirus/muon.svg	736	382
+/home/felix/projects/datasets/vectors/papirus/folder-green-mail.svg	971	674
 /home/felix/projects/datasets/vectors/papirus/folder-cyan-recent.svg	891	641
 /home/felix/projects/datasets/vectors/papirus/tipp10.svg	961	891
 /home/felix/projects/datasets/vectors/papirus/folder-violet-pcloud.svg	1246	818
@@ -434,6 +456,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/folder-darkcyan-arduino.svg	2273	1109
 /home/felix/projects/datasets/vectors/papirus/emblem-favorite.svg	485	181
 /home/felix/projects/datasets/vectors/papirus/folder-paleorange-mail-cloud.svg	938	650
+/home/felix/projects/datasets/vectors/papirus/acreloaded.svg	2269	962
 /home/felix/projects/datasets/vectors/papirus/half-life-deathmatch.svg	906	440
 /home/felix/projects/datasets/vectors/papirus/folder-indigo-gitlab.svg	1096	673
 /home/felix/projects/datasets/vectors/papirus/freedoom1.svg	3431	1397
@@ -460,6 +483,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/folder-violet-books.svg	1003	768
 /home/felix/projects/datasets/vectors/papirus/nomacs.svg	1946	1091
 /home/felix/projects/datasets/vectors/papirus/folder-grey-games.svg	1843	927
+/home/felix/projects/datasets/vectors/papirus/folder-white-mega.svg	812	589
 /home/felix/projects/datasets/vectors/papirus/openarena.svg	1748	703
 /home/felix/projects/datasets/vectors/papirus/VCVRack.svg	844	295
 /home/felix/projects/datasets/vectors/papirus/folder-green-backup.svg	1254	750
@@ -479,9 +503,11 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/sdrangel.svg	5332	1862
 /home/felix/projects/datasets/vectors/papirus/beyondallreason.svg	1220	805
 /home/felix/projects/datasets/vectors/papirus/i-nex.svg	979	573
+/home/felix/projects/datasets/vectors/papirus/factorio.svg	4099	1504
 /home/felix/projects/datasets/vectors/papirus/com.github.arshubham.cipher.svg	977	527
 /home/felix/projects/datasets/vectors/papirus/isomaster.svg	1284	612
 /home/felix/projects/datasets/vectors/papirus/application-x-kodelife-project.svg	984	487
+/home/felix/projects/datasets/vectors/papirus/folder-cyan-mail.svg	971	674
 /home/felix/projects/datasets/vectors/papirus/ms-onedrive.svg	3642	1365
 /home/felix/projects/datasets/vectors/papirus/application-x-atari-lynx-rom.svg	871	506
 /home/felix/projects/datasets/vectors/papirus/mat.svg	3457	1355
@@ -523,6 +549,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/folder-black-download.svg	778	555
 /home/felix/projects/datasets/vectors/papirus/view-financial-budget.svg	3244	1876
 /home/felix/projects/datasets/vectors/papirus/org.glimpse_editor.Glimpse.svg	2956	1340
+/home/felix/projects/datasets/vectors/papirus/folder-darkcyan-torrent.svg	969	688
 /home/felix/projects/datasets/vectors/papirus/folder-darkcyan-steam.svg	1194	750
 /home/felix/projects/datasets/vectors/papirus/netbeans.svg	3871	1455
 /home/felix/projects/datasets/vectors/papirus/folder-black-documents-open.svg	827	571
@@ -536,6 +563,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/audio-speaker-mono.svg	1503	636
 /home/felix/projects/datasets/vectors/papirus/downline.svg	594	330
 /home/felix/projects/datasets/vectors/papirus/io.elementary.appcenter.svg	2282	1193
+/home/felix/projects/datasets/vectors/papirus/folder-deeporange-syncthing.svg	1081	698
 /home/felix/projects/datasets/vectors/papirus/com.github.rickybas.date-countdown.svg	1194	475
 /home/felix/projects/datasets/vectors/papirus/x-tile.svg	2056	1008
 /home/felix/projects/datasets/vectors/papirus/bzflag.svg	1431	1000
@@ -559,6 +587,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/folder-darkcyan-meocloud.svg	1259	748
 /home/felix/projects/datasets/vectors/papirus/zenkit.svg	1015	510
 /home/felix/projects/datasets/vectors/papirus/user-indigo-home-open.svg	773	550
+/home/felix/projects/datasets/vectors/papirus/text-x-qml.svg	4917	1977
 /home/felix/projects/datasets/vectors/papirus/folder-green-development.svg	1290	730
 /home/felix/projects/datasets/vectors/papirus/folder-paleorange-pictures.svg	850	609
 /home/felix/projects/datasets/vectors/papirus/text-x-makefile.svg	1114	519
@@ -573,10 +602,12 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/financial-schedule.svg	866	619
 /home/felix/projects/datasets/vectors/papirus/folder-deeporange-drag-accept.svg	628	429
 /home/felix/projects/datasets/vectors/papirus/notification-network-ethernet-disconnected.svg	942	520
+/home/felix/projects/datasets/vectors/papirus/folder-violet-mega.svg	818	589
 /home/felix/projects/datasets/vectors/papirus/grsync.svg	3220	1125
 /home/felix/projects/datasets/vectors/papirus/image-svg+xml-compressed.svg	1047	636
 /home/felix/projects/datasets/vectors/papirus/chrome-app-list.svg	1739	1541
 /home/felix/projects/datasets/vectors/papirus/raven-reader.svg	2449	891
+/home/felix/projects/datasets/vectors/papirus/folder-custom-syncthing.svg	1090	698
 /home/felix/projects/datasets/vectors/papirus/mini-calendar-widget.svg	789	401
 /home/felix/projects/datasets/vectors/papirus/folder-indigo-applications.svg	1292	802
 /home/felix/projects/datasets/vectors/papirus/folder-red-nextcloud.svg	1152	836
@@ -587,6 +618,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/xdman.svg	8923	3103
 /home/felix/projects/datasets/vectors/papirus/Ripcord_Icon.svg	2250	851
 /home/felix/projects/datasets/vectors/papirus/folder-violet-templates.svg	1029	785
+/home/felix/projects/datasets/vectors/papirus/folder-darkcyan-network.svg	2165	997
 /home/felix/projects/datasets/vectors/papirus/application-vnd.oasis.opendocument.formula.svg	1041	488
 /home/felix/projects/datasets/vectors/papirus/sideka.svg	8386	3129
 /home/felix/projects/datasets/vectors/papirus/folder-black-music.svg	888	606
@@ -594,6 +626,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/folder-paleorange-templates-open.svg	1029	785
 /home/felix/projects/datasets/vectors/papirus/folder-white-unlocked.svg	964	652
 /home/felix/projects/datasets/vectors/papirus/kvirc.svg	5190	1978
+/home/felix/projects/datasets/vectors/papirus/portal2.svg	7386	3049
 /home/felix/projects/datasets/vectors/papirus/folder-paleorange-vbox.svg	826	550
 /home/felix/projects/datasets/vectors/papirus/abbaye.svg	717	529
 /home/felix/projects/datasets/vectors/papirus/password-manager.svg	672	344
@@ -663,6 +696,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/folder-green-github.svg	1637	836
 /home/felix/projects/datasets/vectors/papirus/application-x-vmware-vmfoundry.svg	810	603
 /home/felix/projects/datasets/vectors/papirus/stuntrally.svg	1174	470
+/home/felix/projects/datasets/vectors/papirus/tresorit.svg	2627	979
 /home/felix/projects/datasets/vectors/papirus/libreoffice-main.svg	629	331
 /home/felix/projects/datasets/vectors/papirus/kig.svg	680	403
 /home/felix/projects/datasets/vectors/papirus/folder-teal-sync.svg	997	664
@@ -675,6 +709,8 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/com.github.allen-b1.news.svg	805	411
 /home/felix/projects/datasets/vectors/papirus/emblem-default.svg	240	86
 /home/felix/projects/datasets/vectors/papirus/com.github.bartzaalberg.php-tester.svg	4284	1472
+/home/felix/projects/datasets/vectors/papirus/folder-black-network.svg	2165	997
+/home/felix/projects/datasets/vectors/papirus/com.github.donadigo.appeditor.svg	4376	1626
 /home/felix/projects/datasets/vectors/papirus/accessories-notes.svg	1424	799
 /home/felix/projects/datasets/vectors/papirus/folder-green-kde.svg	1722	918
 /home/felix/projects/datasets/vectors/papirus/folder-breeze-pictures.svg	850	609
@@ -685,6 +721,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/folder-palebrown-recent.svg	891	641
 /home/felix/projects/datasets/vectors/papirus/folder-teal-photo.svg	918	624
 /home/felix/projects/datasets/vectors/papirus/notification-network-ethernet-connected.svg	583	362
+/home/felix/projects/datasets/vectors/papirus/folder-orange-mega.svg	818	589
 /home/felix/projects/datasets/vectors/papirus/text-x-erlang.svg	1812	738
 /home/felix/projects/datasets/vectors/papirus/ldview.svg	991	528
 /home/felix/projects/datasets/vectors/papirus/io.gitlab.leesonwai.Sums.svg	724	475
@@ -697,6 +734,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/half-life-alyx.svg	678	359
 /home/felix/projects/datasets/vectors/papirus/folder-violet-vbox.svg	826	550
 /home/felix/projects/datasets/vectors/papirus/stock_xfburn-burn-cd.svg	1304	612
+/home/felix/projects/datasets/vectors/papirus/folder-paleorange-important.svg	821	587
 /home/felix/projects/datasets/vectors/papirus/folder-violet-arduino.svg	2273	1109
 /home/felix/projects/datasets/vectors/papirus/slade.svg	7871	3240
 /home/felix/projects/datasets/vectors/papirus/6180-the-moon.svg	1166	789
@@ -708,6 +746,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/folder-palebrown-gnome.svg	1448	774
 /home/felix/projects/datasets/vectors/papirus/xfe.svg	567	387
 /home/felix/projects/datasets/vectors/papirus/com.github.alainm23.byte.svg	877	443
+/home/felix/projects/datasets/vectors/papirus/zart.svg	3273	1417
 /home/felix/projects/datasets/vectors/papirus/user-green-home.svg	773	550
 /home/felix/projects/datasets/vectors/papirus/user-custom-desktop.svg	522	297
 /home/felix/projects/datasets/vectors/papirus/user-paleorange-home.svg	773	550
@@ -720,9 +759,12 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/folder-cyan-apple.svg	1388	747
 /home/felix/projects/datasets/vectors/papirus/folder-brown-games.svg	1843	927
 /home/felix/projects/datasets/vectors/papirus/microsoft.svg	544	300
+/home/felix/projects/datasets/vectors/papirus/folder-brown-torrent.svg	969	688
 /home/felix/projects/datasets/vectors/papirus/folder-custom-projects.svg	1296	792
 /home/felix/projects/datasets/vectors/papirus/folder-indigo-templates.svg	1029	785
 /home/felix/projects/datasets/vectors/papirus/liferea.svg	5231	2012
+/home/felix/projects/datasets/vectors/papirus/folder-white-mail.svg	965	674
+/home/felix/projects/datasets/vectors/papirus/menulibre.svg	1788	805
 /home/felix/projects/datasets/vectors/papirus/emblem-web.svg	2887	992
 /home/felix/projects/datasets/vectors/papirus/taskbar.svg	1943	1290
 /home/felix/projects/datasets/vectors/papirus/folder-grey-recent.svg	891	641
@@ -741,6 +783,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/hipchat.svg	1953	789
 /home/felix/projects/datasets/vectors/papirus/folder-deeporange-development.svg	1290	730
 /home/felix/projects/datasets/vectors/papirus/cpod.svg	1701	898
+/home/felix/projects/datasets/vectors/papirus/folder-yellow-mail.svg	971	674
 /home/felix/projects/datasets/vectors/papirus/folder-orange-video.svg	874	601
 /home/felix/projects/datasets/vectors/papirus/folder-breeze-gnome.svg	1448	774
 /home/felix/projects/datasets/vectors/papirus/peerunity.svg	991	386
@@ -762,6 +805,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/kitty.svg	5785	3035
 /home/felix/projects/datasets/vectors/papirus/folder-breeze-music-open.svg	888	606
 /home/felix/projects/datasets/vectors/papirus/folder-darkcyan-private.svg	892	605
+/home/felix/projects/datasets/vectors/papirus/text-x-vbscript.svg	4986	1979
 /home/felix/projects/datasets/vectors/papirus/sirikali.svg	1371	763
 /home/felix/projects/datasets/vectors/papirus/text-x-cobol.svg	6290	2098
 /home/felix/projects/datasets/vectors/papirus/folder-yaru-templates-open.svg	1029	785
@@ -774,6 +818,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/folder-pink-favorites.svg	838	563
 /home/felix/projects/datasets/vectors/papirus/flareget.svg	983	362
 /home/felix/projects/datasets/vectors/papirus/com.pajuelo.plasmaConfSaver.svg	2972	1377
+/home/felix/projects/datasets/vectors/papirus/civilization5.svg	1534	558
 /home/felix/projects/datasets/vectors/papirus/folder-brown-remote-open.svg	858	593
 /home/felix/projects/datasets/vectors/papirus/folder-red-applications.svg	1292	802
 /home/felix/projects/datasets/vectors/papirus/AdobePrelude.svg	1216	562
@@ -781,6 +826,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/freecad.svg	1262	614
 /home/felix/projects/datasets/vectors/papirus/meshlab.svg	10827	3718
 /home/felix/projects/datasets/vectors/papirus/folder-magenta-git.svg	1236	729
+/home/felix/projects/datasets/vectors/papirus/bridge-constructor-stunts.svg	1475	817
 /home/felix/projects/datasets/vectors/papirus/folder-blue-git.svg	1236	729
 /home/felix/projects/datasets/vectors/papirus/Encryptr.svg	672	386
 /home/felix/projects/datasets/vectors/papirus/laverna.svg	799	351
@@ -801,6 +847,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/netradiant.svg	2033	967
 /home/felix/projects/datasets/vectors/papirus/text-r.svg	996	479
 /home/felix/projects/datasets/vectors/papirus/folder-black-development.svg	1290	730
+/home/felix/projects/datasets/vectors/papirus/folder-brown-syncthing.svg	1081	698
 /home/felix/projects/datasets/vectors/papirus/mintsources-additional.svg	888	431
 /home/felix/projects/datasets/vectors/papirus/realtimesync.svg	3217	1125
 /home/felix/projects/datasets/vectors/papirus/phantompeer.svg	1409	909
@@ -829,6 +876,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/folder-indigo-mail-cloud.svg	938	650
 /home/felix/projects/datasets/vectors/papirus/folder-red-kde.svg	1722	918
 /home/felix/projects/datasets/vectors/papirus/folder-teal-templates.svg	1029	785
+/home/felix/projects/datasets/vectors/papirus/folder-bluegrey-important.svg	821	587
 /home/felix/projects/datasets/vectors/papirus/visualvm.svg	2547	1389
 /home/felix/projects/datasets/vectors/papirus/weather-snow-rain.svg	2665	1174
 /home/felix/projects/datasets/vectors/papirus/folder-yellow-wine.svg	840	592
@@ -851,6 +899,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/org.gnome.Pinpoint.svg	541	319
 /home/felix/projects/datasets/vectors/papirus/ease.svg	599	311
 /home/felix/projects/datasets/vectors/papirus/nasc.svg	749	425
+/home/felix/projects/datasets/vectors/papirus/folder-grey-important.svg	821	587
 /home/felix/projects/datasets/vectors/papirus/io.github.OpenToonz.svg	1020	586
 /home/felix/projects/datasets/vectors/papirus/duckstation.svg	2332	956
 /home/felix/projects/datasets/vectors/papirus/FreeTexturePacker.svg	2560	956
@@ -863,6 +912,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/kubeplayer.svg	1423	676
 /home/felix/projects/datasets/vectors/papirus/folder-darkcyan-documents-open.svg	827	571
 /home/felix/projects/datasets/vectors/papirus/magictree.svg	5066	2254
+/home/felix/projects/datasets/vectors/papirus/folder-grey-mail.svg	971	674
 /home/felix/projects/datasets/vectors/papirus/tizen-studio-dynamicanalyzer.svg	1301	661
 /home/felix/projects/datasets/vectors/papirus/org.gnome.PasswordSafe.svg	1973	1187
 /home/felix/projects/datasets/vectors/papirus/folder-breeze-locked.svg	987	658
@@ -888,6 +938,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/exaile.svg	837	368
 /home/felix/projects/datasets/vectors/papirus/text-x-kotlin.svg	856	398
 /home/felix/projects/datasets/vectors/papirus/emblem-photos.svg	321	158
+/home/felix/projects/datasets/vectors/papirus/application-vnd.flatpak.svg	2933	1136
 /home/felix/projects/datasets/vectors/papirus/fontypython.svg	1083	617
 /home/felix/projects/datasets/vectors/papirus/hubstaff-gray.svg	4242	1477
 /home/felix/projects/datasets/vectors/papirus/weather-few-clouds.svg	1752	996
@@ -895,6 +946,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/google-earth-pro.svg	3036	1052
 /home/felix/projects/datasets/vectors/papirus/distributor-logo-chakra.svg	2356	807
 /home/felix/projects/datasets/vectors/papirus/guake.svg	1144	671
+/home/felix/projects/datasets/vectors/papirus/application-x-kicad-schematic.svg	2785	1731
 /home/felix/projects/datasets/vectors/papirus/uget.svg	697	519
 /home/felix/projects/datasets/vectors/papirus/openage.svg	1401	624
 /home/felix/projects/datasets/vectors/papirus/referencer.svg	5537	1996
@@ -910,6 +962,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/org.gnome.FontViewer.svg	4518	1749
 /home/felix/projects/datasets/vectors/papirus/folder-bluegrey-publicshare-open.svg	1507	793
 /home/felix/projects/datasets/vectors/papirus/user-carmine-desktop.svg	517	297
+/home/felix/projects/datasets/vectors/papirus/folder-white-network.svg	2159	997
 /home/felix/projects/datasets/vectors/papirus/model-stl.svg	1272	538
 /home/felix/projects/datasets/vectors/papirus/folder-magenta-java.svg	1379	793
 /home/felix/projects/datasets/vectors/papirus/ocrfeeder.svg	2664	1096
@@ -946,56 +999,3 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/papirus/subsurface-icon.svg	6418	2345
 /home/felix/projects/datasets/vectors/papirus/fceux.svg	1348	641
 /home/felix/projects/datasets/vectors/papirus/phd2.svg	3633	1652
-/home/felix/projects/datasets/vectors/papirus/network-wireless-hotspot.svg	1318	422
-/home/felix/projects/datasets/vectors/papirus/user-orange-desktop.svg	517	297
-/home/felix/projects/datasets/vectors/papirus/komorebi.svg	742	444
-/home/felix/projects/datasets/vectors/papirus/ocsstore.svg	2474	1129
-/home/felix/projects/datasets/vectors/papirus/emerald-theme-manager-icon.svg	1122	444
-/home/felix/projects/datasets/vectors/papirus/freegish.svg	1505	522
-/home/felix/projects/datasets/vectors/papirus/com.scoutshonour.dtipbijays.svg	855	506
-/home/felix/projects/datasets/vectors/papirus/folder-teal-java.svg	1379	793
-/home/felix/projects/datasets/vectors/papirus/preferences-desktop-wallpaper.svg	633	311
-/home/felix/projects/datasets/vectors/papirus/tc.svg	2617	1090
-/home/felix/projects/datasets/vectors/papirus/AdobePremiereRush.svg	1287	687
-/home/felix/projects/datasets/vectors/papirus/folder-deeporange-books.svg	1003	768
-/home/felix/projects/datasets/vectors/papirus/folder-deeporange-recent.svg	891	641
-/home/felix/projects/datasets/vectors/papirus/spotify-qt.svg	1392	467
-/home/felix/projects/datasets/vectors/papirus/timekpr.svg	1818	663
-/home/felix/projects/datasets/vectors/papirus/folder-nordic-publicshare-open.svg	1507	793
-/home/felix/projects/datasets/vectors/papirus/kmplot.svg	1993	1594
-/home/felix/projects/datasets/vectors/papirus/folder-darkcyan-google-drive.svg	880	571
-/home/felix/projects/datasets/vectors/papirus/folder-yaru-unlocked.svg	970	652
-/home/felix/projects/datasets/vectors/papirus/folder-brown-backup.svg	1254	750
-/home/felix/projects/datasets/vectors/papirus/kitematic.svg	1451	744
-/home/felix/projects/datasets/vectors/papirus/teams-for-linux.svg	1958	1077
-/home/felix/projects/datasets/vectors/papirus/folder-teal-git.svg	1236	729
-/home/felix/projects/datasets/vectors/papirus/folder-darkcyan-templates-open.svg	1029	785
-/home/felix/projects/datasets/vectors/papirus/folder-custom-games.svg	1852	927
-/home/felix/projects/datasets/vectors/papirus/folder-pink-apple.svg	1388	747
-/home/felix/projects/datasets/vectors/papirus/text-x-rust.svg	946	589
-/home/felix/projects/datasets/vectors/papirus/folder-nordic-arduino.svg	2273	1109
-/home/felix/projects/datasets/vectors/papirus/com.github.torikulhabib.mindi.ac3.svg	4042	1483
-/home/felix/projects/datasets/vectors/papirus/speedcrunch.svg	1106	603
-/home/felix/projects/datasets/vectors/papirus/com.github.torikulhabib.mindi.aiff.svg	1581	710
-/home/felix/projects/datasets/vectors/papirus/folder-darkcyan-pcloud.svg	1246	818
-/home/felix/projects/datasets/vectors/papirus/folder-red-open.svg	700	505
-/home/felix/projects/datasets/vectors/papirus/folder-green-apple.svg	1388	747
-/home/felix/projects/datasets/vectors/papirus/application-x-vmware-snapshot.svg	1019	702
-/home/felix/projects/datasets/vectors/papirus/atom.svg	8113	2708
-/home/felix/projects/datasets/vectors/papirus/dota2.svg	5695	2261
-/home/felix/projects/datasets/vectors/papirus/folder-yellow-locked.svg	987	658
-/home/felix/projects/datasets/vectors/papirus/folder-teal-tar.svg	1205	849
-/home/felix/projects/datasets/vectors/papirus/folder-darkcyan-photo.svg	918	624
-/home/felix/projects/datasets/vectors/papirus/fman.svg	2131	1279
-/home/felix/projects/datasets/vectors/papirus/text-x-fortran.svg	1830	726
-/home/felix/projects/datasets/vectors/papirus/folder-violet-cd.svg	792	557
-/home/felix/projects/datasets/vectors/papirus/folder-brown-download-open.svg	778	555
-/home/felix/projects/datasets/vectors/papirus/regexxer.svg	1149	593
-/home/felix/projects/datasets/vectors/papirus/youtrack.svg	1261	457
-/home/felix/projects/datasets/vectors/papirus/folder-nordic-copy-cloud.svg	906	605
-/home/felix/projects/datasets/vectors/papirus/user-cyan-home.svg	773	550
-/home/felix/projects/datasets/vectors/papirus/text-x-wxmathml.svg	739	401
-/home/felix/projects/datasets/vectors/papirus/folder-nordic-video.svg	874	601
-/home/felix/projects/datasets/vectors/papirus/gnome-robots.svg	1057	475
-/home/felix/projects/datasets/vectors/papirus/kdocker.svg	1110	674
-/home/felix/projects/datasets/vectors/papirus/vcs-removed.svg	156	60

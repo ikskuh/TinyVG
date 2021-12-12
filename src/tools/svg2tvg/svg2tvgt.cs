@@ -792,9 +792,9 @@ public static class SvgConverter
       }
       CurrentSegmentPrimitives += 1;
       temp_stream.Write("          (arc_ellipse - ");
-      temp_stream.WriteUnit(Math.Abs(size.X));
-      temp_stream.Write(" ");
       temp_stream.WriteUnit(Math.Abs(size.Y));
+      temp_stream.Write(" ");
+      temp_stream.WriteUnit(Math.Abs(size.X));
       temp_stream.Write(" ");
       temp_stream.WriteUnit(angle);
       temp_stream.Write(" ");
@@ -1708,6 +1708,17 @@ public class SvgPathParser
       return pt;
   }
 
+  void SetLastControlPoint(PointF cp1)
+  {
+    // Mirrors the current 
+    this.stored_control_point = Add(
+      current_position,
+      new PointF(current_position.X - cp1.X, current_position.Y - cp1.Y)
+    );
+  }
+
+  PointF LastControlPoint => this.stored_control_point ?? this.current_position;
+
   // svg_path::= wsp* moveto? (moveto drawto_command*)?
   void ParsePath()
   {
@@ -1871,7 +1882,7 @@ public class SvgPathParser
       var cp1 = MakeAbsolute(tup[1], relative);
       var dest = MoveCursor(tup[2], relative);
       renderer.CurveTo(cp0, cp1, dest);
-      stored_control_point = Add(current_position, new PointF(cp1.X - dest.X, cp1.Y - dest.Y));
+      SetLastControlPoint(cp1);
     }
   }
 
@@ -1890,8 +1901,8 @@ public class SvgPathParser
     {
       var cp1 = MakeAbsolute(tup[0], relative);
       var dest = MoveCursor(tup[1], relative);
-      renderer.CurveTo(stored_control_point ?? current_position, cp1, dest);
-      stored_control_point = Add(current_position, new PointF(cp1.X - dest.X, cp1.Y - dest.Y));
+      renderer.CurveTo(LastControlPoint, cp1, dest);
+      SetLastControlPoint(cp1);
     }
   }
 
@@ -1911,7 +1922,7 @@ public class SvgPathParser
       var cp = MakeAbsolute(tup[0], relative);
       var dest = MoveCursor(tup[1], relative);
       renderer.QuadCurveTo(cp, dest);
-      stored_control_point = Add(current_position, new PointF(cp.X - dest.X, cp.Y - dest.Y));
+      SetLastControlPoint(cp);
     }
   }
 
@@ -1923,10 +1934,10 @@ public class SvgPathParser
     SkipWhitespace();
     foreach (var dest_loc in ParseCoordinatePairSequence())
     {
-      var cp = stored_control_point ?? current_position;
+      var cp = LastControlPoint;
       var dest = MoveCursor(dest_loc, relative);
       renderer.QuadCurveTo(cp, dest);
-      stored_control_point = Add(current_position, new PointF(cp.X - dest.X, cp.Y - dest.Y));
+      SetLastControlPoint(cp);
     }
   }
 

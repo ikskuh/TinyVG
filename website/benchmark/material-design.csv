@@ -105,6 +105,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/material-design/svg/puzzle-check.svg	494	262
 /home/felix/projects/datasets/vectors/material-design/svg/emoticon-wink.svg	406	212
 /home/felix/projects/datasets/vectors/material-design/svg/microsoft-windows.svg	223	102
+/home/felix/projects/datasets/vectors/material-design/svg/text-account.svg	260	152
 /home/felix/projects/datasets/vectors/material-design/svg/text-box-minus-outline.svg	353	193
 /home/felix/projects/datasets/vectors/material-design/svg/table-of-contents.svg	198	120
 /home/felix/projects/datasets/vectors/material-design/svg/script-text.svg	337	205
@@ -159,6 +160,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/material-design/svg/wind-turbine.svg	554	251
 /home/felix/projects/datasets/vectors/material-design/svg/account-voice.svg	415	193
 /home/felix/projects/datasets/vectors/material-design/svg/folder-refresh.svg	417	205
+/home/felix/projects/datasets/vectors/material-design/svg/clipboard-text-search.svg	695	382
 /home/felix/projects/datasets/vectors/material-design/svg/archive-marker-outline.svg	476	251
 /home/felix/projects/datasets/vectors/material-design/svg/zodiac-taurus.svg	367	182
 /home/felix/projects/datasets/vectors/material-design/svg/home-floor-0.svg	230	130
@@ -222,6 +224,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/material-design/svg/gamepad-down.svg	241	131
 /home/felix/projects/datasets/vectors/material-design/svg/controller-classic-outline.svg	681	335
 /home/felix/projects/datasets/vectors/material-design/svg/harddisk-plus.svg	540	315
+/home/felix/projects/datasets/vectors/material-design/svg/elevator-passenger.svg	367	207
 /home/felix/projects/datasets/vectors/material-design/svg/shield-search.svg	438	216
 /home/felix/projects/datasets/vectors/material-design/svg/watering-can.svg	466	216
 /home/felix/projects/datasets/vectors/material-design/svg/emoticon-lol.svg	562	272
@@ -348,6 +351,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/material-design/svg/format-letter-spacing.svg	279	145
 /home/felix/projects/datasets/vectors/material-design/svg/curling.svg	348	161
 /home/felix/projects/datasets/vectors/material-design/svg/gavel.svg	683	294
+/home/felix/projects/datasets/vectors/material-design/svg/email-search-outline.svg	541	276
 /home/felix/projects/datasets/vectors/material-design/svg/android.svg	673	262
 /home/felix/projects/datasets/vectors/material-design/svg/source-branch.svg	662	388
 /home/felix/projects/datasets/vectors/material-design/svg/content-save-outline.svg	287	173
@@ -873,6 +877,7 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/material-design/svg/arm-flex-outline.svg	557	227
 /home/felix/projects/datasets/vectors/material-design/svg/store-outline.svg	216	124
 /home/felix/projects/datasets/vectors/material-design/svg/key-change.svg	449	300
+/home/felix/projects/datasets/vectors/material-design/svg/water-percent-alert.svg	388	192
 /home/felix/projects/datasets/vectors/material-design/svg/basket-minus-outline.svg	490	255
 /home/felix/projects/datasets/vectors/material-design/svg/check-outline.svg	238	88
 /home/felix/projects/datasets/vectors/material-design/svg/arrow-up-box.svg	247	127
@@ -994,8 +999,3 @@ Path	SVG Size	TVG Size
 /home/felix/projects/datasets/vectors/material-design/svg/cryengine.svg	729	278
 /home/felix/projects/datasets/vectors/material-design/svg/flag-variant-outline.svg	329	229
 /home/felix/projects/datasets/vectors/material-design/svg/shield-sync.svg	451	210
-/home/felix/projects/datasets/vectors/material-design/svg/closed-caption-outline.svg	861	446
-/home/felix/projects/datasets/vectors/material-design/svg/hdr-off.svg	425	224
-/home/felix/projects/datasets/vectors/material-design/svg/radioactive-off.svg	508	233
-/home/felix/projects/datasets/vectors/material-design/svg/sticker-plus.svg	275	149
-/home/felix/projects/datasets/vectors/material-design/svg/zodiac-virgo.svg	594	324
