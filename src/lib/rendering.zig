@@ -430,7 +430,7 @@ fn renderCircle(
     const len_squared = length2(radius_vec);
     if (len_squared - 0.03 > r * r or r < 0) {
         r = @sqrt(len_squared);
-        std.log.err("{d} > {d}", .{ std.math.sqrt(len_squared), std.math.sqrt(r * r) });
+        // std.log.err("{d} > {d}", .{ std.math.sqrt(len_squared), std.math.sqrt(r * r) });
         // return error.InvalidRadius;
     }
 
