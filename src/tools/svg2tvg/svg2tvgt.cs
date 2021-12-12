@@ -771,7 +771,7 @@ public static class SvgConverter
 
     public void CurveTo(PointF pt1, PointF pt2, PointF pt3)
     {
-      // Console.WriteLine("CurveTo({0},{1},{2},{3},{4},{5})", pt1.X, pt1.Y, pt2.X, pt2.Y, pt3.X, pt3.Y);
+      // Console.WriteLine("CurveTo({0},{1},{2})", pt1, pt2, pt3);
       CurrentSegmentPrimitives += 1;
       temp_stream.Write("          (bezier - (");
       temp_stream.WritePoint(pt1);
@@ -1715,6 +1715,13 @@ public class SvgPathParser
       current_position,
       new PointF(current_position.X - cp1.X, current_position.Y - cp1.Y)
     );
+    // Console.Error.WriteLine("=> SCP = {0}", this.stored_control_point);
+  }
+
+  void ResetLastControlPoint()
+  {
+    // Console.Error.WriteLine("~~ SCP = {0}", this.stored_control_point);
+    this.stored_control_point = null;
   }
 
   PointF LastControlPoint => this.stored_control_point ?? this.current_position;
@@ -1754,22 +1761,27 @@ public class SvgPathParser
     {
       case 'Z':
       case 'z':
+        ResetLastControlPoint();
         ParseClosePath();
         break;
       case 'M':
       case 'm':
+        ResetLastControlPoint();
         ParseMoveTo();
         break;
       case 'L':
       case 'l':
+        ResetLastControlPoint();
         ParseLineTo();
         break;
       case 'H':
       case 'h':
+        ResetLastControlPoint();
         ParseHorizontalLineTo();
         break;
       case 'V':
       case 'v':
+        ResetLastControlPoint();
         ParseVerticalLineTo();
         break;
       case 'C':
@@ -1790,6 +1802,7 @@ public class SvgPathParser
         break;
       case 'A':
       case 'a':
+        ResetLastControlPoint();
         ParseArcTo();
         break;
 
@@ -1899,9 +1912,10 @@ public class SvgPathParser
     SkipWhitespace();
     foreach (var tup in ParseCoordinatePairTupleSequence(2))
     {
+      var cp0 = LastControlPoint;
       var cp1 = MakeAbsolute(tup[0], relative);
       var dest = MoveCursor(tup[1], relative);
-      renderer.CurveTo(LastControlPoint, cp1, dest);
+      renderer.CurveTo(cp0, cp1, dest);
       SetLastControlPoint(cp1);
     }
   }
