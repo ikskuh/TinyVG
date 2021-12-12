@@ -452,10 +452,10 @@ fn pointFromInts(x: i16, y: i16) Point {
 }
 
 const IntPoint = struct { x: i16, y: i16 };
-fn pointToInts(point: Point) !IntPoint {
+fn pointToInts(point: Point) IntPoint {
     return IntPoint{
-        .x = try floatToInt(i16, std.math.round(point.x)),
-        .y = try floatToInt(i16, std.math.round(point.y)),
+        .x = floatToIntClamped(i16, std.math.round(point.x)),
+        .y = floatToIntClamped(i16, std.math.round(point.y)),
     };
 }
 
@@ -719,35 +719,6 @@ const Painter = struct {
                     framebuffer.setPixel(x, y, self.sampleStlye(color_table, style, x, y).toRgba8());
                 }
             }
-        }
-    }
-
-    fn drawCircle(self: Painter, framebuffer: anytype, color_table: []const Color, style: Style, location: Point, radius: f32) void {
-        if (radius < 0)
-            return;
-
-        const left = @floatToInt(i16, std.math.floor(self.scale_x * (location.x - radius) - 0.5));
-        const right = @floatToInt(i16, std.math.ceil(self.scale_y * (location.x + radius) + 0.5));
-
-        const top = @floatToInt(i16, std.math.floor(self.scale_x * (location.y - radius) - 0.5));
-        const bottom = @floatToInt(i16, std.math.ceil(self.scale_y * (location.y + radius) + 0.5));
-
-        const r2 = radius * radius;
-        if (r2 > 0.77) {
-            var y: i16 = top;
-            while (y <= bottom) : (y += 1) {
-                var x: i16 = left;
-                while (x <= right) : (x += 1) {
-                    const pt = self.mapPointToImage(pointFromInts(x, y));
-                    var delta = sub(pt, location);
-                    const dist = length2(delta);
-                    if (dist <= r2)
-                        framebuffer.setPixel(x, y, self.sampleStlye(color_table, style, x, y).toRgba8());
-                }
-            }
-        } else {
-            const pt = pointToInts(location);
-            framebuffer.setPixel(pt.x, pt.y, self.sampleStlye(color_table, style, pt.x, pt.y).toRgba8());
         }
     }
 
