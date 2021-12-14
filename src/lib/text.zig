@@ -7,13 +7,13 @@ const tvg = @import("tvg.zig");
 /// - `allocator` will be used for temporary allocations in the TVG parser.
 /// - `tvg_buffer` provides a binary TinyVG file
 /// - `writer` will receive the UTF-8 encoded SVG text.
-pub fn renderBinary(allocator: std.mem.Allocator, tvg_buffer: []const u8, writer: anytype) (std.mem.Allocator.Error || @TypeOf(writer).Error)!void {
+pub fn renderBinary(allocator: std.mem.Allocator, tvg_buffer: []const u8, writer: anytype) !void {
     var stream = std.io.fixedBufferStream(tvg_buffer);
 
     var parser = try tvg.parse(allocator, stream.reader());
     defer parser.deinit();
 
-    return try renderStream(allocator, &parser, writer);
+    return try renderStream(&parser, writer);
 }
 
 /// Renders a TinyVG command stream into the TinyVG text representation.

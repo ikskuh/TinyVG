@@ -35,6 +35,27 @@ pub fn build(b: *std.build.Builder) !void {
         b.getInstallStep().dependOn(&svg2cs.step);
     }
 
+    const polyfill = b.addSharedLibrary("tinyvg", "src/polyfill/tinyvg.zig", .unversioned);
+    polyfill.setBuildMode(mode);
+    polyfill.setTarget(.{
+        .cpu_arch = .wasm32,
+        .cpu_model = .baseline,
+        .os_tag = .freestanding,
+    });
+    polyfill.addPackage(pkgs.tvg);
+    polyfill.install();
+
+    const web_example_files = [_][]const u8{
+        "examples/web/index.htm",
+        "examples/shield-16.tvg",
+        "src/polyfill/tinyvg.js",
+    };
+
+    for (web_example_files) |src_path| {
+        const copy_stuff = b.addInstallFileWithDir(.{ .path = src_path }, .lib, std.fs.path.basename(src_path));
+        b.getInstallStep().dependOn(&copy_stuff.step);
+    }
+
     const render = b.addExecutable("tvg-render", "src/tools/render.zig");
     render.setBuildMode(mode);
     render.setTarget(target);
