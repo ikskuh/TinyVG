@@ -6,11 +6,6 @@ let log_string = ''
 const utf8decoder = new TextDecoder()
 
 const wasm_binding = {
-  imports: {
-    imported_func: function(arg) {
-      console.log(arg);
-    }
-  },
   platform: {
     platformPanic: (ptr, len) => {
       let msg = utf8decoder.decode(new Uint8Array(module.exports.memory.buffer, ptr, len))

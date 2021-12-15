@@ -86,7 +86,7 @@ pub fn renderStream(
     std.mem.set(Color, framebuffer.slice, Color{ .r = 1, .g = 0, .b = 1, .a = 0 });
 
     while (try parser.next()) |cmd| {
-        try renderCommand(&framebuffer, parser.header, parser.color_table, cmd);
+        try renderCommand(&framebuffer, parser.header, parser.color_table, cmd, temporary_allocator);
     }
 
     var image = Image{
@@ -280,6 +280,10 @@ const max_path_len = 512;
 
 const IndexSlice = struct { offset: usize, len: usize };
 
+// this is the allocation threshold for images.
+// when we go over this, we require `allocator` to be set.
+const temp_buffer_size = 256;
+
 /// Renders a single TinyVG command. Performs no aliasing, super sampling or blending.
 /// - `framebuffer` implements the backing storage for rendering, must provide function `setPixel(x:usize,y:usize,TvgColor)` and fields `width` and `height`.
 /// - `header` is the TinyVG header
@@ -294,9 +298,9 @@ pub fn renderCommand(
     color_table: []const tvg.Color,
     /// The command that should be executed.
     cmd: parsing.DrawCommand,
+    /// When given, the `renderCommand` is able to render complexer graphics
+    allocator: ?std.mem.Allocator,
 ) !void {
-    const temp_buffer_size = 4096;
-
     if (!comptime isFramebuffer(@TypeOf(framebuffer)))
         @compileError("framebuffer needs fields width, height and function setPixel!");
     const fb_width = @intToFloat(f32, framebuffer.width);
@@ -310,7 +314,7 @@ pub fn renderCommand(
 
     switch (cmd) {
         .fill_polygon => |data| {
-            painter.fillPolygon(framebuffer, color_table, data.style, data.vertices);
+            painter.fillPolygonList(framebuffer, color_table, data.style, &[_][]const Point{data.vertices}, .even_odd);
         },
         .fill_rectangles => |data| {
             for (data.rectangles) |rect| {
@@ -318,10 +322,12 @@ pub fn renderCommand(
             }
         },
         .fill_path => |data| {
-            var point_store = FixedBufferList(Point, temp_buffer_size){};
-            var slice_store = FixedBufferList(IndexSlice, max_path_len){}; // known upper bound
+            var point_store = FixedBufferList(Point, temp_buffer_size).init(allocator);
+            defer point_store.deinit();
+            var slice_store = FixedBufferList(IndexSlice, temp_buffer_size).init(allocator);
+            defer slice_store.deinit();
 
-            try renderPath(&point_store, &slice_store, data.path);
+            try renderPath(&point_store, null, &slice_store, data.path, 0.0);
 
             var slices: [max_path_len][]const Point = undefined;
             for (slice_store.items()) |src, i| {
@@ -332,7 +338,7 @@ pub fn renderCommand(
                 framebuffer,
                 color_table,
                 data.style,
-                slices[0..slice_store.length],
+                slices[0..slice_store.items().len],
                 .even_odd,
             );
         },
@@ -363,20 +369,26 @@ pub fn renderCommand(
             }
         },
         .draw_line_path => |data| {
-            var point_store = FixedBufferList(Point, temp_buffer_size){};
-            var slice_store = FixedBufferList(IndexSlice, max_path_len){}; // known upper bound
+            var point_store = FixedBufferList(Point, temp_buffer_size).init(allocator);
+            defer point_store.deinit();
+            var width_store = FixedBufferList(f32, temp_buffer_size).init(allocator);
+            defer width_store.deinit();
+            var slice_store = FixedBufferList(IndexSlice, temp_buffer_size).init(allocator);
+            defer slice_store.deinit();
 
-            try renderPath(&point_store, &slice_store, data.path);
+            try renderPath(&point_store, &width_store, &slice_store, data.path, data.line_width);
 
             var slices: [slice_store.buffer.len][]const Point = undefined;
             for (slice_store.items()) |src, i| {
                 slices[i] = point_store.items()[src.offset..][0..src.len];
             }
 
-            for (slices[0..slice_store.length]) |vertices| {
+            const line_widths = width_store.items();
+
+            for (slices[0..slice_store.items().len]) |vertices| {
                 for (vertices[1..]) |end, i| {
                     const start = vertices[i]; // is actually [i-1], but we access the slice off-by-one!
-                    painter.drawLine(framebuffer, color_table, data.style, data.line_width, data.line_width, .{
+                    painter.drawLine(framebuffer, color_table, data.style, line_widths[i], line_widths[i + 1], .{
                         .start = start,
                         .end = end,
                     });
@@ -384,7 +396,7 @@ pub fn renderCommand(
             }
         },
         .outline_fill_polygon => |data| {
-            painter.fillPolygon(framebuffer, color_table, data.fill_style, data.vertices);
+            painter.fillPolygonList(framebuffer, color_table, data.fill_style, &[_][]const Point{data.vertices}, .even_odd);
 
             var start_index: usize = data.vertices.len - 1;
             for (data.vertices) |end, end_index| {
@@ -412,24 +424,28 @@ pub fn renderCommand(
             }
         },
         .outline_fill_path => |data| {
-            var point_store = FixedBufferList(Point, temp_buffer_size){};
-            var slice_store = FixedBufferList(IndexSlice, max_path_len){}; // known upper bound
+            var point_store = FixedBufferList(Point, temp_buffer_size).init(allocator);
+            defer point_store.deinit();
+            var width_store = FixedBufferList(f32, temp_buffer_size).init(allocator);
+            defer width_store.deinit();
+            var slice_store = FixedBufferList(IndexSlice, temp_buffer_size).init(allocator);
+            defer slice_store.deinit();
 
-            try renderPath(&point_store, &slice_store, data.path);
+            try renderPath(&point_store, &width_store, &slice_store, data.path, data.line_width);
 
             var slices: [max_path_len][]const Point = undefined;
             for (slice_store.items()) |src, i| {
                 slices[i] = point_store.items()[src.offset..][0..src.len];
             }
 
-            for (slices[0..slice_store.length]) |vertices| {
-                painter.fillPolygon(framebuffer, color_table, data.fill_style, vertices);
-            }
+            painter.fillPolygonList(framebuffer, color_table, data.fill_style, slices[0..slice_store.items().len], .even_odd);
 
-            for (slices[0..slice_store.length]) |vertices| {
+            const line_widths = width_store.items();
+
+            for (slices[0..slice_store.items().len]) |vertices| {
                 for (vertices[1..]) |end, i| {
                     const start = vertices[i]; // is actually [i-1], but we access the slice off-by-one!
-                    painter.drawLine(framebuffer, color_table, data.line_style, data.line_width, data.line_width, .{
+                    painter.drawLine(framebuffer, color_table, data.line_style, line_widths[i], line_widths[i + 1], .{
                         .start = start,
                         .end = end,
                     });
@@ -439,11 +455,19 @@ pub fn renderCommand(
     }
 }
 
-pub fn renderPath(point_list: anytype, slice_list: anytype, path: tvg.Path) !void {
+pub fn renderPath(
+    point_list: *FixedBufferList(Point, temp_buffer_size),
+    width_list: ?*FixedBufferList(f32, temp_buffer_size),
+    slice_list: *FixedBufferList(IndexSlice, temp_buffer_size),
+    path: tvg.Path,
+    line_width: f32,
+) !void {
     const Helper = struct {
         list: @TypeOf(point_list),
         last: Point,
         count: usize,
+
+        width_list: ?*FixedBufferList(f32, temp_buffer_size),
 
         // Discard when point is in the vicinity of the last point (same pixel)
         const pixel_delta = 0.25;
@@ -452,7 +476,7 @@ pub fn renderPath(point_list: anytype, slice_list: anytype, path: tvg.Path) !voi
             return std.math.approxEqAbs(f32, p0.x, p1.x, delta) and std.math.approxEqAbs(f32, p0.y, p1.y, delta);
         }
 
-        fn append(self: *@This(), pt: Point) !void {
+        fn append(self: *@This(), pt: Point, lw: f32) !void {
             std.debug.assert(!std.math.isNan(pt.x));
             std.debug.assert(!std.math.isNan(pt.y));
 
@@ -460,6 +484,10 @@ pub fn renderPath(point_list: anytype, slice_list: anytype, path: tvg.Path) !voi
                 return;
 
             try self.list.append(pt);
+            if (self.width_list) |wl| {
+                errdefer _ = self.list.popBack();
+                try wl.append(lw);
+            }
             self.last = pt;
             self.count += 1;
         }
@@ -473,18 +501,32 @@ pub fn renderPath(point_list: anytype, slice_list: anytype, path: tvg.Path) !voi
         .list = point_list,
         .last = undefined,
         .count = 0,
+        .width_list = width_list,
     };
 
     for (path.segments) |segment| {
         const start_index = point_store.count;
+        var last_width = line_width;
 
-        try point_store.append(segment.start);
+        try point_store.append(segment.start, last_width);
 
         for (segment.commands) |node| {
+            const new_width = switch (node) {
+                .line => |val| val.line_width,
+                .horiz => |val| val.line_width,
+                .vert => |val| val.line_width,
+                .bezier => |val| val.line_width,
+                .arc_circle => |val| val.line_width,
+                .arc_ellipse => |val| val.line_width,
+                .close => |val| val.line_width,
+                .quadratic_bezier => |val| val.line_width,
+            } orelse last_width;
+            defer last_width = new_width;
+
             switch (node) {
-                .line => |pt| try point_store.append(pt.data),
-                .horiz => |x| try point_store.append(Point{ .x = x.data, .y = point_store.back().y }),
-                .vert => |y| try point_store.append(Point{ .x = point_store.back().x, .y = y.data }),
+                .line => |pt| try point_store.append(pt.data, pt.line_width orelse last_width),
+                .horiz => |x| try point_store.append(Point{ .x = x.data, .y = point_store.back().y }, x.line_width orelse last_width),
+                .vert => |y| try point_store.append(Point{ .x = point_store.back().x, .y = y.data }, y.line_width orelse last_width),
                 .bezier => |bezier| {
                     var previous = point_store.back();
 
@@ -498,10 +540,10 @@ pub fn renderPath(point_list: anytype, slice_list: anytype, path: tvg.Path) !voi
                         const x = lerpAndReduceToOne(4, oct0_x, f);
                         const y = lerpAndReduceToOne(4, oct0_y, f);
 
-                        try point_store.append(Point{ .x = x, .y = y });
+                        try point_store.append(Point{ .x = x, .y = y }, lerp(last_width, new_width, f));
                     }
 
-                    try point_store.append(bezier.data.p1);
+                    try point_store.append(bezier.data.p1, new_width);
                 },
                 .quadratic_bezier => |bezier| {
                     var previous = point_store.back();
@@ -516,10 +558,10 @@ pub fn renderPath(point_list: anytype, slice_list: anytype, path: tvg.Path) !voi
                         const x = lerpAndReduceToOne(3, oct0_x, f);
                         const y = lerpAndReduceToOne(3, oct0_y, f);
 
-                        try point_store.append(Point{ .x = x, .y = y });
+                        try point_store.append(Point{ .x = x, .y = y }, lerp(last_width, new_width, f));
                     }
 
-                    try point_store.append(bezier.data.p1);
+                    try point_store.append(bezier.data.p1, new_width);
                 },
                 // /home/felix/projects/forks/svg-curve-lib/src/js/svg-curve-lib.js
                 .arc_circle => |circle| {
@@ -533,6 +575,8 @@ pub fn renderPath(point_list: anytype, slice_list: anytype, path: tvg.Path) !voi
                         circle.data.radius,
                         circle.data.large_arc,
                         circle.data.sweep,
+                        last_width,
+                        new_width,
                     );
                 },
                 .arc_ellipse => |ellipse| {
@@ -548,14 +592,16 @@ pub fn renderPath(point_list: anytype, slice_list: anytype, path: tvg.Path) !voi
                         ellipse.data.rotation,
                         ellipse.data.large_arc,
                         ellipse.data.sweep,
+                        last_width,
+                        new_width,
                     );
                 },
-                .close => {
+                .close => |close| {
                     // if (node_index != (nodes.len - 1)) {
                     //     // .close must be last!
                     //     return error.InvalidData;
                     // }
-                    try point_store.append(segment.start);
+                    try point_store.append(segment.start, close.line_width orelse last_width);
                 },
             }
         }
@@ -607,6 +653,8 @@ pub fn renderEllipse(
     rotation: f32,
     large_arc: bool,
     turn_left: bool,
+    start_width: f32,
+    end_width: f32,
 ) !void {
     // std.debug.print("renderEllipse(({d:.3} {d:.3}), ({d:.3} {d:.3}), {d:.2}, {d:.2}, {d:.4}, large={}, left={})\n", .{
     //     p0.x,
@@ -643,7 +691,20 @@ pub fn renderEllipse(
         .{ -rot[1][0] * up_scale, rot[0][0] / ratio * up_scale },
     };
 
-    var tmp = FixedBufferList(Point, circle_divs){};
+    const Helper = struct {
+        point_list: FixedBufferList(Point, circle_divs),
+        width_list: FixedBufferList(f32, circle_divs),
+
+        fn append(self: *@This(), pt: Point, lw: f32) !void {
+            try self.point_list.append(pt);
+            try self.width_list.append(lw);
+        }
+    };
+
+    var tmp = Helper{
+        .point_list = FixedBufferList(Point, circle_divs).init(null),
+        .width_list = FixedBufferList(f32, circle_divs).init(null),
+    };
     renderCircle(
         &tmp,
         applyMat(transform, p0),
@@ -651,10 +712,12 @@ pub fn renderEllipse(
         radius_x * up_scale,
         large_arc,
         turn_left,
+        start_width,
+        end_width,
     ) catch unreachable; // buffer is correctly sized
 
-    for (tmp.buffer) |p| {
-        try point_list.append(applyMat(transform_back, p));
+    for (tmp.point_list.items()) |p, i| {
+        try point_list.append(applyMat(transform_back, p), tmp.width_list.items()[i]);
     }
 }
 
@@ -665,6 +728,8 @@ fn renderCircle(
     radius: f32,
     large_arc: bool,
     turn_left: bool,
+    start_width: f32,
+    end_width: f32,
 ) !void {
     var r = radius;
 
@@ -699,10 +764,10 @@ fn renderCircle(
         const step_mat = rotationMat(@intToFloat(f32, i) * (if (turn_left) -arc else arc) / circle_divs);
         const point = add(applyMat(step_mat, pos), center);
 
-        try point_list.append(point);
+        try point_list.append(point, lerp(start_width, end_width, @intToFloat(f32, i) / circle_divs));
     }
 
-    try point_list.append(p1);
+    try point_list.append(p1, end_width);
 }
 
 fn rotationMat(angle: f32) [2][2]f32 {
@@ -817,9 +882,9 @@ const Painter = struct {
     scale_x: f32,
     scale_y: f32,
 
-    fn fillPolygon(self: Painter, framebuffer: anytype, color_table: []const Color, style: Style, points: []const Point) void {
-        fillPolygonList(self, framebuffer, color_table, style, &[_][]const Point{points}, .nonzero);
-    }
+    // fn fillPolygon(self: Painter, framebuffer: anytype, color_table: []const Color, style: Style, points: []const Point) void {
+    //     fillPolygonList(self, framebuffer, color_table, style, &[_][]const Point{points}, .nonzero);
+    // }
 
     const FillRule = enum { even_odd, nonzero };
     fn fillPolygonList(self: Painter, framebuffer: anytype, color_table: []const Color, style: Style, points_lists: []const []const Point, rule: FillRule) void {
@@ -1094,40 +1159,84 @@ pub fn FixedBufferList(comptime T: type, comptime N: usize) type {
         const Self = @This();
 
         buffer: [N]T = undefined,
-        length: usize = 0,
+        count: usize = 0,
+        large: ?std.ArrayList(T),
 
-        pub fn append(self: *Self, value: T) !void {
-            if (self.length == N)
-                return error.OutOfMemory;
-            self.buffer[self.length] = value;
-            self.length += 1;
+        pub fn init(allocator: ?std.mem.Allocator) Self {
+            return Self{
+                .large = if (allocator) |allo|
+                    std.ArrayList(T).init(allo)
+                else
+                    null,
+            };
         }
 
-        pub fn popBack(self: Self) ?T {
-            if (self.length == 0)
+        pub fn deinit(self: *Self) void {
+            if (self.large) |*large| {
+                large.deinit();
+            }
+        }
+
+        pub fn append(self: *Self, value: T) !void {
+            if (self.large) |*large| {
+                try large.append(value);
+                return;
+            }
+            if (self.count == N)
+                return error.OutOfMemory;
+            self.buffer[self.count] = value;
+            self.count += 1;
+        }
+
+        pub fn popBack(self: *Self) ?T {
+            if (self.large) |*large| {
+                return large.popOrNull();
+            }
+
+            if (self.count == 0)
                 return null;
-            self.length -= 1;
-            return self.buffer[self.length];
+            self.count -= 1;
+            return self.buffer[self.count];
         }
 
         pub fn itemsMut(self: *Self) []T {
-            return self.buffer[0..self.length];
+            if (self.large) |*large| {
+                return large.items;
+            }
+            return self.buffer[0..self.count];
         }
 
         pub fn items(self: Self) []const T {
-            return self.buffer[0..self.length];
+            if (self.large) |*large| {
+                return large.items;
+            }
+            return self.buffer[0..self.count];
         }
 
         pub fn front(self: Self) ?T {
-            if (self.length == 0)
+            if (self.large) |*large| {
+                if (large.items.len > 0) {
+                    return large.items[0];
+                } else {
+                    return null;
+                }
+            }
+            if (self.count == 0)
                 return null;
             return self.buffer[0];
         }
 
         pub fn back(self: Self) ?T {
-            if (self.length == 0)
+            if (self.large) |*large| {
+                if (large.items.len > 0) {
+                    return large.items[large.items.len - 1];
+                } else {
+                    return null;
+                }
+            }
+            if (self.count == 0)
                 return null;
-            return self.buffer[self.length - 1];
+            return self.buffer[self.count - 1];
         }
     };
 }

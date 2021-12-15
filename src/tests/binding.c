@@ -87,11 +87,10 @@ bool saveTga(char const * file_name, tinyvg_Bitmap const * bitmap)
     0, 0, // length
     0,    // // number of bits per pixel
 
-
     // image spec
     0, 0,     // x origin
     0, 0,     // y origin
-    (bitmap->width & 0xFF), ((bitmap->width >> 8) & 0xFF),   // width
+    (bitmap->width & 0xFF),  ((bitmap->width >> 8) & 0xFF),   // width
     (bitmap->height & 0xFF), ((bitmap->height >> 8) & 0xFF), // height
     32,       // bits per pixel
     8 | 0x20, // 0…3 => alpha channel depth = 8, 4…7 => direction=top left

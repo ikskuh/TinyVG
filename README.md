@@ -78,7 +78,7 @@ See also this image to have a preview of what is already implemented:
   - [x] Encode primary style in command, reduces command to 63 variants, allows bigger encoding
 - [ ] Improve rendering
   - [x] Add anti-aliasing
-  - [ ] Add missing line width modifier for path rendering
+  - [x] Add missing line width modifier for path rendering
   - [ ] Improve rendering performance
   - [x] Move anti-aliased rendering into core library
 - [x] Implement textual representation
@@ -86,12 +86,12 @@ See also this image to have a preview of what is already implemented:
   - [x] Convert to text
   - [x] Format text
   - [x] Convert to SVG
-- [ ] Add auxiliary tools
-  - [ ] C Library frontend
+- [x] Add auxiliary tools
+  - [x] C Library frontend
   - [x] Wasm Polyfill
 - [ ] Improve website
   - [ ] Add manual to tools
-  - [ ] Add `tiger.tvg` example file
+  - [x] Add `tiger.tvg` example file
   - [ ] Add text file spec/examples
 - [x] Benchmark Suite
   - [x] File Size (SVG vs. TinyVG)
@@ -101,11 +101,11 @@ See also this image to have a preview of what is already implemented:
 - [ ] Review specification
 - [ ] Release!
 - [ ] Lock the specification into _Version 1_.
-- [ ] Future versions
+- [ ] Future stuff
   - [ ] (Fill|Draw|Fill Outlined) Ellipse/Circle opcode
   - [ ] Smooth Bezier (via mirror behaviour)
-- [ ] Future tools
   - [ ] Inkscape Plugin
+  - [ ] library/sdk feature: convert TinyVG to draw lists/commands
 
 ### Future Tasks
 
