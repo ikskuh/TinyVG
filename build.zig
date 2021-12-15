@@ -20,6 +20,7 @@ pub fn build(b: *std.build.Builder) !void {
     const www_folder = std.build.InstallDir{ .custom = "www" };
 
     const is_release = b.option(bool, "release", "Prepares a release build") orelse false;
+    const enable_polyfill = b.option(bool, "polyfill", "Enables the polyfill build") orelse false;
 
     const target = b.standardTargetOptions(.{});
     const mode = if (is_release) .ReleaseSafe else b.standardReleaseOptions();
@@ -41,11 +42,7 @@ pub fn build(b: *std.build.Builder) !void {
 
     const ground_truth_generator = b.addExecutable("ground-truth-generator", "src/data/ground-truth.zig");
     ground_truth_generator.setBuildMode(mode);
-    ground_truth_generator.setTarget(target);
     ground_truth_generator.addPackage(pkgs.tvg);
-    if (!is_release) {
-        ground_truth_generator.install();
-    }
 
     const generate_ground_truth = ground_truth_generator.run();
 
@@ -153,7 +150,7 @@ pub fn build(b: *std.build.Builder) !void {
     }
 
     // web stuff
-    {
+    if (enable_polyfill) {
         const polyfill = b.addSharedLibrary("tinyvg", "src/polyfill/tinyvg.zig", .unversioned);
         if (is_release) {
             polyfill.setBuildMode(.ReleaseSmall);
@@ -171,17 +168,19 @@ pub fn build(b: *std.build.Builder) !void {
         polyfill.install();
         polyfill.install_step.?.dest_dir = www_folder;
 
-        const web_example_files = [_][]const u8{
-            "examples/web/index.htm",
-            "examples/shield-16.tvg",
-            "examples/everything-32.tvg",
-            "src/polyfill/tinyvg.js",
-        };
+        if (enable_polyfill) {
+            const web_example_files = [_][]const u8{
+                "examples/web/index.htm",
+                "examples/shield-16.tvg",
+                "examples/everything-32.tvg",
+                "src/polyfill/tinyvg.js",
+            };
 
-        for (web_example_files) |src_path| {
-            const copy_stuff = b.addInstallFileWithDir(.{ .path = src_path }, www_folder, std.fs.path.basename(src_path));
-            copy_stuff.step.dependOn(gen_gt_step);
-            b.getInstallStep().dependOn(&copy_stuff.step);
+            for (web_example_files) |src_path| {
+                const copy_stuff = b.addInstallFileWithDir(.{ .path = src_path }, www_folder, std.fs.path.basename(src_path));
+                copy_stuff.step.dependOn(gen_gt_step);
+                b.getInstallStep().dependOn(&copy_stuff.step);
+            }
         }
     }
 }
