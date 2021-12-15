@@ -30,10 +30,8 @@ pub fn renderStream(allocator: std.mem.Allocator, parser: anytype, writer: anyty
     };
     defer cache.list.deinit();
 
-    // width="{0d}" height="{1d}"
     try writer.print(
-        \\<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {0d} {1d}">
-        \\
+        \\<svg xmlns="http://www.w3.org/2000/svg" width="{0d}" height="{1d}" viewBox="0 0 {0d} {1d}">
     , .{
         parser.header.width,
         parser.header.height,
@@ -44,8 +42,7 @@ pub fn renderStream(allocator: std.mem.Allocator, parser: anytype, writer: anyty
             .fill_rectangles => |data| {
                 for (data.rectangles) |rect| {
                     try writer.print(
-                        \\  <rect style="{}" x="{d}" y="{d}" width="{d}" height="{d}" />
-                        \\
+                        \\<rect style="{}" x="{d}" y="{d}" width="{d}" height="{d}"/>
                     ,
                         .{
                             svgStyle(&cache, data.style, null, null),
@@ -61,8 +58,7 @@ pub fn renderStream(allocator: std.mem.Allocator, parser: anytype, writer: anyty
             .outline_fill_rectangles => |data| {
                 for (data.rectangles) |rect| {
                     try writer.print(
-                        \\  <rect style="{}" x="{d}" y="{d}" width="{d}" height="{d}" />
-                        \\
+                        \\<rect style="{}" x="{d}" y="{d}" width="{d}" height="{d}"/>
                     ,
                         .{
                             svgStyle(&cache, data.fill_style, data.line_style, data.line_width),
@@ -78,8 +74,7 @@ pub fn renderStream(allocator: std.mem.Allocator, parser: anytype, writer: anyty
             .draw_lines => |data| {
                 for (data.lines) |line| {
                     try writer.print(
-                        \\  <line style="{}" x1="{d}" y1="{d}" x2="{d}" y2="{d}" />
-                        \\
+                        \\<line style="{}" x1="{d}" y1="{d}" x2="{d}" y2="{d}"/>
                     ,
                         .{
                             svgStyle(&cache, null, data.style, data.line_width),
@@ -94,7 +89,7 @@ pub fn renderStream(allocator: std.mem.Allocator, parser: anytype, writer: anyty
 
             .draw_line_loop => |data| {
                 try writer.print(
-                    \\  <polygon style="{}" points="
+                    \\<polygon style="{}" points="
                 , .{
                     svgStyle(&cache, null, data.style, data.line_width),
                 });
@@ -103,14 +98,13 @@ pub fn renderStream(allocator: std.mem.Allocator, parser: anytype, writer: anyty
                     try writer.print("{d},{d}", .{ vertex.x, vertex.y });
                 }
                 try writer.writeAll(
-                    \\" />
-                    \\
+                    \\"/>
                 );
             },
 
             .draw_line_strip => |data| {
                 try writer.print(
-                    \\  <polyline style="{}" points="
+                    \\<polyline style="{}" points="
                 , .{
                     svgStyle(&cache, null, data.style, data.line_width),
                 });
@@ -119,14 +113,13 @@ pub fn renderStream(allocator: std.mem.Allocator, parser: anytype, writer: anyty
                     try writer.print("{d},{d}", .{ vertex.x, vertex.y });
                 }
                 try writer.writeAll(
-                    \\" />
-                    \\
+                    \\"/>
                 );
             },
 
             .fill_polygon => |data| {
                 try writer.print(
-                    \\  <polygon style="{}" points="
+                    \\<polygon style="{}" points="
                 , .{
                     svgStyle(&cache, data.style, null, null),
                 });
@@ -135,14 +128,13 @@ pub fn renderStream(allocator: std.mem.Allocator, parser: anytype, writer: anyty
                     try writer.print("{d},{d}", .{ vertex.x, vertex.y });
                 }
                 try writer.writeAll(
-                    \\" />
-                    \\
+                    \\"/>
                 );
             },
 
             .outline_fill_polygon => |data| {
                 try writer.print(
-                    \\  <polygon style="{}" points="
+                    \\<polygon style="{}" points="
                 , .{
                     svgStyle(&cache, data.fill_style, data.line_style, data.line_width),
                 });
@@ -151,8 +143,7 @@ pub fn renderStream(allocator: std.mem.Allocator, parser: anytype, writer: anyty
                     try writer.print("{d},{d}", .{ vertex.x, vertex.y });
                 }
                 try writer.writeAll(
-                    \\" />
-                    \\
+                    \\"/>
                 );
             },
 
@@ -160,8 +151,7 @@ pub fn renderStream(allocator: std.mem.Allocator, parser: anytype, writer: anyty
                 var style = svgStyle(&cache, null, data.style, data.line_width);
                 var path = SvgPath{ .path = data.path };
                 try writer.print(
-                    \\  <path style="{}" d="{}" />
-                    \\
+                    \\<path style="{}" d="{}"/>
                 , .{ style, path });
             },
 
@@ -169,8 +159,7 @@ pub fn renderStream(allocator: std.mem.Allocator, parser: anytype, writer: anyty
                 var style = svgStyle(&cache, data.style, null, null);
                 var path = SvgPath{ .path = data.path };
                 try writer.print(
-                    \\  <path style="{}" d="{}" />
-                    \\
+                    \\<path style="{}" d="{}"/>
                 , .{ style, path });
             },
 
@@ -179,32 +168,30 @@ pub fn renderStream(allocator: std.mem.Allocator, parser: anytype, writer: anyty
                 var path = SvgPath{ .path = data.path };
 
                 try writer.print(
-                    \\  <path style="{}" d="{}" />
-                    \\
+                    \\<path style="{}" d="{}"/>
                 , .{ style, path });
             },
         }
     }
 
     if (cache.list.items.len > 0) {
-        try writer.writeAll("  <defs>\n");
+        try writer.writeAll("<defs>");
 
         for (cache.list.items) |style, i| {
             switch (style) {
                 .linear => |grad| {
                     try writer.print(
-                        \\    <linearGradient id="grad{}" gradientUnits="userSpaceOnUse" x1="{d}" y1="{d}" x2="{d}" y2="{d}">
-                        \\
+                        \\<linearGradient id="grad{}" gradientUnits="userSpaceOnUse" x1="{d}" y1="{d}" x2="{d}" y2="{d}">
                     , .{ i, grad.point_0.x, grad.point_0.y, grad.point_1.x, grad.point_1.y });
                     try writer.print(
-                        \\      <stop offset="0" style="stop-opacity:{d}; stop-color:
+                        \\<stop offset="0" style="stop-opacity:{d}; stop-color:
                     , .{cache.color_table[grad.color_0].a});
-                    try cache.printColor3AndPrefix(writer, "", grad.color_0, "\" />\n");
+                    try cache.printColor3AndPrefix(writer, "", grad.color_0, "\" />");
                     try writer.print(
-                        \\      <stop offset="100%" style="stop-opacity:{d}; stop-color:
+                        \\<stop offset="100%" style="stop-opacity:{d}; stop-color:
                     , .{cache.color_table[grad.color_1].a});
-                    try cache.printColor3AndPrefix(writer, "", grad.color_1, "\" />\n");
-                    try writer.writeAll("    </linearGradient>\n");
+                    try cache.printColor3AndPrefix(writer, "", grad.color_1, "\" />");
+                    try writer.writeAll("</linearGradient>");
                 },
                 .radial => |grad| {
                     _ = grad;
@@ -214,23 +201,22 @@ pub fn renderStream(allocator: std.mem.Allocator, parser: anytype, writer: anyty
                     var r = std.math.sqrt(dx * dx + dy * dy);
 
                     try writer.print(
-                        \\    <radialGradient id="grad{}" gradientUnits="userSpaceOnUse" cx="{d}" cy="{d}" r="{d}">
-                        \\
+                        \\<radialGradient id="grad{}" gradientUnits="userSpaceOnUse" cx="{d}" cy="{d}" r="{d}">
                     , .{ i, grad.point_0.x, grad.point_0.y, r });
                     try writer.print(
-                        \\      <stop offset="0" style="stop-opacity:{d}; stop-color:
+                        \\<stop offset="0" style="stop-opacity:{d}; stop-color:
                     , .{cache.color_table[grad.color_0].a});
-                    try cache.printColor3AndPrefix(writer, "", grad.color_0, "\" />\n");
+                    try cache.printColor3AndPrefix(writer, "", grad.color_0, "\"/>");
                     try writer.print(
-                        \\      <stop offset="100%" style="stop-opacity:{d}; stop-color:
+                        \\<stop offset="100%" style="stop-opacity:{d}; stop-color:
                     , .{cache.color_table[grad.color_1].a});
-                    try cache.printColor3AndPrefix(writer, "", grad.color_1, "\" />\n");
-                    try writer.writeAll("    </radialGradient>\n");
+                    try cache.printColor3AndPrefix(writer, "", grad.color_1, "\"/>");
+                    try writer.writeAll("</radialGradient>");
                 },
                 .flat => @panic("implementation fault"),
             }
         }
-        try writer.writeAll("  </defs>\n");
+        try writer.writeAll("</defs>");
     }
 
     try writer.writeAll("</svg>");

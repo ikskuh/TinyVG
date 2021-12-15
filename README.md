@@ -88,8 +88,7 @@ See also this image to have a preview of what is already implemented:
   - [x] Convert to SVG
 - [ ] Add auxiliary tools
   - [ ] C Library frontend
-  - [ ] Wasm Polyfill
-  - [ ] Inkscape Plugin
+  - [x] Wasm Polyfill
 - [ ] Improve website
   - [ ] Add manual to tools
   - [ ] Add `tiger.tvg` example file
@@ -105,6 +104,8 @@ See also this image to have a preview of what is already implemented:
 - [ ] Future versions
   - [ ] (Fill|Draw|Fill Outlined) Ellipse/Circle opcode
   - [ ] Smooth Bezier (via mirror behaviour)
+- [ ] Future tools
+  - [ ] Inkscape Plugin
 
 ### Future Tasks
 

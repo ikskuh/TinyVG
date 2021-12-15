@@ -99,6 +99,13 @@ jobs:
           pushd release/aarch64-macos/bin
           7z a ../../../website/download/tvg-aarch64-macos.zip *
           popd
+          pushd zig-out/www/
+          7z a ../../website/download/tvg-polyfill.zip *
+          popd
+
+      - name: Provide polyfill demo
+        run: |
+          cp -r zig-out/www website/polyfill
 
       - name: Deploy to Server
         uses: easingthemes/ssh-deploy@v2.1.1
