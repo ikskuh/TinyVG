@@ -105,26 +105,71 @@ function convertToSvg(binary_blob) {
   });
 }
 
-class TinyVGElement extends HTMLElement {
-  constructor() {
-    super();
-
-    // Create a shadow root
-    this.attachShadow({mode: 'open'}); // sets and returns 'this.shadowRoot'
-
-    
-
-    let src = this.getAttribute('src')
-    if(src != null) {
-      fetch(src).then((blob) => {
-        return blob.arrayBuffer()
-      }).then((result) => {
-        return convertToSvg(result);
-      }).then((code) => {
-        this.shadowRoot.innerHTML = code
-      });
+function loadImgSrc(node)
+{
+  node["tvg-cookie"] = (node["tvg-cookie"] || 1) + 1
+  const cookie = node["tvg-cookie"]
+  const src = node.getAttribute("tvg-src");
+  fetch(src).then((blob) => {
+    if(node["tvg-cookie"] !== cookie) {
+      return
     }
-  }
+    return blob.arrayBuffer()
+  }).then((result) => {
+    if(node["tvg-cookie"] !== cookie) {
+      return
+    }
+    return convertToSvg(result);
+  }).then((code) => {
+    if(node["tvg-cookie"] !== cookie) {
+      return
+    }
+    node.setAttribute("src", "data:image/svg+xml;base64," + btoa(code))
+  });
 }
 
-customElements.define('tiny-vg', TinyVGElement);
+const image_observer = new MutationObserver(function(mutations) {
+  mutations.forEach(function(mutation) {
+    if (mutation.type === "attributes") {
+      if(mutation.attributeName == "tvg-src") { 
+        loadImgSrc(mutation.target)
+      }
+    }
+  });
+});
+
+document.addEventListener('DOMContentLoaded', (event) =>
+{
+  const items = Array.from( document.querySelectorAll("img[tvg-src]"))
+  for(const node of items)
+  {
+   loadImgSrc(node)
+   image_observer.observe(node, { attributes: true });
+  }
+});
+
+// class TinyVGElement extends HTMLElement {
+//   constructor() {
+//     super();
+
+//     // Create a shadow root
+//     this.attachShadow({mode: 'open'}); // sets and returns 'this.shadowRoot'
+
+
+//     let src = this.getAttribute('src')
+//     if(src != null) {
+//       fetch(src).then((blob) => {
+//         return blob.arrayBuffer()
+//       }).then((result) => {
+//         return convertToSvg(result);
+//       }).then((code) => {
+//         this.shadowRoot.innerHTML = code
+//         for(var key of this.attributes) {
+//           this.shadowRoot.setAttribute(key, this.attributes[key]);
+//         }
+//       });
+//     }
+//   }
+// }
+
+// customElements.define('tiny-vg', TinyVGElement);

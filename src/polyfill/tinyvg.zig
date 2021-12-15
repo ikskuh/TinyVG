@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 const tvg = @import("tvg");
 
 extern "tinyvg" fn setResultSvg(svg_ptr: [*]const u8, svg_len: usize) void;
@@ -55,17 +56,19 @@ pub fn log(
     comptime format: []const u8,
     args: anytype,
 ) void {
-    const level_txt = switch (message_level) {
-        .err => "error",
-        .warn => "warning",
-        .info => "info",
-        .debug => "debug",
-    };
-    const prefix2 = if (scope == .default) ": " else "(" ++ @tagName(scope) ++ "): ";
+    if (builtin.mode != .ReleaseSmall) {
+        const level_txt = switch (message_level) {
+            .err => "error",
+            .warn => "warning",
+            .info => "info",
+            .debug => "debug",
+        };
+        const prefix2 = if (scope == .default) ": " else "(" ++ @tagName(scope) ++ "): ";
 
-    (LogWriter{ .context = {} }).print(level_txt ++ prefix2 ++ format ++ "\n", args) catch return;
+        (LogWriter{ .context = {} }).print(level_txt ++ prefix2 ++ format ++ "\n", args) catch return;
 
-    platformLogFlush();
+        platformLogFlush();
+    }
 }
 
 /// Overwrite default panic handler

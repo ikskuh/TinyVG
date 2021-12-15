@@ -17,44 +17,12 @@ const pkgs = struct {
 };
 
 pub fn build(b: *std.build.Builder) !void {
+    const www_folder = std.build.InstallDir{ .custom = "www" };
+
     const is_release = b.option(bool, "release", "Prepares a release build") orelse false;
 
     const target = b.standardTargetOptions(.{});
     const mode = if (is_release) .ReleaseSafe else b.standardReleaseOptions();
-
-    const enable_dotnet = b.option(bool, "enable-dotnet", "Enables building the .NET based tools.") orelse false;
-    if (enable_dotnet) {
-        const svg2cs = b.addSystemCommand(&[_][]const u8{
-            "csc",
-            "/main:Application",
-            "/debug",
-            "/out:zig-out/bin/svg2tvg.exe",
-            "/r:System.Drawing.dll",
-            "src/tools/svg2tvg.cs",
-        });
-        b.getInstallStep().dependOn(&svg2cs.step);
-    }
-
-    const polyfill = b.addSharedLibrary("tinyvg", "src/polyfill/tinyvg.zig", .unversioned);
-    polyfill.setBuildMode(mode);
-    polyfill.setTarget(.{
-        .cpu_arch = .wasm32,
-        .cpu_model = .baseline,
-        .os_tag = .freestanding,
-    });
-    polyfill.addPackage(pkgs.tvg);
-    polyfill.install();
-
-    const web_example_files = [_][]const u8{
-        "examples/web/index.htm",
-        "examples/shield-16.tvg",
-        "src/polyfill/tinyvg.js",
-    };
-
-    for (web_example_files) |src_path| {
-        const copy_stuff = b.addInstallFileWithDir(.{ .path = src_path }, .lib, std.fs.path.basename(src_path));
-        b.getInstallStep().dependOn(&copy_stuff.step);
-    }
 
     const render = b.addExecutable("tvg-render", "src/tools/render.zig");
     render.setBuildMode(mode);
@@ -182,5 +150,38 @@ pub fn build(b: *std.build.Builder) !void {
 
         const coverage_step = b.step("coverage", "Generates ground truth and runs all tests with kcov");
         coverage_step.dependOn(&merge_covs.step);
+    }
+
+    // web stuff
+    {
+        const polyfill = b.addSharedLibrary("tinyvg", "src/polyfill/tinyvg.zig", .unversioned);
+        if (is_release) {
+            polyfill.setBuildMode(.ReleaseSmall);
+            polyfill.strip = true;
+        } else {
+            polyfill.setBuildMode(mode);
+        }
+        polyfill.setTarget(.{
+            .cpu_arch = .wasm32,
+            .cpu_model = .baseline,
+            .os_tag = .freestanding,
+        });
+        polyfill.addPackage(pkgs.tvg);
+
+        polyfill.install();
+        polyfill.install_step.?.dest_dir = www_folder;
+
+        const web_example_files = [_][]const u8{
+            "examples/web/index.htm",
+            "examples/shield-16.tvg",
+            "examples/everything-32.tvg",
+            "src/polyfill/tinyvg.js",
+        };
+
+        for (web_example_files) |src_path| {
+            const copy_stuff = b.addInstallFileWithDir(.{ .path = src_path }, www_folder, std.fs.path.basename(src_path));
+            copy_stuff.step.dependOn(gen_gt_step);
+            b.getInstallStep().dependOn(&copy_stuff.step);
+        }
     }
 }
