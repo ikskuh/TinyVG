@@ -50,7 +50,10 @@ export fn tinyvg_render_svg(
     tvg_length: usize,
     target: [*c]const c.tinyvg_OutStream,
 ) c.tinyvg_Error {
-    renderSvg(tvg_data_ptr[0..tvg_length], CWriter{ .context = target }) catch |err| return errToC(err);
+    renderSvg(
+        tvg_data_ptr[0..tvg_length],
+        CWriter{ .context = target },
+    ) catch |err| return errToC(err);
     return c.TINYVG_SUCCESS;
 }
 
@@ -62,7 +65,13 @@ export fn tinyvg_render_bitmap(
     height: u32,
     bitmap: [*c]c.tinyvg_Bitmap,
 ) c.tinyvg_Error {
-    renderBitmap(tvg_data_ptr[0..tvg_length], anti_alias, width, height, bitmap) catch |err| return errToC(err);
+    renderBitmap(
+        tvg_data_ptr[0..tvg_length],
+        if (anti_alias < 1) 1 else anti_alias,
+        width,
+        height,
+        bitmap,
+    ) catch |err| return errToC(err);
     return c.TINYVG_SUCCESS;
 }
 

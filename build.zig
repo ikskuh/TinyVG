@@ -18,6 +18,14 @@ const pkgs = struct {
     };
 };
 
+fn initNativeLibrary(lib: *std.build.LibExeObjStep, mode: std.builtin.Mode, target: std.zig.CrossTarget) void {
+    lib.addPackage(pkgs.tvg);
+    lib.addIncludeDir("src/binding/include");
+    lib.linkLibC();
+    lib.setBuildMode(mode);
+    lib.setTarget(target);
+}
+
 pub fn build(b: *std.build.Builder) !void {
     const www_folder = std.build.InstallDir{ .custom = "www" };
 
@@ -28,19 +36,11 @@ pub fn build(b: *std.build.Builder) !void {
     const mode = if (is_release) .ReleaseSafe else b.standardReleaseOptions();
 
     const static_native_lib = b.addStaticLibrary("tinyvg", "src/binding/binding.zig");
-    static_native_lib.setBuildMode(mode);
-    static_native_lib.setTarget(target);
-    static_native_lib.addPackage(pkgs.tvg);
-    static_native_lib.addIncludeDir("src/binding/include");
-    static_native_lib.linkLibC();
+    initNativeLibrary(static_native_lib, mode, target);
     static_native_lib.install();
 
     const dynamic_native_lib = b.addSharedLibrary("tinyvg", "src/binding/binding.zig", .unversioned);
-    dynamic_native_lib.setBuildMode(mode);
-    dynamic_native_lib.setTarget(target);
-    dynamic_native_lib.addPackage(pkgs.tvg);
-    dynamic_native_lib.addIncludeDir("src/binding/include");
-    dynamic_native_lib.linkLibC();
+    initNativeLibrary(dynamic_native_lib, mode, target);
     dynamic_native_lib.install();
 
     const install_header = b.addInstallFileWithDir(.{ .path = "src/binding/include/tinyvg.h" }, .header, "tinyvg.h");
