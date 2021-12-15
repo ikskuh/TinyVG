@@ -21,6 +21,10 @@
         <li>Two-point gradient support</li>
         <li>Configurable precision for smaller files</li>
       </ul>
+      <h2>Demo</h2>
+      <p>The tiger is rendered with the current implementation of the TinyVG renderer:</p>
+      <img class="image" src="img/tiger.png">
+      <p>The <a href="https://dev.w3.org/SVG/tools/svgweb/samples/svg-files/tiger.svg">original SVG</a> is <b>96.719</b> byte large, while the optimized one is 85.806 byte large. When converted to TinyVG, the file shrinks to <b>27.522</b> byte. This means we only have <b>32%</b> size of the optimized source data.</p>
       <h2>Real World Data</h2>
       <p>TinyVG is benchmarked against a huge set of test images from <a href="https://github.com/Templarian/MaterialDesign">MaterialDesign</a>, <a href="https://github.com/PapirusDevelopmentTeam/papirus-icon-theme">Papirus</a>, <a href="https://dev.w3.org/SVG/tools/svgweb/samples/svg-files/">W3C</a>, <a href="https://github.com/ziglang/logo">Zig</a> and <a href="https://freesvg.org/">freesvg.org</a></p>
       <p>A short summary is that TVG is typically between 20% and 50% of the equivalent SVG file in size and <i>way easier</i> to parse or render.</p>
@@ -42,10 +46,17 @@
         <li><a href="download/tvg-x86_64-macos.zip">macOS x86_64</a></li>
         <li><a href="download/tvg-aarch64-macos.zip">macOS aarch64</a> (Missing <code>svg2tvgt</code>)</li>
       </ul>
+      <h3>Polyfill</h3>
       <p>There's also a polyfill available that allows you to use TinyVG in the browser:</p>
       <ul>
-        <li><a href="download/tvg-polyfill.zip">PolyFill Package</a></li>
+        <li><a href="download/tvg-polyfill.zip">Polyfill Package</a></li>
         <li><a href="polyfill/index.htm">Online Demo</a></li>
+      </ul>
+      <h3>Example Data</h3>
+      <p>Here you can download some TinyVG files to inspect or toy around with:
+      <ul>
+        <li>Tiger (<a href="img/tiger.tvg">TVG</a>, <a href="img/tiger.tvgt">TVGT</a>, <a href="img/tiger.svg">SVG</a>, <a href="img/tiger.png">PNG</a>)</li>
+        <li>Shield+Account Icon (<a href="img/shield.tvg">TVG</a>, <a href="img/shield.tvgt">TVGT</a>, <a href="img/shield.png">PNG</a>)</li>
       </ul>
       <h2>Contribution</h2>
       <p>The main work is done at <a href="https://github.com/MasterQ32/TinyVG">GitHub</a>, but feel free to send a email to <a href="mailto:contact@tinyvg.tech">contact@tinyvg.tech</a>.
