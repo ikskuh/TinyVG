@@ -1,18 +1,20 @@
 const std = @import("std");
 
 const pkgs = struct {
+    // TinyVG package
     const tvg = std.build.Pkg{
         .name = "tvg",
-        .path = .{ .path = "src/lib/tvg.zig" },
+        .path = .{ .path = "src/lib/tinyvg.zig" },
         .dependencies = &.{ptk},
-    };
-    const args = std.build.Pkg{
-        .name = "args",
-        .path = .{ .path = "vendor/zig-args/args.zig" },
     };
     const ptk = std.build.Pkg{
         .name = "ptk",
         .path = .{ .path = "vendor/parser-toolkit/src/main.zig" },
+    };
+
+    const args = std.build.Pkg{
+        .name = "args",
+        .path = .{ .path = "vendor/zig-args/args.zig" },
     };
 };
 
@@ -24,6 +26,25 @@ pub fn build(b: *std.build.Builder) !void {
 
     const target = b.standardTargetOptions(.{});
     const mode = if (is_release) .ReleaseSafe else b.standardReleaseOptions();
+
+    const static_native_lib = b.addStaticLibrary("tinyvg", "src/binding/binding.zig");
+    static_native_lib.setBuildMode(mode);
+    static_native_lib.setTarget(target);
+    static_native_lib.addPackage(pkgs.tvg);
+    static_native_lib.addIncludeDir("src/binding/include");
+    static_native_lib.linkLibC();
+    static_native_lib.install();
+
+    const dynamic_native_lib = b.addSharedLibrary("tinyvg", "src/binding/binding.zig", .unversioned);
+    dynamic_native_lib.setBuildMode(mode);
+    dynamic_native_lib.setTarget(target);
+    dynamic_native_lib.addPackage(pkgs.tvg);
+    dynamic_native_lib.addIncludeDir("src/binding/include");
+    dynamic_native_lib.linkLibC();
+    dynamic_native_lib.install();
+
+    const install_header = b.addInstallFileWithDir(.{ .path = "src/binding/include/tinyvg.h" }, .header, "tinyvg.h");
+    b.getInstallStep().dependOn(&install_header.step);
 
     const render = b.addExecutable("tvg-render", "src/tools/render.zig");
     render.setBuildMode(mode);
@@ -82,7 +103,11 @@ pub fn build(b: *std.build.Builder) !void {
         gen_gt_step.dependOn(&png_conversion.step);
     }
     {
-        const tvg_tests = b.addTest("src/lib/tvg.zig");
+        const tvg_tests = b.addTestSource(pkgs.tvg.path);
+        for (pkgs.tvg.dependencies.?) |dep| {
+            tvg_tests.addPackage(dep);
+        }
+
         tvg_tests.addPackage(std.build.Pkg{
             .name = "ground-truth",
             .path = .{ .path = "src/data/ground-truth.zig" },
@@ -91,8 +116,25 @@ pub fn build(b: *std.build.Builder) !void {
             },
         });
 
+        const static_binding_test = b.addExecutable("static-native-binding", null);
+        static_binding_test.setBuildMode(mode);
+        static_binding_test.linkLibC();
+        static_binding_test.addCSourceFile("src/tests/binding.c", &[_][]const u8{ "-Wall", "-Wextra", "-pedantic", "-std=c99" });
+        static_binding_test.linkLibrary(static_native_lib);
+
+        const dynamic_binding_test = b.addExecutable("static-native-binding", null);
+        dynamic_binding_test.setBuildMode(mode);
+        dynamic_binding_test.linkLibC();
+        dynamic_binding_test.addCSourceFile("src/tests/binding.c", &[_][]const u8{ "-Wall", "-Wextra", "-pedantic", "-std=c99" });
+        dynamic_binding_test.linkLibrary(dynamic_native_lib);
+
+        const static_binding_test_run = static_binding_test.run();
+        const dynamic_binding_test_run = dynamic_binding_test.run();
+
         const test_step = b.step("test", "Runs all tests");
         test_step.dependOn(&tvg_tests.step);
+        test_step.dependOn(&static_binding_test_run.step);
+        test_step.dependOn(&dynamic_binding_test_run.step);
     }
     {
         const merge_covs = b.addSystemCommand(&[_][]const u8{

@@ -4,7 +4,7 @@
 
 const std = @import("std");
 const builtin = @import("builtin");
-const tvg = @import("tvg.zig");
+const tvg = @import("tinyvg.zig");
 const parsing = tvg.parsing;
 
 /// Renders a TinyVG graphic and returns the rendered image.

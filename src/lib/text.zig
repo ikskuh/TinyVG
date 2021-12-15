@@ -1,7 +1,7 @@
 //! Implements conversion from and to text representation
 
 const std = @import("std");
-const tvg = @import("tvg.zig");
+const tvg = @import("tinyvg.zig");
 
 /// Renders a binary TinyVG into its text representation.
 /// - `allocator` will be used for temporary allocations in the TVG parser.

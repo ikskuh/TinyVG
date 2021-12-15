@@ -3,7 +3,7 @@
 //!
 
 const std = @import("std");
-const tvg = @import("tvg.zig");
+const tvg = @import("tinyvg.zig");
 
 pub fn create(writer: anytype) Builder(@TypeOf(writer)) {
     return .{ .writer = writer };

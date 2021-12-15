@@ -4,7 +4,7 @@
 //! => https://github.com/fubark/cosmic/blob/master/graphics/src/svg.zig
 //!
 const std = @import("std");
-const tvg = @import("tvg.zig");
+const tvg = @import("tinyvg.zig");
 
 /// Renders a binary TinyVG graphic to SVG.
 /// - `allocator` will be used for temporary allocations in both the TVG parser and the SVG renderer.

@@ -29,8 +29,9 @@
       <p>TinyVG is benchmarked against a huge set of test images from <a href="https://github.com/Templarian/MaterialDesign">MaterialDesign</a>, <a href="https://github.com/PapirusDevelopmentTeam/papirus-icon-theme">Papirus</a>, <a href="https://dev.w3.org/SVG/tools/svgweb/samples/svg-files/">W3C</a>, <a href="https://github.com/ziglang/logo">Zig</a> and <a href="https://freesvg.org/">freesvg.org</a></p>
       <p>A short summary is that TVG is typically between 20% and 50% of the equivalent SVG file in size and <i>way easier</i> to parse or render.</p>
       <p><a href="benchmark.htm"><b>See the benchmark results</b></a></p>
-      <h2>Downloads</h2>
+      <h2>Resources</h2>
       <h3>Specification</h3>
+      <p>The specification is a human-readable, informal description of the format. It should enable programmers to create new TinyVG implementations.</p>
       <ul>
         <li><a href="download/specification.pdf">PDF</a></li>
         <li><a href="download/specification.md">Markdown</a></li>
@@ -46,6 +47,19 @@
         <li><a href="download/tvg-x86_64-macos.zip">macOS x86_64</a></li>
         <li><a href="download/tvg-aarch64-macos.zip">macOS aarch64</a> (Missing <code>svg2tvgt</code>)</li>
       </ul>
+      <h3>Native Library</h3>
+      <p>The native library is suitable for integrating TinyVG into native projects. Be it <a href="">Zig</a>, <a href="">Rust</a>, C or C++, you can use this library with any language that supports the C ABI. This also includes <a href="">dotnet</a> via P/Invoke and Java via JNI. Right now, only a C API is provided, wrapping to other languages must be done manually at this time.</p>
+      <p>The library provides means to render TinyVG to bitmaps, draw lists (polygons) and SVG.</p>
+      <ul>
+        <li><a href="">TinyVG SDK</a> (includes all supported platforms and examples)</li>
+        <li><a href="">TinyVG Examples</a> (contains usage examples for different platforms and environments)</li>
+        <li><a href="">TinyVG Library linux-x86_64</a></li>
+        <li><a href="">TinyVG Library linux-aarch64</a></li>
+        <li><a href="">TinyVG Library windows-x86_64</a></li>
+        <li><a href="">TinyVG Library macos-x86_64</a></li>
+        <li><a href="">TinyVG Library macos-aarch64</a></li>
+      </ul>
+
       <h3>Polyfill</h3>
       <p>There's also a polyfill available that allows you to use TinyVG in the browser:</p>
       <ul>
@@ -56,7 +70,7 @@
       <p>Here you can download some TinyVG files to inspect or toy around with:
       <ul>
         <li>Tiger (<a href="img/tiger.tvg">TVG</a>, <a href="img/tiger.tvgt">TVGT</a>, <a href="img/tiger.svg">SVG</a>, <a href="img/tiger.png">PNG</a>)</li>
-        <li>Shield+Account Icon (<a href="img/shield.tvg">TVG</a>, <a href="img/shield.tvgt">TVGT</a>, <a href="img/shield.png">PNG</a>)</li>
+        <li>Shield Icon (<a href="img/shield.tvg">TVG</a>, <a href="img/shield.tvgt">TVGT</a>, <a href="img/shield.png">PNG</a>)</li>
       </ul>
       <h2>Contribution</h2>
       <p>The main work is done at <a href="https://github.com/MasterQ32/TinyVG">GitHub</a>, but feel free to send a email to <a href="mailto:contact@tinyvg.tech">contact@tinyvg.tech</a>.
