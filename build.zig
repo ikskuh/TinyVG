@@ -230,12 +230,20 @@ pub fn build(b: *std.build.Builder) !void {
         polyfill.install_step.?.dest_dir = www_folder;
 
         if (enable_polyfill) {
-            const web_example_files = [_][]const u8{
+            const release_files = [_][]const u8{
+                "src/polyfill/tinyvg.js",
+            };
+            const debug_files = [_][]const u8{
                 "examples/web/index.htm",
                 "examples/tinyvg/shield-16.tvg",
                 "examples/tinyvg/everything-32.tvg",
                 "src/polyfill/tinyvg.js",
             };
+
+            const web_example_files = if (is_release)
+                &release_files
+            else
+                &debug_files;
 
             for (web_example_files) |src_path| {
                 const copy_stuff = b.addInstallFileWithDir(.{ .path = src_path }, www_folder, std.fs.path.basename(src_path));

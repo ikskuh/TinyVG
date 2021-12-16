@@ -5,4 +5,5 @@ kcov-output/
 release/
 output.svg
 output.tga
-sdk-release/ # we will construct the SDK in the CI
+# we will construct the SDK in the CI
+sdk-release/

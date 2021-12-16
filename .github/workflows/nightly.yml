@@ -52,30 +52,9 @@ jobs:
       - name: Compile polyfill
         run: zig build install -Drelease -Dpolyfill
 
-      - uses: actions/upload-artifact@v2
-        with:
-          name: x86_64-windows
-          path: release/x86_64-windows/bin/
-
-      - uses: actions/upload-artifact@v2
-        with:
-          name: x86_64-linux
-          path: release/x86_64-linux/bin/
-
-      - uses: actions/upload-artifact@v2
-        with:
-          name: x86_64-macos
-          path: release/x86_64-macos/bin/
-
-      - uses: actions/upload-artifact@v2
-        with:
-          name: aarch64-linux
-          path: release/aarch64-linux/bin/
-
-      - uses: actions/upload-artifact@v2
-        with:
-          name: aarch64-macos
-          path: release/aarch64-macos/bin/
+      - name: Compile and bundle SDK
+        run: |
+          ./build-sdk.sh
 
       - name: Render Specification
         run: |
@@ -105,6 +84,15 @@ jobs:
           pushd zig-out/www/
           7z a ../../website/download/tvg-polyfill.zip *
           popd
+
+          pushd sdk-release/
+          7z a ../website/download/tinyvg-sdk.zip *
+          popd
+
+      - name: Compile SDK file listing
+        run: |
+          cd website/download
+          unzip -l tinyvg-sdk.zip > tinyvg-sdk.txt
 
       - name: Provide polyfill demo
         run: |

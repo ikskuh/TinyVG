@@ -101,10 +101,10 @@ See also this image to have a preview of what is already implemented:
 - [ ] Improve website
   - [ ] Add manual to tools
   - [x] Add `tiger.tvg` example file
-  - [ ] Add `comic.tvg` example file
-  - [ ] Add `charts.tvg` example file (pie, line and bar chart)
-  - [ ] Add `app-icon.tvg` example file
-  - [ ] Add `graph.tvg` example file
+  - [x] Add `comic.tvg` example file
+  - [x] Add `charts.tvg` example file (pie, line and bar chart)
+  - [x] Add `app-icon.tvg` example file
+  - [x] Add `graph.tvg` example file
   - [ ] Add text file spec/examples
 - [x] Benchmark Suite
   - [x] File Size (SVG vs. TinyVG)

@@ -1,0 +1,20 @@
+digraph  {
+  rankdir = LR;
+  labelloc="t";
+  label = "How to improve your application\n ";
+
+  ranksep = 1.0;
+  nodesep = 0.5;pad="0.25";
+
+  {
+    rank = same;
+    svg         [label="SVG"];
+    tvg         [label="TinyVG"];
+  }
+  application [label="Your App",shape="box"];
+
+
+    application -> svg [label="remove"];
+    tvg -> application [label="add"];
+
+}
