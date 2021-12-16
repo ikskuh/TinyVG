@@ -14,7 +14,7 @@ pub fn main() !void {
     // try std.fs.cwd().writeFile("examples/workspace.tvg", &workspace);
     // try std.fs.cwd().writeFile("examples/workspace_add.tvg", &workspace_add);
     {
-        var file = try std.fs.cwd().createFile("examples/shield-8.tvg", .{});
+        var file = try std.fs.cwd().createFile("shield-8.tvg", .{});
         defer file.close();
 
         var writer = tvg.builder.create(file.writer());
@@ -23,7 +23,7 @@ pub fn main() !void {
         try renderShield(&writer);
     }
     {
-        var file = try std.fs.cwd().createFile("examples/shield-16.tvg", .{});
+        var file = try std.fs.cwd().createFile("shield-16.tvg", .{});
         defer file.close();
 
         var writer = tvg.builder.create(file.writer());
@@ -32,7 +32,7 @@ pub fn main() !void {
         try renderShield(&writer);
     }
     {
-        var file = try std.fs.cwd().createFile("examples/shield-32.tvg", .{});
+        var file = try std.fs.cwd().createFile("shield-32.tvg", .{});
         defer file.close();
 
         var writer = tvg.builder.create(file.writer());
@@ -44,14 +44,14 @@ pub fn main() !void {
     // try std.fs.cwd().writeFile("examples/feature-showcase.tvg", &feature_showcase);
 
     {
-        var file = try std.fs.cwd().createFile("examples/everything.tvg", .{});
+        var file = try std.fs.cwd().createFile("everything.tvg", .{});
         defer file.close();
 
         try writeEverything(file.writer(), .default);
     }
 
     {
-        var file = try std.fs.cwd().createFile("examples/everything-32.tvg", .{});
+        var file = try std.fs.cwd().createFile("everything-32.tvg", .{});
         defer file.close();
 
         try writeEverything(file.writer(), .enhanced);

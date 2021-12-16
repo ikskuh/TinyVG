@@ -21,7 +21,6 @@ const pkgs = struct {
 fn initNativeLibrary(lib: *std.build.LibExeObjStep, mode: std.builtin.Mode, target: std.zig.CrossTarget) void {
     lib.addPackage(pkgs.tvg);
     lib.addIncludeDir("src/binding/include");
-    lib.linkLibC();
     lib.setBuildMode(mode);
     lib.setTarget(target);
 }
@@ -32,26 +31,38 @@ pub fn build(b: *std.build.Builder) !void {
     const is_release = b.option(bool, "release", "Prepares a release build") orelse false;
     const enable_polyfill = b.option(bool, "polyfill", "Enables the polyfill build") orelse false;
 
+    const bundle_libs = b.option(bool, "libs", "Install the libs") orelse true;
+    const bundle_headers = b.option(bool, "headers", "Install the headers") orelse true;
+    const bundle_tools = b.option(bool, "tools", "Install the libs") orelse true;
+
     const target = b.standardTargetOptions(.{});
     const mode = if (is_release) .ReleaseSafe else b.standardReleaseOptions();
 
     const static_native_lib = b.addStaticLibrary("tinyvg", "src/binding/binding.zig");
     initNativeLibrary(static_native_lib, mode, target);
-    static_native_lib.install();
+    if (bundle_libs) {
+        static_native_lib.install();
+    }
 
     const dynamic_native_lib = b.addSharedLibrary("tinyvg", "src/binding/binding.zig", .unversioned);
     initNativeLibrary(dynamic_native_lib, mode, target);
-    dynamic_native_lib.install();
+    if (bundle_libs) {
+        dynamic_native_lib.install();
+    }
 
-    const install_header = b.addInstallFileWithDir(.{ .path = "src/binding/include/tinyvg.h" }, .header, "tinyvg.h");
-    b.getInstallStep().dependOn(&install_header.step);
+    if (bundle_headers) {
+        const install_header = b.addInstallFileWithDir(.{ .path = "src/binding/include/tinyvg.h" }, .header, "tinyvg.h");
+        b.getInstallStep().dependOn(&install_header.step);
+    }
 
     const render = b.addExecutable("tvg-render", "src/tools/render.zig");
     render.setBuildMode(mode);
     render.setTarget(target);
     render.addPackage(pkgs.tvg);
     render.addPackage(pkgs.args);
-    render.install();
+    if (bundle_tools) {
+        render.install();
+    }
 
     const text = b.addExecutable("tvg-text", "src/tools/text.zig");
     text.setBuildMode(mode);
@@ -59,13 +70,16 @@ pub fn build(b: *std.build.Builder) !void {
     text.addPackage(pkgs.tvg);
     text.addPackage(pkgs.args);
     text.addPackage(pkgs.ptk);
-    text.install();
+    if (bundle_tools) {
+        text.install();
+    }
 
     const ground_truth_generator = b.addExecutable("ground-truth-generator", "src/data/ground-truth.zig");
     ground_truth_generator.setBuildMode(mode);
     ground_truth_generator.addPackage(pkgs.tvg);
 
     const generate_ground_truth = ground_truth_generator.run();
+    generate_ground_truth.cwd = "examples/tinyvg";
 
     const gen_gt_step = b.step("generate", "Regenerates the ground truth data.");
     gen_gt_step.dependOn(&generate_ground_truth.step);
@@ -82,13 +96,13 @@ pub fn build(b: *std.build.Builder) !void {
         tvg_conversion.addArg("4"); // 16 times multisampling
         tvg_conversion.addArg("--output");
         tvg_conversion.addArg(file[0 .. file.len - 3] ++ "tga");
-        tvg_conversion.cwd = "examples";
+        tvg_conversion.cwd = "examples/tinyvg";
 
         const tvgt_conversion = text.run();
         tvgt_conversion.addArg(file);
         tvgt_conversion.addArg("--output");
         tvgt_conversion.addArg(file[0 .. file.len - 3] ++ "tvgt");
-        tvgt_conversion.cwd = "examples";
+        tvgt_conversion.cwd = "examples/tinyvg";
 
         const png_conversion = b.addSystemCommand(&[_][]const u8{
             "convert",
@@ -96,7 +110,7 @@ pub fn build(b: *std.build.Builder) !void {
             file[0 .. file.len - 3] ++ "tga",
             file[0 .. file.len - 3] ++ "png",
         });
-        png_conversion.cwd = "examples";
+        png_conversion.cwd = "examples/tinyvg";
         png_conversion.step.dependOn(&tvg_conversion.step);
 
         gen_gt_step.dependOn(&tvgt_conversion.step);
@@ -119,17 +133,22 @@ pub fn build(b: *std.build.Builder) !void {
         const static_binding_test = b.addExecutable("static-native-binding", null);
         static_binding_test.setBuildMode(mode);
         static_binding_test.linkLibC();
-        static_binding_test.addCSourceFile("src/tests/binding.c", &[_][]const u8{ "-Wall", "-Wextra", "-pedantic", "-std=c99" });
+        static_binding_test.addIncludeDir("src/binding/include");
+        static_binding_test.addCSourceFile("examples/native/usage.c", &[_][]const u8{ "-Wall", "-Wextra", "-pedantic", "-std=c99" });
         static_binding_test.linkLibrary(static_native_lib);
 
         const dynamic_binding_test = b.addExecutable("static-native-binding", null);
         dynamic_binding_test.setBuildMode(mode);
         dynamic_binding_test.linkLibC();
-        dynamic_binding_test.addCSourceFile("src/tests/binding.c", &[_][]const u8{ "-Wall", "-Wextra", "-pedantic", "-std=c99" });
+        dynamic_binding_test.addIncludeDir("src/binding/include");
+        dynamic_binding_test.addCSourceFile("examples/native/usage.c", &[_][]const u8{ "-Wall", "-Wextra", "-pedantic", "-std=c99" });
         dynamic_binding_test.linkLibrary(dynamic_native_lib);
 
         const static_binding_test_run = static_binding_test.run();
+        static_binding_test_run.cwd = "zig-cache";
+
         const dynamic_binding_test_run = dynamic_binding_test.run();
+        dynamic_binding_test_run.cwd = "zig-cache";
 
         const test_step = b.step("test", "Runs all tests");
         test_step.dependOn(&tvg_tests.step);
@@ -179,7 +198,7 @@ pub fn build(b: *std.build.Builder) !void {
             tvg_conversion.addArg(file);
             tvg_conversion.addArg("--output");
             tvg_conversion.addArg(file[0 .. file.len - 3] ++ "tga");
-            tvg_conversion.cwd = "examples";
+            tvg_conversion.cwd = "examples/tinyvg";
 
             merge_covs.step.dependOn(&tvg_conversion.step);
         }
@@ -213,8 +232,8 @@ pub fn build(b: *std.build.Builder) !void {
         if (enable_polyfill) {
             const web_example_files = [_][]const u8{
                 "examples/web/index.htm",
-                "examples/shield-16.tvg",
-                "examples/everything-32.tvg",
+                "examples/tinyvg/shield-16.tvg",
+                "examples/tinyvg/everything-32.tvg",
                 "src/polyfill/tinyvg.js",
             };
 

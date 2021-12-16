@@ -6,14 +6,14 @@ const c = @cImport({
 });
 
 fn renderSvg(data: []const u8, stream: CWriter) !void {
-    var temp_mem = std.heap.ArenaAllocator.init(std.heap.c_allocator);
+    var temp_mem = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer temp_mem.deinit();
 
     try tvg.svg.renderBinary(temp_mem.allocator(), data, stream);
 }
 
 fn renderBitmap(data: []const u8, src_anti_alias: c.tinyvg_AntiAlias, width: u32, height: u32, bitmap: *c.tinyvg_Bitmap) !void {
-    var temp_mem = std.heap.ArenaAllocator.init(std.heap.c_allocator);
+    var temp_mem = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer temp_mem.deinit();
 
     var size_hint: tvg.rendering.SizeHint = if (width == 0 and height == 0)
@@ -28,12 +28,12 @@ fn renderBitmap(data: []const u8, src_anti_alias: c.tinyvg_AntiAlias, width: u32
 
     var image = try tvg.rendering.renderBuffer(
         temp_mem.allocator(),
-        std.heap.c_allocator,
+        std.heap.page_allocator,
         size_hint,
         anti_alias,
         data,
     );
-    errdefer image.deinit(std.heap.c_allocator);
+    errdefer image.deinit(std.heap.page_allocator);
 
     const pixel_data = std.mem.sliceAsBytes(image.pixels);
 
@@ -76,7 +76,7 @@ export fn tinyvg_render_bitmap(
 }
 
 export fn tinyvg_free_bitmap(bitmap: *c.tinyvg_Bitmap) void {
-    std.heap.c_allocator.free(bitmap.pixels[0 .. 4 * @as(usize, bitmap.width) * @as(usize, bitmap.height)]);
+    std.heap.page_allocator.free(bitmap.pixels[0 .. 4 * @as(usize, bitmap.width) * @as(usize, bitmap.height)]);
     bitmap.* = undefined;
 }
 

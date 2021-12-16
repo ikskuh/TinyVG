@@ -88,15 +88,28 @@ See also this image to have a preview of what is already implemented:
   - [x] Convert to SVG
 - [x] Add auxiliary tools
   - [x] C Library frontend
+  - [ ] Build SDK
+    - [ ] Zig package
+    - [ ] Native packages
+      - [ ] dynamic macOS x86_64, aarch64
+      - [ ] static macOS x86_64, aarch64
+      - [ ] dynamic Windows x86_64
+      - [ ] static Windows x86_64
+      - [ ] dynamic Linux x86_64, aarch64, arm
+      - [ ] static Linux x86_64, aarch64, arm
   - [x] Wasm Polyfill
 - [ ] Improve website
   - [ ] Add manual to tools
   - [x] Add `tiger.tvg` example file
+  - [ ] Add `comic.tvg` example file
+  - [ ] Add `charts.tvg` example file (pie, line and bar chart)
+  - [ ] Add `app-icon.tvg` example file
+  - [ ] Add `graph.tvg` example file
   - [ ] Add text file spec/examples
 - [x] Benchmark Suite
   - [x] File Size (SVG vs. TinyVG)
   - [ ] Update final benchmark
-- [ ] Sort github issues
+- [x] Sort github issues
 - [ ] Write specification
 - [ ] Review specification
 - [ ] Release!
