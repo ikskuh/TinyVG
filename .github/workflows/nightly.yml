@@ -141,7 +141,7 @@ jobs:
           version: master
 
       - name: Compile
-        run: zig build install
+        run: zig build install -Dweb-example=false
 
       - name: Testsuite
         run: zig build test
@@ -159,7 +159,7 @@ jobs:
           version: master
 
       - name: Compile
-        run: zig build install
+        run: zig build install -Dweb-example=false
 
       - name: Testsuite
         run: zig build test

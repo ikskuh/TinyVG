@@ -251,7 +251,7 @@ pub fn build(b: *std.build.Builder) !void {
 
             for (web_example_files) |src_path| {
                 const copy_stuff = b.addInstallFileWithDir(.{ .path = src_path }, www_folder, std.fs.path.basename(src_path));
-                if (target.isNative()) {
+                if (target.isNative() and enable_poly_example) {
                     copy_stuff.step.dependOn(gen_gt_step);
                 }
                 b.getInstallStep().dependOn(&copy_stuff.step);
