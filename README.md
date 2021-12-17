@@ -38,10 +38,10 @@ Create a vector graphics format that fulfils the following requirements:
   - filled with outline ✅
 - Support
   - flat colors ✅
-  - bitmap textures
+  - bitmap textures ❌ (won't be included)
   - linear gradients ✅
   - line widths ✅
-- Can use hinting to allow really small rendering (16²)
+- Can use hinting to allow really small rendering (16²) ❌ (won't be included due to increased complexity)
 
 ## Use Cases
 
@@ -55,9 +55,7 @@ The use cases here are listed to be considered while working on the specificatio
 
 ## Project Status
 
-This project is currently work-in-progress and there's only a reference implementation.
-
-The specification is work-in-progress and incomplete right now, and the format itself needs some clean-ups and streamlining order of things in the format itself. After that, the specification will be created.
+This project is coming close to finishing _Version 1_ of the format, and the written spec is the last thing missing.
 
 See the following documents:
 
@@ -66,7 +64,7 @@ See the following documents:
 
 See also this image to have a preview of what is already implemented:
 
-![Preview](examples/everything.png)
+![Preview](examples/tinyvg/everything.png)
 
 ### Milestones
 
@@ -124,22 +122,6 @@ See also this image to have a preview of what is already implemented:
 - [ ] Smooth Bezier (via mirror behaviour)
 - [ ] Inkscape Plugin
 - [ ] library/sdk feature: convert TinyVG to draw lists/commands
-
-## Considerations
-
-- Which color format does TinyVG use?
-  - Linear color space?
-  - sRGB?
-- What is the default color depth?
-  - 15/16 bit?
-  - 24 bit?
-  - 30 bit?
-- How should font rendering work?
-  - Embed vector fonts in the file?
-    - Sparse font mapping: Only map glyphs actually used
-  - Just render out text as path/line data?
-  - SVG shows that not embedding a font makes the file completly unportable and will look different in every renderer. This needs to be prevented
-  - Use UTF-8 encoding
 
 ## Resources
 

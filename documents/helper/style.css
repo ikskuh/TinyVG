@@ -1,0 +1,44 @@
+body {
+  font-size: 8pt;
+}
+
+table {
+  border: 2px solid black;
+  border-collapse: collapse;
+  width: 100%;
+}
+
+table tr {
+  border: 1px solid silver;
+}
+
+table tr td,
+table tr th {
+  border-left: 1px solid gray;
+  border-right: 1px solid gray;
+  vertical-align: top;
+}
+
+table th {
+  text-align: left;
+}
+
+img,
+svg {
+  max-height: 10rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+a {
+  color: navy;
+  text-decoration: none;
+}
+
+@media print {
+  div,
+  img,
+  table {
+    break-inside: avoid;
+  }
+}
