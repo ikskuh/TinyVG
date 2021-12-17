@@ -74,7 +74,7 @@ jobs:
       - name: Render Specification
         run: |
           mkdir -p dist
-          markdown-pdf documents/specification.md -o website/download/specification.pdf
+          ./build-spec.sh website/download/specification.pdf
           cp documents/specification.md website/download/specification.md
 
       - name: Pack Downloads Bundles
