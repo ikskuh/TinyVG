@@ -29,7 +29,8 @@ pub fn build(b: *std.build.Builder) !void {
     const www_folder = std.build.InstallDir{ .custom = "www" };
 
     const is_release = b.option(bool, "release", "Prepares a release build") orelse false;
-    const enable_polyfill = b.option(bool, "polyfill", "Enables the polyfill build") orelse false;
+    const enable_polyfill = b.option(bool, "polyfill", "Enables the polyfill build") orelse !is_release;
+    const enable_poly_example = b.option(bool, "web-example", "Adds example files to the prefix/www folder for easier development") orelse (enable_polyfill and !is_release);
 
     const bundle_libs = b.option(bool, "libs", "Install the libs") orelse true;
     const bundle_headers = b.option(bool, "headers", "Install the headers") orelse true;
@@ -45,6 +46,9 @@ pub fn build(b: *std.build.Builder) !void {
     }
 
     const dynamic_native_lib = b.addSharedLibrary("tinyvg", "src/binding/binding.zig", .unversioned);
+    if (target.isWindows()) {
+        dynamic_native_lib.emit_implib = .{ .emit_to = b.getInstallPath(.lib, "tinyvg.dll.lib") };
+    }
     initNativeLibrary(dynamic_native_lib, mode, target);
     if (bundle_libs) {
         dynamic_native_lib.install();
@@ -240,14 +244,16 @@ pub fn build(b: *std.build.Builder) !void {
                 "src/polyfill/tinyvg.js",
             };
 
-            const web_example_files = if (is_release)
-                &release_files
+            const web_example_files = if (enable_poly_example)
+                &debug_files
             else
-                &debug_files;
+                &release_files;
 
             for (web_example_files) |src_path| {
                 const copy_stuff = b.addInstallFileWithDir(.{ .path = src_path }, www_folder, std.fs.path.basename(src_path));
-                copy_stuff.step.dependOn(gen_gt_step);
+                if (target.isNative()) {
+                    copy_stuff.step.dependOn(gen_gt_step);
+                }
                 b.getInstallStep().dependOn(&copy_stuff.step);
             }
         }

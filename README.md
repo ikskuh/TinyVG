@@ -91,12 +91,12 @@ See also this image to have a preview of what is already implemented:
   - [ ] Build SDK
     - [ ] Zig package
     - [ ] Native packages
-      - [ ] dynamic macOS x86_64, aarch64
-      - [ ] static macOS x86_64, aarch64
-      - [ ] dynamic Windows x86_64
-      - [ ] static Windows x86_64
-      - [ ] dynamic Linux x86_64, aarch64, arm
-      - [ ] static Linux x86_64, aarch64, arm
+      - [x] dynamic macOS x86_64, aarch64
+      - [x] static macOS x86_64, aarch64
+      - [ ] dynamic Windows x86_64 (TODO: Make two .lib files for dynamic and static)
+      - [ ] static Windows x86_64 (TODO: See above)
+      - [ ] dynamic Linux x86_64, aarch64, arm (TODO: Test on real devices)
+      - [ ] static Linux x86_64, aarch64, arm (TODO: Test on real devices)
   - [x] Wasm Polyfill
 - [ ] Improve website
   - [ ] Add manual to tools
@@ -106,6 +106,7 @@ See also this image to have a preview of what is already implemented:
   - [x] Add `app-icon.tvg` example file
   - [x] Add `graph.tvg` example file
   - [ ] Add text file spec/examples
+  - [ ] Fix polyfill (change CI)
 - [x] Benchmark Suite
   - [x] File Size (SVG vs. TinyVG)
   - [ ] Update final benchmark

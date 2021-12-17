@@ -40,17 +40,32 @@ jobs:
       - name: Generate Test files
         run: zig build generate
 
-      - name: Compile releases
+      - name: Compile x86_64-windows release
         run: |
           zig build -Drelease -Dtarget=x86_64-windows --prefix release/x86_64-windows
+
+      - name: Compile x86_64-linux release
+        run: |
           zig build -Drelease -Dtarget=x86_64-linux --prefix release/x86_64-linux
+
+      - name: Compile x86_64-macos release
+        run: |
           zig build -Drelease -Dtarget=x86_64-macos --prefix release/x86_64-macos
+
+      - name: Compile aarch64-linux release
+        run: |
           zig build -Drelease -Dtarget=aarch64-linux --prefix release/aarch64-linux
+
+      - name: Compile aarch64-macos release
+        run: |
           zig build -Drelease -Dtarget=aarch64-macos --prefix release/aarch64-macos
+
+      - name: Compile dotnet tooling
+        run: |
           make -C src/tools/svg2tvg/ publish
 
       - name: Compile polyfill
-        run: zig build install -Drelease -Dpolyfill
+        run: zig build install -Drelease -Dpolyfill -Dweb-example
 
       - name: Compile and bundle SDK
         run: |
@@ -69,18 +84,23 @@ jobs:
           pushd release/x86_64-windows/bin
           7z a ../../../website/download/tvg-x86_64-windows.zip *
           popd
+
           pushd release/x86_64-linux/bin
           7z a ../../../website/download/tvg-x86_64-linux.zip *
           popd
+
           pushd release/x86_64-macos/bin
           7z a ../../../website/download/tvg-x86_64-macos.zip *
           popd
+
           pushd release/aarch64-linux/bin
           7z a ../../../website/download/tvg-aarch64-linux.zip *
           popd
+
           pushd release/aarch64-macos/bin
           7z a ../../../website/download/tvg-aarch64-macos.zip *
           popd
+
           pushd zig-out/www/
           7z a ../../website/download/tvg-polyfill.zip *
           popd
