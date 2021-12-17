@@ -5,6 +5,8 @@ set -e
 rm -rf sdk-release
 mkdir sdk-release
 
+cp documents/sdk-readme.txt sdk-release/README.txt
+
 echo "Prepare examples..."
 mkdir -p sdk-release/examples/{code,graphics}
 cp examples/native/usage.c sdk-release/examples/code/usage.c
