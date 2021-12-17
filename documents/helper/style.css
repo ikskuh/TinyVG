@@ -35,10 +35,30 @@ a {
   text-decoration: none;
 }
 
-@media print {
-  div,
-  img,
-  table {
-    break-inside: avoid;
-  }
+div,
+img,
+table {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  break-inside: avoid;
+  page-break-after: avoid;
+}
+
+h2 {
+  border-bottom: 1px solid #000000;
+}
+
+h3 {
+  border-bottom: 1px solid #cccccc;
+}
+
+h4 {
+  border-bottom: 1px solid #888888;
 }

@@ -2,7 +2,7 @@
 
 **Abstract:** The tiny vector graphics format is a binary file format that encodes a list of vector graphic primitives. It is tailored to have a tiny memory footprint and simple implementations, while lifting small file size over encoding simplicity.
 
-## Intruction
+## Introduction
 
 ### Why a new format
 

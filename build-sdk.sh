@@ -39,7 +39,14 @@ zig build -Drelease -Dlibs=false -Dheaders=false -Dtools=false -Dpolyfill --pref
 mv sdk-release/{www,js}
 
 echo "Build specification"
-markdown-pdf --paper-format A4 --paper-orientation portrait --out sdk-release/specification.pdf --cwd documents documents/specification.md
+markdown-pdf \
+  --paper-format A4 \
+  --paper-orientation portrait \
+  --out sdk-release/specification.pdf \
+  --cwd documents \
+  --runnings-path documents/helper/runnings.js \
+  --css-path documents/helper/style.css \
+  documents/specification.md
 
 echo "Build dotnet tooling"
 
