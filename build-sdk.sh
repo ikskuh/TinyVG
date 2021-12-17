@@ -22,16 +22,16 @@ cp website/img/chart.tvg          sdk-release/examples/graphics/chart.tvg
 cp website/img/app-icon.tvg       sdk-release/examples/graphics/app-icon.tvg
 
 echo "Build native libraries"
-zig build -Drelease -Dlibs=false -Dheaders=true  -Dtools=false --prefix sdk-release install
-zig build -Drelease -Dlibs=true  -Dheaders=false -Dtools=true  --prefix sdk-release/x86_64-windows -Dtarget=x86_64-windows install
-zig build -Drelease -Dlibs=true  -Dheaders=false -Dtools=true  --prefix sdk-release/x86_64-macos   -Dtarget=x86_64-macos   install
-zig build -Drelease -Dlibs=true  -Dheaders=false -Dtools=true  --prefix sdk-release/x86_64-linux   -Dtarget=x86_64-linux   install
-zig build -Drelease -Dlibs=true  -Dheaders=false -Dtools=true  --prefix sdk-release/aarch64-macos  -Dtarget=x86_64-macos   install
-zig build -Drelease -Dlibs=true  -Dheaders=false -Dtools=true  --prefix sdk-release/aarch64-linux  -Dtarget=x86_64-linux   install
+zig build -Drelease -Dlibs=false -Dheaders=true  -Dtools=false --prefix sdk-release/native install
+zig build -Drelease -Dlibs=true  -Dheaders=false -Dtools=true  --prefix sdk-release/native/x86_64-windows -Dtarget=x86_64-windows install
+zig build -Drelease -Dlibs=true  -Dheaders=false -Dtools=true  --prefix sdk-release/native/x86_64-macos   -Dtarget=x86_64-macos   install
+zig build -Drelease -Dlibs=true  -Dheaders=false -Dtools=true  --prefix sdk-release/native/x86_64-linux   -Dtarget=x86_64-linux   install
+zig build -Drelease -Dlibs=true  -Dheaders=false -Dtools=true  --prefix sdk-release/native/aarch64-macos  -Dtarget=x86_64-macos   install
+zig build -Drelease -Dlibs=true  -Dheaders=false -Dtools=true  --prefix sdk-release/native/aarch64-linux  -Dtarget=x86_64-linux   install
 
 echo "Build wasm polyfill"
 zig build -Drelease -Dlibs=false -Dheaders=false -Dtools=false -Dpolyfill --prefix sdk-release/
-mv sdk-release/{www,js-polyfill}
+mv sdk-release/{www,js}
 
 echo "Build specification"
 markdown-pdf --paper-format A4 --paper-orientation portrait --out sdk-release/specification.pdf --cwd documents documents/specification.md
@@ -39,7 +39,7 @@ markdown-pdf --paper-format A4 --paper-orientation portrait --out sdk-release/sp
 echo "Build dotnet tooling"
 
 make -C src/tools/svg2tvg/ publish
-cp -r src/tools/svg2tvg/release/win-x64/*      sdk-release/x86_64-windows/bin/
-cp -r src/tools/svg2tvg/release/linux-x64/*    sdk-release/x86_64-linux/bin/
-cp -r src/tools/svg2tvg/release/osx-x64/*      sdk-release/x86_64-macos/bin/
-cp -r src/tools/svg2tvg/release/linux-arm64/*  sdk-release/aarch64-linux/bin/
+cp -r src/tools/svg2tvg/release/win-x64/*      sdk-release/native/x86_64-windows/bin/
+cp -r src/tools/svg2tvg/release/linux-x64/*    sdk-release/native/x86_64-linux/bin/
+cp -r src/tools/svg2tvg/release/osx-x64/*      sdk-release/native/x86_64-macos/bin/
+cp -r src/tools/svg2tvg/release/linux-arm64/*  sdk-release/native/aarch64-linux/bin/
