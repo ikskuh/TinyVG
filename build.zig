@@ -23,6 +23,7 @@ fn initNativeLibrary(lib: *std.build.LibExeObjStep, mode: std.builtin.Mode, targ
     lib.addIncludeDir("src/binding/include");
     lib.setBuildMode(mode);
     lib.setTarget(target);
+    lib.bundle_compiler_rt = true;
 }
 
 pub fn build(b: *std.build.Builder) !void {
@@ -46,7 +47,8 @@ pub fn build(b: *std.build.Builder) !void {
     }
 
     const dynamic_native_lib = b.addSharedLibrary("tinyvg", "src/binding/binding.zig", .unversioned);
-    if (target.isWindows()) {
+    if (target.isWindows() and is_release) {
+        // workaround for https://github.com/ziglang/zig/pull/10347/files
         dynamic_native_lib.emit_implib = .{ .emit_to = b.getInstallPath(.lib, "tinyvg.dll.lib") };
     }
     initNativeLibrary(dynamic_native_lib, mode, target);
@@ -157,7 +159,10 @@ pub fn build(b: *std.build.Builder) !void {
         const test_step = b.step("test", "Runs all tests");
         test_step.dependOn(&tvg_tests.step);
         test_step.dependOn(&static_binding_test_run.step);
-        test_step.dependOn(&dynamic_binding_test_run.step);
+        if (!is_release) {
+            // workaround for https://github.com/ziglang/zig/pull/10347/files
+            test_step.dependOn(&dynamic_binding_test_run.step);
+        }
     }
     {
         const merge_covs = b.addSystemCommand(&[_][]const u8{
