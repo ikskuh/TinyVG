@@ -118,6 +118,10 @@ jobs:
         run: |
           cp -r zig-out/www website/polyfill
 
+      - name: Copy some files around
+        run: |
+          cp -r design/social-media-preview.png website/img/social-media-preview.png
+
       - name: Deploy to Server
         uses: easingthemes/ssh-deploy@v2.1.1
         env:
