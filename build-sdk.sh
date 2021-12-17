@@ -21,6 +21,11 @@ cp website/img/comic.tvg          sdk-release/examples/graphics/comic.tvg
 cp website/img/chart.tvg          sdk-release/examples/graphics/chart.tvg
 cp website/img/app-icon.tvg       sdk-release/examples/graphics/app-icon.tvg
 
+echo "Prepare Zig package"
+mkdir -p sdk-release/zig/
+cp -r vendor/parser-toolkit/src sdk-release/zig/ptk
+cp -r src/lib/* sdk-release/zig
+
 echo "Build native libraries"
 zig build -Drelease -Dlibs=false -Dheaders=true  -Dtools=false --prefix sdk-release/native install
 zig build -Drelease -Dlibs=true  -Dheaders=false -Dtools=true  --prefix sdk-release/native/x86_64-windows -Dtarget=x86_64-windows install

@@ -89,14 +89,14 @@ See also this image to have a preview of what is already implemented:
 - [x] Add auxiliary tools
   - [x] C Library frontend
   - [ ] Build SDK
-    - [ ] Zig package
+    - [x] Zig package
     - [ ] Native packages
       - [x] dynamic macOS x86_64, aarch64
       - [x] static macOS x86_64, aarch64
-      - [ ] dynamic Windows x86_64 (TODO: Make two .lib files for dynamic and static)
-      - [ ] static Windows x86_64 (TODO: See above)
-      - [ ] dynamic Linux x86_64, aarch64, arm (TODO: Test on real devices)
-      - [ ] static Linux x86_64, aarch64, arm (TODO: Test on real devices)
+      - [x] dynamic Windows x86_64
+      - [ ] static Windows x86_64 (TODO: Linker error with COMDAT when using VS)
+      - [x] dynamic Linux x86_64, aarch64, arm
+      - [x] static Linux x86_64, aarch64, arm
   - [x] Wasm Polyfill
 - [ ] Improve website
   - [ ] Add manual to tools
@@ -106,7 +106,7 @@ See also this image to have a preview of what is already implemented:
   - [x] Add `app-icon.tvg` example file
   - [x] Add `graph.tvg` example file
   - [ ] Add text file spec/examples
-  - [ ] Fix polyfill (change CI)
+  - [x] Fix polyfill (change CI)
 - [x] Benchmark Suite
   - [x] File Size (SVG vs. TinyVG)
   - [ ] Update final benchmark
@@ -115,16 +115,15 @@ See also this image to have a preview of what is already implemented:
 - [ ] Review specification
 - [ ] Release!
 - [ ] Lock the specification into _Version 1_.
-- [ ] Future stuff
-  - [ ] (Fill|Draw|Fill Outlined) Ellipse/Circle opcode
-  - [ ] Smooth Bezier (via mirror behaviour)
-  - [ ] Inkscape Plugin
-  - [ ] library/sdk feature: convert TinyVG to draw lists/commands
 
 ### Future Tasks
 
 - [ ] Convert from SVG (via external tool)
   - [ ] SVG `<ellipse>`
+- [ ] (Fill|Draw|Fill Outlined) Ellipse/Circle opcode
+- [ ] Smooth Bezier (via mirror behaviour)
+- [ ] Inkscape Plugin
+- [ ] library/sdk feature: convert TinyVG to draw lists/commands
 
 ## Considerations
 
