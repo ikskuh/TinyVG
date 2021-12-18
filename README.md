@@ -1,3 +1,9 @@
+# THIS REPO IS ARCHIVED.
+
+## DEVELOPMENT CONTINUES AT
+## https://github.com/TinyVG/
+
+
 # `.tvg`: Tiny Vector Graphics
 
 ![Project Logo](design/logo.svg) A new format for simple vector graphics.
