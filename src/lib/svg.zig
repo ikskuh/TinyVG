@@ -233,7 +233,7 @@ const SvgStyle = struct {
         _ = options;
         if (self.fill_style) |style| {
             switch (style) {
-                .flat => |ind| try self.cache.printColorAndPrefix(writer, "fill:", ind, ";"),
+                .flat => |ind| try self.cache.printColorForStyle(writer, "fill", ind),
                 .linear, .radial => try writer.print("fill:url(#grad{});", .{
                     self.cache.insert(style),
                 }),
@@ -244,7 +244,7 @@ const SvgStyle = struct {
 
         if (self.line_style) |style| {
             switch (style) {
-                .flat => |ind| try self.cache.printColorAndPrefix(writer, "stroke:", ind, ";"),
+                .flat => |ind| try self.cache.printColorForStyle(writer, "stroke", ind),
                 .linear, .radial => try writer.print("stroke:url(#grad{});", .{
                     self.cache.insert(style),
                 }),
@@ -323,17 +323,19 @@ const SvgStyleCache = struct {
         return self.list.items.len - 1;
     }
 
-    fn printColorAndPrefix(self: SvgStyleCache, writer: anytype, prefix: []const u8, i: usize, postfix: []const u8) !void {
+    fn printColorForStyle(self: SvgStyleCache, writer: anytype, prefix: []const u8, i: usize) !void {
         if (i >= self.color_table.len) {
-            try writer.print("{s}#FFFF00{s}", .{ prefix, postfix });
+            try writer.print("{s}: #FFFF00;", .{prefix});
         }
         const color = self.color_table[i];
 
         var r = @floatToInt(u8, std.math.clamp(255.0 * color.r, 0.0, 255.0));
         var g = @floatToInt(u8, std.math.clamp(255.0 * color.g, 0.0, 255.0));
         var b = @floatToInt(u8, std.math.clamp(255.0 * color.b, 0.0, 255.0));
-        var a = @floatToInt(u8, std.math.clamp(255.0 * color.a, 0.0, 255.0));
-        try writer.print("{s}#{X:0>2}{X:0>2}{X:0>2}{X:0>2}{s}", .{ prefix, r, g, b, a, postfix });
+        try writer.print("{s}:#{X:0>2}{X:0>2}{X:0>2};", .{ prefix, r, g, b });
+        if (color.a != 1.0) {
+            try writer.print("{s}-opacity:{d};", .{ prefix, color.a });
+        }
     }
 
     fn printColor3AndPrefix(self: SvgStyleCache, writer: anytype, prefix: []const u8, i: usize, postfix: []const u8) !void {
