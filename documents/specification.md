@@ -215,17 +215,15 @@ Fills a [polygon](https://en.wikipedia.org/wiki/Polygon) with N points.
 
 The command is structured like this:
 
-![command structure](graphics/fill_polygon.svg)
-
 | Field       | Type                        | Description                                                     |
 | ----------- | --------------------------- | --------------------------------------------------------------- |
 | point_count | [`VarUInt`](#varuint)       | The number of points in the polygon. This value is offset by 1. |
 | fill_style  | `Style(primary_style_kind)` | The style that is used to fill the polygon.                     |
-| polygon     | `[count]Point`              | The points of the polygon.                                      |
+| polygon     | `[point_count + 1]Point`    | The points of the polygon.                                      |
 
-The offset in `point_count` is there due to 0 points don't make sense at all and the command could just be skipped instead of encoding it with 0 points. The offset is zero to allow code sharing between other fill commands, as each fill command shares the same header.
+The offset in `point_count` is there due to 0 points don't make sense at all and the command could just be skipped instead of encoding it with 0 points. The offset is one to allow code sharing between other fill commands, as each fill command shares the same header.
 
-`point_count` must be at least 3, files that encode another value must be discarded as "invalid" by a conforming implementation.
+`point_count` must be at least 2, files that encode a lower value must be discarded as "invalid" by a conforming implementation.
 
 The polygon specified in `polygon` must be drawn using the [even-odd rule](https://en.wikipedia.org/wiki/Even%E2%80%93odd_rule), that means that if for any point to be inside the polygon, a line to infinity must cross an even number of polygon segments.
 
@@ -246,21 +244,354 @@ The file header defines a _scale_ by which each signed integer is divided into t
 
 #### Fill Rectangles
 
+Fills a list of rectangles.
+
+The command is structured like this:
+
+| Field           | Type                             | Description                                          |
+| --------------- | -------------------------------- | ---------------------------------------------------- |
+| rectangle_count | [`VarUInt`](#varuint)            | The number of rectangles. This value is offset by 1. |
+| fill_style      | `Style(primary_style_kind)`      | The style that is used to fill all rectangles.       |
+| rectangles      | `[rectangle_count + 1]Rectangle` | The points of the polygon.                           |
+
+The offset in `rectangle_count` is there due to 0 rectangles don't make sense at all and the command could just be skipped instead of encoding it with 0 rectangles. The offset is one to allow code sharing between other fill commands, as each fill command shares the same header.
+
+The rectangles must be drawn first to last, so in the order they appear in the file.
+
+##### `Rectangle`
+
+| Field  | Type             | Description                                         |
+| ------ | ---------------- | --------------------------------------------------- |
+| x      | [`Unit`](#units) | Horizontal distance of the left side to the origin. |
+| y      | [`Unit`](#units) | Vertical distance of the upper side to the origin.  |
+| width  | [`Unit`](#units) | Horizontal extent of the rectangle.                 |
+| height | [`Unit`](#units) | Vertical extent of the rectangle origin.            |
+
 #### Fill Path
+
+Fills a [path](#path). Paths are described further below in more detail to keep this section short.
+
+The command is structured like this:
+
+| Field         | Type                        | Description                                                    |
+| ------------- | --------------------------- | -------------------------------------------------------------- |
+| segment_count | [`VarUInt`](#varuint)       | The number of segments in the path. This value is offset by 1. |
+| fill_style    | `Style(primary_style_kind)` | The style that is used to fill the path.                       |
+| path          | `Path(segment_count + 1)`   | A path with `segment_count` segments                           |
+
+The offset in `segment_count` is there due to 0 segments don't make sense at all and the command could just be skipped instead of encoding it with 0 segments. The offset is one to allow code sharing between other fill commands, as each fill command shares the same header.
+
+For the filling, all path segments are considered a polygon each (drawn with even-odd rule) that, when overlap, also perform the even odd rule. This allows the user to carve out parts of the path and create arbitrarily shaped surfaces.
 
 #### Draw Lines
 
+Draws a set of lines.
+
+The command is structured like this:
+
+| Field      | Type                        | Description                                          |
+| ---------- | --------------------------- | ---------------------------------------------------- |
+| line_count | [`VarUInt`](#varuint)       | The number of rectangles. This value is offset by 1. |
+| line_style | `Style(primary_style_kind)` | The style that is used to draw the all rectangles.   |
+| line_width | `f32`                       | The width of the line.                               |
+| lines      | `[line_count + 1]Line`      | The set of lines.                                    |
+
+Draws `line_count` + 1 lines with `line_style`. Each line is `line_width` units wide, and at least a single display pixel. This means that `line_width` of 0 is still visible, even though only marginally. This allows very thin outlines.
+
+##### `Line`
+
+| Field | Type              | Description             |
+| ----- | ----------------- | ----------------------- |
+| start | [`Point`](#point) | Start point of the line |
+| end   | [`Point`](#point) | End point of the line.  |
+
 #### Draw Line Loop
+
+Draws a polygon.
+
+The command is structured like this:
+
+| Field       | Type                        | Description                                        |
+| ----------- | --------------------------- | -------------------------------------------------- |
+| point_count | [`VarUInt`](#varuint)       | The number of points. This value is offset by 1.   |
+| line_style  | `Style(primary_style_kind)` | The style that is used to draw the all rectangles. |
+| line_width  | `f32`                       | The width of the line.                             |
+| points      | `[point_count + 1]Point`    | The points of the polygon.                         |
+
+Draws `point_count` + 1 lines with `line_style`. Each line is `line_width` units wide, and at least a single display pixel. This means that `line_width` of 0 is still visible, even though only marginally. This allows very thin outlines.
+
+The lines are drawn between consecutive points as well as the first and the last point.
 
 #### Draw Line Strip
 
+Draws a list of consecutive lines.
+
+The command is structured like this:
+
+| Field       | Type                        | Description                                        |
+| ----------- | --------------------------- | -------------------------------------------------- |
+| point_count | [`VarUInt`](#varuint)       | The number of points. This value is offset by 1.   |
+| line_style  | `Style(primary_style_kind)` | The style that is used to draw the all rectangles. |
+| line_width  | `f32`                       | The width of the line.                             |
+| points      | `[point_count + 1]Point`    | The points of the polygon.                         |
+
+Draws `point_count` + 1 lines with `line_style`. Each line is `line_width` units wide, and at least a single display pixel. This means that `line_width` of 0 is still visible, even though only marginally. This allows very thin outlines.
+
+The lines are drawn between consecutive points, but contrary to _Draw Line Loop_, the first and the last point are not connected.
+
 #### Draw Line Path
+
+Draws a [path](#path). Paths are described further below in more detail to keep this section short.
+
+The command is structured like this:
+
+| Field         | Type                        | Description                                                    |
+| ------------- | --------------------------- | -------------------------------------------------------------- |
+| segment_count | [`VarUInt`](#varuint)       | The number of segments in the path. This value is offset by 1. |
+| line_style    | `Style(primary_style_kind)` | The style that is used to draw the all rectangles.             |
+| line_width    | `f32`                       | The width of the line.                                         |
+| path          | `Path(segment_count + 1)`   | A path with `segment_count` segments                           |
+
+The outline of the path is `line_width` units wide, and at least a single display pixel. This means that `line_width` of 0 is still visible, even though only marginally. This allows very thin outlines.
 
 #### Outline Fill Polygon
 
+Fills a polygon and draws a outline at the same time.
+
+The command is structured like this:
+
+| Field                 | Type                           | Description                                                     |
+| --------------------- | ------------------------------ | --------------------------------------------------------------- |
+| segment_count         | `u6`                           | The number of points in the polygon. This value is offset by 1. |
+| secondardy_style_kind | `u2`                           | The secondary style used in this command.                       |
+| fill_style            | `Style(primary_style_kind)`    | The style that is used to fill the polygon.                     |
+| line_style            | `Style(secondardy_style_kind)` | The style that is used to draw the outline of the polygon.      |
+| line_width            | `f32`                          | The width of the line.                                          |
+| points                | `[segment_count + 1]Point`     | The set of points of this polygon.                              |
+
+This command is a combination of _Fill Polygon_ and _Draw Line Loop_. It first performs a _Fill Polygon_ with the `fill_style`, then performs _Draw Line Loop_ with `line_style` and `line_width`.
+
+![polygon example](graphics/outline-polgon.svg)
+
+The outline commands use a reduced number of elements, the maximum number of points is 64.
+
 #### Outline Fill Rectangles
 
+Fills and outlines a list of rectangles.
+
+The command is structured like this:
+
+| Field                 | Type                             | Description                                                |
+| --------------------- | -------------------------------- | ---------------------------------------------------------- |
+| rectangle_count       | `u6`                             | The number of rectangles. This value is offset by 1.       |
+| secondardy_style_kind | `u2`                             | The secondary style used in this command.                  |
+| fill_style            | `Style(primary_style_kind)`      | The style that is used to fill the polygon.                |
+| line_style            | `Style(secondardy_style_kind)`   | The style that is used to draw the outline of the polygon. |
+| line_width            | `f32`                            | The width of the line.                                     |
+| rectangles            | `[rectangle_count + 1]Rectangle` | The set of points of this polygon.                         |
+
+For each rectangle, it is first filled, then its outline is drawn, then the next rectangle is drawn. This allows to overlap rectangles to look like this:
+
+![rectangle example](graphics/outline-rectangles.svg)
+
+The outline commands use a reduced number of elements, the maximum number of points is 64.
+
 #### Outline Fill Path
+
+Fills a path and draws a outline at the same time.
+
+The command is structured like this:
+
+| Field                 | Type                           | Description                                                     |
+| --------------------- | ------------------------------ | --------------------------------------------------------------- |
+| segment_count         | `u6`                           | The number of points in the polygon. This value is offset by 1. |
+| secondardy_style_kind | `u2`                           | The secondary style used in this command.                       |
+| fill_style            | `Style(primary_style_kind)`    | The style that is used to fill the polygon.                     |
+| line_style            | `Style(secondardy_style_kind)` | The style that is used to draw the outline of the polygon.      |
+| line_width            | `f32`                          | The width of the line.                                          |
+| path                  | `Path(segment_count + 1)`      | The set of points of this polygon.                              |
+
+This command is a combination of _Fill Path_ and _Draw Path_. It first performs a _Fill Path_ with the `fill_style`, then performs _Draw Path_ with `line_style` and `line_width`.
+
+The outline commands use a reduced number of elements, the maximum number of points is 64.
+
+### `Style(style_type)`
+
+There are three types of style available:
+
+| Value | Style Type      | Description                                         |
+| ----- | --------------- | --------------------------------------------------- |
+| 0     | Flat Colored    | The shape is uniformly colored with a single color. |
+| 1     | Linear Gradient | The shape is colored with a linear gradient.        |
+| 2     | Radial Gradient | The shape is colored with a radial gradient.        |
+
+Left to right the three gradient types:
+
+![gradients](graphics/gradients.svg)
+
+#### Flat Colored
+
+| Field       | Type      | Description                    |
+| ----------- | --------- | ------------------------------ |
+| color_index | `VarUInt` | The index into the color table |
+
+The shape is uniformly colored with the color at `color_index` in the color table.
+
+#### Linear Gradient
+
+| Field         | Type      | Description                      |
+| ------------- | --------- | -------------------------------- |
+| point_0       | `Point`   | The start point of the gradient. |
+| point_1       | `Point`   | The end point of the gradient.   |
+| color_index_0 | `VarUInt` | The color at `point_0`.          |
+| color_index_1 | `VarUInt` | The color at `point_1`.          |
+
+The gradient is formed by a mental line between `point_0` and `point_1`. The color at `point_0` is the color at `color_index_0` in the color table, the color at `point_1` is the color at `color_index_1` in the color table.
+
+On the line, the color is linearly interpolated between the two points. Each point that is not on the line is orthogonally projected to the line and the color at that point is sampled. Points that are not projectable onto the line have either the color at `point_0` if they are closed to `point_0` or vice versa for `point_1`.
+
+#### Radial Gradient
+
+| Field         | Type      | Description                      |
+| ------------- | --------- | -------------------------------- |
+| point_0       | `Point`   | The start point of the gradient. |
+| point_1       | `Point`   | The end point of the gradient.   |
+| color_index_0 | `VarUInt` | The color at `point_0`.          |
+| color_index_1 | `VarUInt` | The color at `point_1`.          |
+
+The gradient is formed by a mental circle with the center at `point_0` and `point_1` being somewhere on the circle outline. Thus, the radius of said circle is the distance between `point_0` and `point_1`.
+
+The color at `point_0` is the color at `color_index_0` in the color table, the color on the circle outline is the color at `color_index_1` in the color table.
+
+If a sampled point is inside the circle, a linear color interpolation is done based on the distance to the center and the radius. If the point is not in the circle itself, the color at `color_index_1` is always taken.
+
+### `Path(segment_count)`
+
+Paths describe instructions to create complex 2D graphics.
+
+The mental model to form the path is this:  
+Each path segment generates a shape by moving a "pen" around. The path this "pen" takes is the outline of our segment. Each segment, the "pen" starts at a defined position and is moved by instructions. Each instruction will leave the "pen" at a new position. The line drawn by our "pen" is the outline of the shape.
+
+The following instructions to move the "pen" are available:
+
+| Instruction Index | Instruction      | Short Description                                                                   |
+| ----------------- | ---------------- | ----------------------------------------------------------------------------------- |
+| 0                 | line             | A straight line is drawn from the current point to a new point.                     |
+| 1                 | horizontal line  | A straight horizontal line is drawn from the current point to a new `x` coordinate. |
+| 2                 | vertical line    | A straight vertical line is drawn from the current point to a new `y` coordiante.   |
+| 3                 | cubic bezier     | A cubic bezier curve is drawn from the current point to a new point.                |
+| 4                 | arc circle       | A circle segment is drawn from current point to a new point.                        |
+| 5                 | arc ellipse      | An ellipse segment is drawn from current point to a new point.                      |
+| 6                 | close path       | The path is closed and a straight line is drawn to the starting point.              |
+| 7                 | quadratic bezier | A quadratic bezier curve is drawn from the current point to a new point.            |
+
+As path encoding is hard to describe in a tabular manner, a verbal one is chosen:
+
+1. For each segment in the path, the number of commands is encoded as a `VarUInt`.
+2. For each segment in the path:
+   1. A `Point` is encoded as the starting point.
+   2. The instructions for this path, the number is determined in the first step.
+   3. Each instruction is prefixed by a single tag byte that encodes the kind of instruction as well as the information if a line width is present.
+   4. If a line width is present, that line width is read as a `Unit`
+   5. The data for this command is decoded.
+
+The tag looks like this:
+
+| Field          | Type | Description                                        |
+| -------------- | ---- | -------------------------------------------------- |
+| instruction    | `u3` | The instruction kind as listed in the table above. |
+| _padding_      | `u1` | Always 0                                           |
+| has_line_width | `u1` | If `1`, a line width is present.                   |
+| _padding_      | `u3` | Always 0                                           |
+
+#### Line
+
+The line instruction draws a straight line to the `position`.
+
+| Field    | Type    | Description                |
+| -------- | ------- | -------------------------- |
+| position | `Point` | The end point of the line. |
+
+#### Horizontal Line
+
+The horizontal line instruction draws a straight horizontal line to a given `x` coordinate.
+
+| Field | Type   | Description             |
+| ----- | ------ | ----------------------- |
+| x     | `Unit` | The new `x` coordinate. |
+
+#### Vertical Line
+
+The vertical line instruction draws a straight vertical line to a given `y` coordinate.
+
+| Field | Type   | Description             |
+| ----- | ------ | ----------------------- |
+| y     | `Unit` | The new `y` coordinate. |
+
+#### Cubic Bezier
+
+The cubic bezier instruction draws a bézier curve with two control points.
+
+| Field     | Type    | Description                        |
+| --------- | ------- | ---------------------------------- |
+| control_0 | `Point` | The first control point.           |
+| control_1 | `Point` | The second control point.          |
+| point_1   | `Point` | The end point of the bézier curve. |
+
+The curve is drawn between the current location and `point_1` with `control_0` being the first control point and `control_1` being the second one.
+
+#### Arc Circle
+
+Draws a circle segment between the current and the `target` point.
+
+| Field     | Type    | Description                                                 |
+| --------- | ------- | ----------------------------------------------------------- |
+| large_arc | `u1`    | If `1`, the large portion of the circle segment is drawn    |
+| sweep     | `u1`    | Determines if the circle segment is left- or right bending. |
+| _padding_ | `u6`    | Always 0.                                                   |
+| radius    | `Unit`  | The radius of the circle.                                   |
+| target    | `Point` | The end point of the circle segment.                        |
+
+`radius` determines the radius of the circle. If the distance between the current point and `target` is larger than `radius`, the distance is used as the radius.
+
+When `large_arc` is 1, the larger cirle segment is drawn.
+
+If `sweep` is 1, the circle segment will make a left turn, otherwise it will make a right turn. This means that if we go from the current point to `target`, a rotation to the movement direction is necessary to either the left or the right.
+
+#### Arc Ellipse
+
+Draws an ellipse segment between the current and the `target` point.
+
+| Field     | Type    | Description                                                                 |
+| --------- | ------- | --------------------------------------------------------------------------- |
+| large_arc | `u1`    | If `1`, the large portion of the ellipse segment is drawn                   |
+| sweep     | `u1`    | Determines if the ellipse segment is left- or right bending.                |
+| _padding_ | `u6`    | Always 0.                                                                   |
+| radius_x  | `Unit`  | The radius of the ellipse in horizontal direction.                          |
+| radius_y  | `Unit`  | The radius of the ellipse in vertical direction.                            |
+| rotation  | `Unit`  | The rotation of the ellipse in mathematical negative direction, in degrees. |
+| target    | `Point` | The end point of ellipse circle segment.                                    |
+
+`radius_x` and `radius_y` determine the both radii of the ellipse. If the distance between the current point and `target` is not enough to fit any ellipse segment between the two points, `radius_x` and `radius_y` are scaled uniformly so that it fits exactly.
+
+When `large_arc` is 1, the larger cirle segment is drawn.
+
+If `sweep` is 1, the ellipse segment will make a left turn, otherwise it will make a right turn. This means that if we go from the current point to `target`, a rotation to the movement direction is necessary to either the left or the right.
+
+#### Close Path
+
+A straight line is drawn to the start location of the current segment. This instruction doesn't have additional data encoded.
+
+#### Quadratic Bezier
+
+The quadratic bezier instruction draws a bézier curve with a single control point.
+
+| Field   | Type    | Description                        |
+| ------- | ------- | ---------------------------------- |
+| control | `Point` | The control point.                 |
+| point_1 | `Point` | The end point of the bézier curve. |
+
+The curve is drawn between the current location and `point_1` with `control` being the control point.
 
 ## Revision History
 
