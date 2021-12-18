@@ -10,8 +10,8 @@ SVG is the status quo widespread vector format. Every program can kinda use it a
 
 Quoting the [german Wikipedia](https://de.wikipedia.org/wiki/Scalable_Vector_Graphics):
 
-> 🇩🇪 Praktisch alle relevanten Webbrowser können einen Großteil des Sprachumfangs darstellen.  
-> 🇺🇸 Virtually all relevant web browsers can display a large part of the language range.
+> Praktisch alle relevanten Webbrowser können einen Großteil des Sprachumfangs darstellen.  
+> Virtually all relevant web browsers can display a large part of the language range.
 
 The use of XML bloats the files by a huge magnitude and doesn't provide a efficient encoding, thus a lot of websites and applications ship files that are not encoded optimally. Also SVG allows several ways of achieving the same thing, and can be seen more as a intermediate format for editing as for final encoding.
 

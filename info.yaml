@@ -1,0 +1,11 @@
+title: Tiny Vector Graphics (Specification)
+lang: en
+documentclass: article
+geometry:
+  - margin=0.75in
+classoption:
+  - portrait
+papersize: a4
+linestretch: 1.2
+fontsize: 12pt
+links-as-notes: true
