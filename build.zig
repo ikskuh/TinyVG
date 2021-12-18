@@ -46,11 +46,7 @@ pub fn build(b: *std.build.Builder) !void {
         static_native_lib.install();
     }
 
-    const dynamic_native_lib = b.addSharedLibrary("tinyvg", "src/binding/binding.zig", .unversioned);
-    if (target.isWindows() and is_release) {
-        // workaround for https://github.com/ziglang/zig/pull/10347/files
-        dynamic_native_lib.emit_implib = .{ .emit_to = b.getInstallPath(.lib, "tinyvg.dll.lib") };
-    }
+    const dynamic_native_lib = b.addSharedLibrary("tinyvg.dll", "src/binding/binding.zig", .unversioned);
     initNativeLibrary(dynamic_native_lib, mode, target);
     if (bundle_libs) {
         dynamic_native_lib.install();

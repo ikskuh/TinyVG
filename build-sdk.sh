@@ -34,6 +34,10 @@ zig build -Drelease -Dlibs=true  -Dheaders=false -Dtools=true  --prefix sdk-rele
 zig build -Drelease -Dlibs=true  -Dheaders=false -Dtools=true  --prefix sdk-release/native/aarch64-macos  -Dtarget=x86_64-macos   install
 zig build -Drelease -Dlibs=true  -Dheaders=false -Dtools=true  --prefix sdk-release/native/aarch64-linux  -Dtarget=x86_64-linux   install
 
+# patch the dll files
+mv sdk-release/native/x86_64-windows/lib/tinyvg{.dll,}.dll
+mv sdk-release/native/x86_64-windows/lib/tinyvg{.dll,}.pdb
+
 echo "Build wasm polyfill"
 zig build -Drelease -Dlibs=false -Dheaders=false -Dtools=false -Dpolyfill --prefix sdk-release/
 mv sdk-release/{www,js}
